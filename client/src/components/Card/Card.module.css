@@ -1,0 +1,110 @@
+/* ============================================================
+   Cartes Score
+   ============================================================ */
+.scoreCard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  font-weight: 900;
+  position: relative;
+  transition: transform 0.2s, box-shadow 0.2s;
+  border: 2px solid rgba(255,255,255,0.2);
+}
+
+.scoreCard.sm  { width: 48px;  height: 68px;  font-size: 1rem; }
+.scoreCard.md  { width: 64px;  height: 90px;  font-size: 1.3rem; }
+.scoreCard.lg  { width: 80px;  height: 112px; font-size: 1.6rem; }
+
+.positive    { background: linear-gradient(135deg, #166534, #22c55e); color: white; }
+.negative    { background: linear-gradient(135deg, #7f1d1d, #ef4444); color: white; }
+.special     { background: linear-gradient(135deg, #78350f, #f59e0b); color: white; } /* fallback */
+.specialGreen{ background: linear-gradient(135deg, #14532d, #16a34a); color: #fef08a; border-color: #fef08a; }
+.specialRed  { background: linear-gradient(135deg, #7f1d1d, #b91c1c); color: #fef08a; border-color: #fef08a; }
+.faceDown { background: linear-gradient(135deg, #1e1b4b, #4338ca); color: rgba(255,255,255,0.3); }
+
+.highlighted {
+  transform: translateY(-6px);
+  box-shadow: 0 8px 24px rgba(251, 191, 36, 0.6);
+  border-color: #fbbf24;
+}
+
+.discarded {
+  opacity: 0.4;
+  filter: grayscale(1);
+}
+
+.cardBack  { font-size: 1.5em; opacity: 0.4; }
+.cardValue { font-size: 1em; line-height: 1.1; }
+.cardStars { font-size: 0.6em; line-height: 1.2; letter-spacing: 0.05em; }
+
+.doubledBadge {
+  position: absolute;
+  bottom: 4px;
+  right: 4px;
+  font-size: 0.5rem;
+  background: rgba(0,0,0,0.4);
+  padding: 1px 3px;
+  border-radius: 4px;
+}
+
+/* ============================================================
+   Cartes Joueur
+   ============================================================ */
+.playerCard {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 60px;
+  height: 84px;
+  border-radius: 10px;
+  font-size: 1.8rem;
+  font-weight: 900;
+  color: white;
+  position: relative;
+  border: 3px solid rgba(255,255,255,0.3);
+  transition: transform 0.15s, box-shadow 0.15s;
+  user-select: none;
+}
+
+.playerCard.clickable { cursor: pointer; }
+.playerCard.clickable:hover { transform: translateY(-8px); box-shadow: 0 8px 20px rgba(0,0,0,0.4); }
+
+.playerCard.selected {
+  transform: translateY(-12px);
+  box-shadow: 0 12px 28px rgba(251, 191, 36, 0.7);
+  border-color: #fbbf24;
+}
+
+.playerCard.disabled { opacity: 0.4; cursor: not-allowed; }
+
+.playerCard.cancelled {
+  opacity: 0.5;
+  filter: grayscale(0.5);
+}
+
+.playerCard.winner {
+  box-shadow: 0 0 20px rgba(34, 197, 94, 0.8);
+  border-color: #22c55e;
+}
+
+.cancelOverlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  color: #ef4444;
+  background: rgba(0,0,0,0.3);
+  border-radius: 8px;
+}
+
+/* Couleurs joueurs */
+.red    { background: linear-gradient(135deg, #991b1b, #ef4444); }
+.blue   { background: linear-gradient(135deg, #1e3a8a, #3b82f6); }
+.green  { background: linear-gradient(135deg, #14532d, #22c55e); }
+.yellow { background: linear-gradient(135deg, #713f12, #eab308); }
+.purple { background: linear-gradient(135deg, #581c87, #a855f7); }
+.orange { background: linear-gradient(135deg, #7c2d12, #f97316); }

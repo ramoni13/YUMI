@@ -1,0 +1,335 @@
+/* ============================================================
+   Journal de jeu — colonne droite
+   ============================================================ */
+.panel {
+  display: flex;
+  flex-direction: column;
+  width: 240px;
+  min-width: 240px;
+  background: rgba(0, 0, 0, 0.4);
+  border-left: 1px solid rgba(255, 255, 255, 0.07);
+  overflow: hidden;
+}
+
+.panelHeader {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.85rem 1rem 0.6rem;
+  background: rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  flex-shrink: 0;
+}
+
+.panelTitle {
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: #fbbf24;
+}
+
+.panelSub {
+  font-size: 0.68rem;
+  color: rgba(255, 255, 255, 0.35);
+}
+
+/* Liste */
+.list {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.5rem;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,0.12) transparent;
+}
+.list::-webkit-scrollbar { width: 3px; }
+.list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 2px; }
+
+.empty {
+  text-align: center;
+  color: rgba(255,255,255,0.2);
+  font-size: 0.72rem;
+  padding: 2rem 0;
+  font-style: italic;
+}
+
+/* Séparateurs */
+.separator {
+  text-align: center;
+  font-size: 0.68rem;
+  font-weight: 800;
+  color: #fbbf24;
+  letter-spacing: 0.08em;
+  padding: 0.5rem 0 0.25rem;
+  text-transform: uppercase;
+}
+
+.trickSep {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.3rem 0.5rem;
+  background: rgba(255,255,255,0.06);
+  border-radius: 6px;
+  margin-top: 0.15rem;
+}
+
+.trickSepNum {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: rgba(255,255,255,0.5);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+/* Lignes d'événements */
+.row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.4rem;
+  padding: 0.35rem 0.45rem;
+  border-radius: 6px;
+  font-size: 0.72rem;
+  line-height: 1.35;
+  animation: slideIn 0.2s ease;
+}
+
+.icon {
+  flex-shrink: 0;
+  font-size: 0.8rem;
+  margin-top: 0.05rem;
+}
+
+.text {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  flex-wrap: wrap;
+  color: rgba(255,255,255,0.75);
+}
+
+.dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* Couleurs par type */
+.rowDefault  { background: rgba(255,255,255,0.03); }
+.rowYumi     { background: rgba(251,191,36,0.12); border-left: 2px solid #fbbf24; }
+.rowWaiting  { background: rgba(251,191,36,0.06); border-left: 2px solid rgba(251,191,36,0.4); }
+.rowCardYumi { background: rgba(251,191,36,0.08); }
+.rowCard     { background: rgba(255,255,255,0.03); }
+.rowSpecial  { background: rgba(168,85,247,0.12); border-left: 2px solid #a855f7; }
+.rowBonus    { background: rgba(251,191,36,0.08); }
+.rowResult   { background: rgba(34,197,94,0.08);  border-left: 2px solid rgba(34,197,94,0.5); }
+.rowDiscarded{ background: rgba(239,68,68,0.08);  border-left: 2px solid rgba(239,68,68,0.4); }
+.rowRoundEnd   { background: rgba(251,191,36,0.08); border-left: 2px solid rgba(251,191,36,0.5); }
+.rowRoundWinner{ background: rgba(251,191,36,0.12); border-left: 3px solid #fbbf24; }
+.rowGameOver   { background: rgba(251,191,36,0.15); border-left: 2px solid #fbbf24; font-weight: 700; }
+.rowMe         { border-right: 2px solid rgba(255,255,255,0.3); }
+
+/* Révélation */
+.rowReveal {
+  background: rgba(99,102,241,0.1);
+  border-left: 2px solid rgba(99,102,241,0.5);
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.revealContent { display: flex; flex-direction: column; gap: 0.3rem; }
+
+.revealLabel {
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: rgba(255,255,255,0.4);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.miniCardsRow { display: flex; gap: 0.3rem; flex-wrap: wrap; }
+
+.miniCardSlot { display: flex; flex-direction: column; align-items: center; gap: 0.12rem; }
+
+.miniCard {
+  width: 26px;
+  height: 34px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  font-weight: 900;
+  color: white;
+  position: relative;
+  border: 1.5px solid rgba(255,255,255,0.2);
+}
+
+.miniCard.cancelled { opacity: 0.4; filter: grayscale(0.5); }
+.miniCard.mine { border-color: #fbbf24; box-shadow: 0 0 6px rgba(251,191,36,0.5); }
+
+.cancelX {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.85rem;
+  color: #ef4444;
+  background: rgba(0,0,0,0.4);
+  border-radius: 3px;
+}
+
+.miniCardOwner {
+  font-size: 0.55rem;
+  font-weight: 600;
+  max-width: 30px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: center;
+}
+
+/* Résultat du pli */
+.resultContent { display: flex; flex-direction: column; gap: 0.15rem; }
+
+.winnerText {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-weight: 700;
+  color: #c7d2fe;
+  font-size: 0.72rem;
+}
+
+.discardedText { color: #f87171; font-style: italic; font-size: 0.72rem; }
+.cancelled2 { font-size: 0.62rem; color: rgba(255,255,255,0.35); }
+
+/* Valeur de la carte gagnante */
+.winnerCardVal {
+  font-size: 0.68rem;
+  color: rgba(255,255,255,0.5);
+  font-weight: 400;
+}
+
+/* Liste des joueurs annulés */
+.cancelledList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  margin-top: 0.1rem;
+}
+
+.cancelledItem {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.65rem;
+  color: #f87171;
+  font-style: italic;
+}
+
+/* Fin de manche */
+.roundEndContent { display: flex; flex-direction: column; gap: 0.2rem; }
+
+.roundEndTitle {
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: #fbbf24;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.bonusList { display: flex; flex-direction: column; gap: 0.15rem; }
+
+.bonusItem {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.68rem;
+  color: rgba(255,255,255,0.55);
+  width: 100%;
+}
+
+/* Joueur ayant gagné le bonus étoile */
+.bonusItemWinner {
+  color: #fbbf24;
+  font-weight: 700;
+}
+
+.bonusTag {
+  font-size: 0.62rem;
+  background: rgba(251,191,36,0.2);
+  color: #fbbf24;
+  padding: 0.05rem 0.3rem;
+  border-radius: 4px;
+  margin-left: 0.15rem;
+}
+
+.noBonus { font-size: 0.65rem; color: rgba(255,255,255,0.3); font-style: italic; }
+
+/* Classement de manche */
+.rankNum {
+  font-size: 0.62rem;
+  font-weight: 800;
+  color: rgba(255,255,255,0.4);
+  min-width: 16px;
+}
+
+.scoreDetail {
+  font-size: 0.6rem;
+  color: rgba(255,255,255,0.45);
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+/* Badges Score */
+.scoreBadge {
+  font-size: 0.7rem;
+  font-weight: 900;
+  padding: 0.1rem 0.35rem;
+  border-radius: 4px;
+}
+
+.positive { background: rgba(34,197,94,0.25);  color: #4ade80; }
+.negative { background: rgba(239,68,68,0.25);  color: #f87171; }
+.special  { background: rgba(251,191,36,0.25); color: #fbbf24; }
+
+/* Ligne SCORE_WON — gagnant de la carte Score */
+.rowScoreWon {
+  background: rgba(34, 197, 94, 0.13);
+  border-left: 3px solid #22c55e;
+  padding: 0.45rem 0.55rem;
+}
+
+.rowScoreWonMe {
+  background: rgba(34, 197, 94, 0.22);
+  border-left: 3px solid #4ade80;
+  box-shadow: 0 0 8px rgba(34, 197, 94, 0.2);
+}
+
+.rowScoreWonDiscard {
+  background: rgba(239, 68, 68, 0.1);
+  border-left: 3px solid rgba(239, 68, 68, 0.5);
+  padding: 0.45rem 0.55rem;
+}
+
+.scoreWonText {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  flex-wrap: wrap;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #d1fae5;
+}
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}

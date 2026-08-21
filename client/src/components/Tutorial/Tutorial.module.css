@@ -1,0 +1,525 @@
+/* ============================================================
+   YUMI — Tutorial Slideshow
+   ============================================================ */
+
+/* ── Overlay ─────────────────────────────────────────────── */
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 8, 40, 0.85);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: 1rem;
+  animation: fadeIn 0.25s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* ── Modal ───────────────────────────────────────────────── */
+.modal {
+  background: linear-gradient(160deg, #1e1b4b 0%, #2d2a6e 60%, #1e1b4b 100%);
+  border: 1px solid rgba(165, 180, 252, 0.2);
+  border-radius: 24px;
+  width: 100%;
+  max-width: 680px;
+  min-height: 520px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255,255,255,0.05);
+  position: relative;
+}
+
+/* ── Progress bar ────────────────────────────────────────── */
+.progressBar {
+  display: flex;
+  gap: 6px;
+  padding: 1.25rem 1.75rem 0;
+}
+
+.progressDot {
+  flex: 1;
+  height: 3px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.15);
+  transition: background 0.3s;
+  cursor: pointer;
+}
+
+.progressDot.active {
+  background: #fbbf24;
+}
+
+.progressDot.done {
+  background: rgba(251, 191, 36, 0.4);
+}
+
+/* ── Slide wrapper ───────────────────────────────────────── */
+.slideWrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 1.5rem 2rem 1rem;
+  animation: slideIn 0.3s ease;
+}
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateX(24px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+.slideWrapper.reverse {
+  animation: slideInReverse 0.3s ease;
+}
+
+@keyframes slideInReverse {
+  from { opacity: 0; transform: translateX(-24px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+/* ── Slide header ────────────────────────────────────────── */
+.slideHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+}
+
+.slideIcon {
+  font-size: 2rem;
+  line-height: 1;
+  filter: drop-shadow(0 0 8px rgba(251,191,36,0.4));
+}
+
+.slideTitle {
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: #fbbf24;
+  letter-spacing: 0.01em;
+}
+
+/* ── Illustration zone ───────────────────────────────────── */
+.illustration {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  min-height: 200px;
+  margin-bottom: 1.25rem;
+}
+
+/* ── Text zone ───────────────────────────────────────────── */
+.slideText {
+  font-size: 0.97rem;
+  color: #c7d2fe;
+  line-height: 1.65;
+  text-align: center;
+  max-width: 540px;
+  margin: 0 auto 0.5rem;
+}
+
+.slideText strong {
+  color: #fff;
+  font-weight: 700;
+}
+
+.slideText em {
+  color: #fbbf24;
+  font-style: normal;
+  font-weight: 600;
+}
+
+/* ── Navigation ──────────────────────────────────────────── */
+.nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.75rem 1.5rem;
+  border-top: 1px solid rgba(255,255,255,0.07);
+}
+
+.navCounter {
+  font-size: 0.8rem;
+  color: rgba(255,255,255,0.35);
+  font-weight: 600;
+  letter-spacing: 0.05em;
+}
+
+.navButtons {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.btnNav {
+  padding: 0.6rem 1.4rem;
+  border-radius: 10px;
+  border: none;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.1s, opacity 0.2s, background 0.2s;
+}
+
+.btnNav:hover  { transform: translateY(-2px); }
+.btnNav:active { transform: translateY(0); }
+
+.btnPrev {
+  background: rgba(255,255,255,0.1);
+  color: rgba(255,255,255,0.7);
+  border: 1px solid rgba(255,255,255,0.2);
+}
+
+.btnPrev:hover { background: rgba(255,255,255,0.18); }
+
+.btnNext {
+  background: #fbbf24;
+  color: #1e1b4b;
+}
+
+.btnNext:hover { background: #f59e0b; }
+
+.btnClose {
+  background: #22c55e;
+  color: white;
+}
+
+.btnClose:hover { background: #16a34a; }
+
+/* ── Close button (top-right) ────────────────────────────── */
+.closeBtn {
+  position: absolute;
+  top: 1rem;
+  right: 1.25rem;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.15);
+  color: rgba(255,255,255,0.5);
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  font-size: 1rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s, color 0.2s;
+  z-index: 2;
+}
+
+.closeBtn:hover {
+  background: rgba(255,255,255,0.18);
+  color: white;
+}
+
+/* ════════════════════════════════════════════════════════════
+   SVG ILLUSTRATIONS — composants réutilisables
+   ════════════════════════════════════════════════════════════ */
+
+/* ── Carte joueur générique ──────────────────────────────── */
+.card {
+  width: 56px;
+  height: 80px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.6rem;
+  font-weight: 900;
+  color: white;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.4);
+  border: 2px solid rgba(255,255,255,0.25);
+  position: relative;
+  flex-shrink: 0;
+  user-select: none;
+}
+
+.cardFaceDown {
+  background: linear-gradient(135deg, #312e81, #4338ca);
+  font-size: 1.4rem;
+}
+
+.cardRed    { background: linear-gradient(135deg, #991b1b, #ef4444); }
+.cardBlue   { background: linear-gradient(135deg, #1e3a8a, #3b82f6); }
+.cardGreen  { background: linear-gradient(135deg, #14532d, #22c55e); }
+.cardYellow { background: linear-gradient(135deg, #713f12, #eab308); }
+.cardPurple { background: linear-gradient(135deg, #581c87, #a855f7); }
+
+/* ── Carte Score ─────────────────────────────────────────── */
+.scoreCard {
+  width: 60px;
+  height: 88px;
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.3rem;
+  font-weight: 900;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.4);
+  border: 2px solid rgba(255,255,255,0.3);
+  flex-shrink: 0;
+  user-select: none;
+  gap: 2px;
+}
+
+.scoreCardPositive {
+  background: linear-gradient(135deg, #14532d, #22c55e);
+  color: white;
+}
+
+.scoreCardNegative {
+  background: linear-gradient(135deg, #7f1d1d, #ef4444);
+  color: white;
+}
+
+.scoreCardSpecial {
+  background: linear-gradient(135deg, #4c1d95, #8b5cf6);
+  color: white;
+}
+
+.scoreCardLabel {
+  font-size: 0.55rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  opacity: 0.75;
+}
+
+/* ── Cancelled overlay ───────────────────────────────────── */
+.cancelled {
+  position: relative;
+  opacity: 0.45;
+}
+
+.cancelX {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2.5rem;
+  color: #f87171;
+  font-weight: 900;
+  text-shadow: 0 0 8px rgba(248,113,113,0.8);
+}
+
+/* ── Player row ──────────────────────────────────────────── */
+.playerRow {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.playerDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.playerName {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: rgba(255,255,255,0.7);
+  min-width: 48px;
+}
+
+/* ── Arrow ───────────────────────────────────────────────── */
+.arrow {
+  font-size: 1.4rem;
+  color: rgba(255,255,255,0.3);
+  margin: 0 0.25rem;
+}
+
+/* ── Star token ──────────────────────────────────────────── */
+.starToken {
+  font-size: 1.5rem;
+  filter: drop-shadow(0 0 6px rgba(251,191,36,0.6));
+}
+
+/* ── Score pill ──────────────────────────────────────────── */
+.scorePill {
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 20px;
+  padding: 0.3rem 0.8rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: white;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+/* ── Illustration layouts ────────────────────────────────── */
+.illuRow {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.illuCol {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.illuGrid {
+  display: grid;
+  gap: 0.75rem;
+  width: 100%;
+  max-width: 480px;
+}
+
+.illuGrid2 { grid-template-columns: 1fr 1fr; }
+.illuGrid3 { grid-template-columns: 1fr 1fr 1fr; }
+
+.illuBox {
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 14px;
+  padding: 0.9rem 1rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.illuBoxLabel {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: rgba(255,255,255,0.45);
+  text-align: center;
+}
+
+.illuBoxValue {
+  font-size: 1rem;
+  font-weight: 800;
+  color: white;
+  text-align: center;
+}
+
+/* ── Phase badge ─────────────────────────────────────────── */
+.phaseBadge {
+  background: rgba(251,191,36,0.15);
+  border: 1px solid rgba(251,191,36,0.35);
+  color: #fbbf24;
+  border-radius: 8px;
+  padding: 0.25rem 0.7rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+
+/* ── Highlight ───────────────────────────────────────────── */
+.highlight {
+  color: #fbbf24;
+  font-weight: 800;
+}
+
+.highlightGreen { color: #4ade80; font-weight: 700; }
+.highlightRed   { color: #f87171; font-weight: 700; }
+
+/* ── Trick table (slide 2) ───────────────────────────────── */
+.trickTable {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: 100%;
+  max-width: 400px;
+}
+
+.trickPhase {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  background: rgba(255,255,255,0.04);
+  border-radius: 10px;
+  padding: 0.6rem 1rem;
+}
+
+.trickPhaseNum {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: rgba(251,191,36,0.2);
+  border: 1px solid rgba(251,191,36,0.4);
+  color: #fbbf24;
+  font-size: 0.72rem;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.trickPhaseText {
+  font-size: 0.85rem;
+  color: #c7d2fe;
+  line-height: 1.4;
+}
+
+/* ── Scoreboard (slide 6) ────────────────────────────────── */
+.scoreboard {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  width: 100%;
+  max-width: 400px;
+}
+
+.scoreRow {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  background: rgba(255,255,255,0.05);
+  border-radius: 10px;
+  padding: 0.55rem 0.9rem;
+  border-left: 3px solid transparent;
+}
+
+.scoreRank {
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: rgba(255,255,255,0.4);
+  min-width: 24px;
+}
+
+.scoreRank.gold   { color: #fbbf24; }
+.scoreRank.silver { color: #94a3b8; }
+.scoreRank.bronze { color: #b45309; }
+
+.scoreName {
+  flex: 1;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: white;
+}
+
+.scoreDetail {
+  display: flex;
+  gap: 0.5rem;
+  font-size: 0.78rem;
+  color: rgba(255,255,255,0.55);
+}
+
+.scoreTotalBadge {
+  background: rgba(251,191,36,0.15);
+  border: 1px solid rgba(251,191,36,0.3);
+  color: #fbbf24;
+  border-radius: 6px;
+  padding: 0.15rem 0.5rem;
+  font-size: 0.8rem;
+  font-weight: 800;
+}

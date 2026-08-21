@@ -1,0 +1,184 @@
+/* Opponent */
+.opponent {
+  background: rgba(255,255,255,0.06);
+  border: 2px solid rgba(255,255,255,0.2);
+  border-radius: 12px;
+  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-width: 110px;
+  position: relative;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.swapTarget {
+  cursor: pointer;
+  animation: swapPulse 1s infinite;
+}
+.swapTarget:hover { transform: scale(1.05); }
+
+.stealTarget {
+  cursor: pointer;
+  animation: stealPulse 1s infinite;
+}
+.stealTarget:hover { transform: scale(1.05); }
+
+.botOpponent {
+  background: rgba(124, 58, 237, 0.08);
+}
+
+.opponentHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.colorDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.pseudo {
+  font-weight: 700;
+  font-size: 0.85rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 80px;
+}
+
+.botBadge {
+  font-size: 0.6rem;
+  font-weight: 700;
+  background: rgba(124, 58, 237, 0.35);
+  color: #c4b5fd;
+  border: 1px solid rgba(167, 139, 250, 0.4);
+  border-radius: 4px;
+  padding: 0.1rem 0.3rem;
+  letter-spacing: 0.05em;
+  flex-shrink: 0;
+}
+
+.disconnected { color: #f87171; font-size: 0.8rem; }
+
+.opponentStats {
+  display: flex;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+  color: #c7d2fe;
+}
+
+.stars { color: #fbbf24; }
+.played { color: #4ade80; font-weight: 700; }
+
+.scorePile {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.emptyPile {
+  width: 48px;
+  height: 68px;
+  border: 2px dashed rgba(255,255,255,0.2);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255,255,255,0.3);
+}
+
+.pileCount {
+  font-size: 0.75rem;
+  color: rgba(255,255,255,0.5);
+}
+
+.swapOverlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(251, 191, 36, 0.15);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  color: #fbbf24;
+  font-size: 0.9rem;
+  pointer-events: none;
+}
+
+.stealOverlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(239, 68, 68, 0.18);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  color: #fca5a5;
+  font-size: 0.9rem;
+  pointer-events: none;
+}
+
+/* My hand */
+.myHand {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.5rem;
+  background: rgba(255,255,255,0.05);
+  border-radius: 16px;
+  border: 1px solid rgba(255,255,255,0.1);
+}
+
+.handLabel {
+  font-size: 0.85rem;
+  color: rgba(255,255,255,0.5);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.cards {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.playBtn {
+  padding: 0.7rem 2rem;
+  background: #22c55e;
+  color: white;
+  border: none;
+  border-radius: 50px;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.1s, box-shadow 0.2s;
+}
+
+.playBtn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(34, 197, 94, 0.5);
+}
+
+.waitingMsg {
+  color: rgba(255,255,255,0.5);
+  font-size: 0.9rem;
+  font-style: italic;
+}
+
+@keyframes swapPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(251, 191, 36, 0.4); }
+  50% { box-shadow: 0 0 0 8px rgba(251, 191, 36, 0); }
+}
+
+@keyframes stealPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.5); }
+  50% { box-shadow: 0 0 0 8px rgba(239, 68, 68, 0); }
+}
