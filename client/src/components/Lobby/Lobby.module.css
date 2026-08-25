@@ -240,6 +240,129 @@
 
 .info { color: #c7d2fe; margin-bottom: 1rem; text-align: center; }
 
+/* Compteur joueurs + bots */
+.playerCountInfo {
+  font-size: 0.82rem;
+  color: rgba(255, 255, 255, 0.45);
+  margin-bottom: 0.75rem;
+  letter-spacing: 0.03em;
+}
+
+/* Section bots en salle d'attente multijoueur */
+.botsSection {
+  width: 100%;
+  max-width: 480px;
+  background: rgba(124, 58, 237, 0.08);
+  border: 1px solid rgba(167, 139, 250, 0.25);
+  border-radius: 12px;
+  padding: 0.85rem 1.1rem;
+  margin-bottom: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.botsSectionTitle {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #a78bfa;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  margin-bottom: 0.2rem;
+}
+
+.botRow {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  background: rgba(255, 255, 255, 0.06);
+  padding: 0.5rem 0.85rem;
+  border-radius: 8px;
+  border-left: 3px solid #7c3aed;
+}
+
+.botEmoji {
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+
+.botName {
+  flex: 1;
+  font-weight: 600;
+  font-size: 0.92rem;
+  color: #e0e7ff;
+}
+
+.botProfile {
+  font-size: 0.72rem;
+  color: #a78bfa;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  background: rgba(124, 58, 237, 0.2);
+  padding: 0.15rem 0.45rem;
+  border-radius: 5px;
+}
+
+.removeBotBtn {
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  color: #f87171;
+  font-size: 0.8rem;
+  font-weight: 700;
+  padding: 0.2rem 0.5rem;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s;
+  flex-shrink: 0;
+}
+
+.removeBotBtn:hover {
+  background: rgba(239, 68, 68, 0.3);
+}
+
+.addBotRow {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  margin-top: 0.2rem;
+}
+
+.botSelect {
+  flex: 1;
+  padding: 0.45rem 0.7rem;
+  border-radius: 8px;
+  border: 1px solid rgba(167, 139, 250, 0.35);
+  background: rgba(255, 255, 255, 0.08);
+  color: white;
+  font-size: 0.85rem;
+  outline: none;
+  cursor: pointer;
+}
+
+.botSelect option {
+  background: #1e1b4b;
+  color: white;
+}
+
+.addBotBtn {
+  padding: 0.45rem 0.9rem;
+  border-radius: 8px;
+  border: 1px solid rgba(167, 139, 250, 0.5);
+  background: rgba(124, 58, 237, 0.25);
+  color: #c4b5fd;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.addBotBtn:hover {
+  background: rgba(124, 58, 237, 0.45);
+  border-color: #a78bfa;
+  color: white;
+}
+
 .actions {
   display: flex;
   flex-direction: column;
