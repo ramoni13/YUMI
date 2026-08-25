@@ -146,10 +146,10 @@ export const en: Translations = {
       gameOver: (pseudo: string) => `🏆 ${pseudo} wins the game!`,
       gameOverFallback: 'Game over',
       // Flux mode — Recharge
-      rechargeStars: (rechargers: string, winners: string) =>
-        `🔄 ${rechargers} recharge${rechargers.includes(',') ? 's' : 's'} — ⭐ ${winners} gain${winners.includes(',') ? '' : 's'} a star`,
+      rechargeStars: (rechargers: string, winners: string, starCount: number) =>
+        `🔄 ${rechargers} recharge${rechargers.includes(',') ? '' : 's'} — ⭐×${starCount} for ${winners} (unique value)`,
       rechargeStarsNoWinner: (rechargers: string) =>
-        `🔄 ${rechargers} recharges — no star (duplicates)`,
+        `🔄 ${rechargers} recharge${rechargers.includes(',') ? '' : 's'} — no stars (all values duplicated)`,
       rechargeAllDiscard: '🔄 Everyone recharges — Score card discarded',
     },
   },
@@ -296,6 +296,89 @@ export const en: Translations = {
         text: 'The game lasts a fixed number of rounds depending on the player count. <strong>More players</strong> means fewer rounds — but the competition is all the more intense!',
       },
     ],
+  },
+
+  // ── Flux Tutorial ─────────────────────────────────────
+  fluxTutorial: {
+    btnOpen: '🔄 Flux Rules',
+    btnPrev: '← Previous',
+    btnNext: 'Next →',
+    btnClose: "Let's play!",
+    counter: (cur: number, total: number) => `${cur} / ${total}`,
+    slides: [
+      {
+        icon: '🎯',
+        title: 'Goal — Flux Mode',
+        text: 'Win as many <em>positive Score cards</em> as possible and avoid the negative ones. The player with the <strong>most points</strong> at the end wins! Flux mode replaces fixed rounds with a <strong>continuous stream of cards</strong>.',
+      },
+      {
+        icon: '🖐️',
+        title: 'Your hand',
+        text: 'Each player starts with <strong>1 to 8 cards</strong> numbered + <strong>1 Recharge card</strong>. You always have <em>one mystery card</em> face down in front of you — it changes with each recharge!',
+      },
+      {
+        icon: '🌊',
+        title: 'The Score card stream',
+        text: 'Score cards arrive in a <strong>continuous stream</strong>. <strong class="green">Green</strong> cards are won by the <em>highest value</em>. <strong class="red">Red</strong> cards are won by the <em>lowest value</em>. <strong>Special</strong> cards are mixed in too!',
+      },
+      {
+        icon: '✕',
+        title: 'Duplicates cancel out',
+        text: "If two or more players play the <strong>same value</strong>, their cards <em>cancel each other out</em>. The Score card is then won by the highest (or lowest) <strong>remaining</strong> value. If everything cancels, the card is <em>discarded</em>.",
+      },
+      {
+        icon: '🔄',
+        title: 'The Recharge card',
+        text: 'Play your <strong>Recharge card</strong> instead of a normal card to <em>recover all your played cards</em>. Your <strong>mystery card is replaced</strong> by a new one. Players who played a <em>unique value</em> (not cancelled) this turn earn as many stars as there are <strong>players who recharged</strong>. Ex: 3 players recharge → each unique value earns <strong>3 stars</strong>!',
+      },
+      {
+        icon: '⭐',
+        title: 'Stars',
+        text: 'Stars on Score cards are used <strong>only for majority counting</strong> (no immediate point). Stars earned via a <strong>Recharge</strong> count for majority <em>and</em> are each worth <strong>+1 immediate point</strong>. The player with the most total stars at the end gains <em>+5 bonus points</em>.',
+      },
+      {
+        icon: '🏆',
+        title: 'End of game',
+        text: 'The game ends when the Score card deck runs out. Add up <em>Score card points</em> + <em>Recharge points</em> + the <strong>star majority bonus (+5 pts)</strong>. The player with the <strong>highest total</strong> wins!',
+      },
+    ],
+    illu: {
+      // Slide 1 — Goal
+      wonCards: 'Cards won',
+      finalScore: 'Final score',
+      victory: 'Victory!',
+      // Slide 2 — Hand
+      handTitle: 'Your hand',
+      handMin: '1 card min',
+      handMax: '8 cards max',
+      handRecharge: '+ 1 Recharge',
+      handMystery: 'Always 1 mystery',
+      // Slide 3 — Stream
+      fluxGreen: 'Green → highest value',
+      fluxRed: 'Red → lowest value',
+      fluxSpecial: 'Special → effects!',
+      fluxContinuous: 'Continuous stream',
+      // Slide 4 — Duplicates
+      dupCancel: 'Duplicates cancelled',
+      dupWinner: 'Unique value wins',
+      dupDiscard: 'All cancelled → discarded',
+      // Slide 5 — Recharge
+      rechargePlay: 'Play Recharge',
+      rechargeGet: 'Hand recovered',
+      rechargeNewMystery: 'New mystery card',
+      rechargeStarBonus: '⭐ × rechargers → majority + pts',
+      // Slide 6 — Stars
+      starsOnCards: 'Score card stars',
+      starsMajority: 'Majority only',
+      starsRecharge: 'Recharge stars',
+      starsRechargeBonus: 'Majority + 1 pt each',
+      starsEndBonus: '+5 pts to player with most stars',
+      // Slide 7 — End
+      formulaCards: '🃏 Cards',
+      formulaRecharge: '🔄 Recharge',
+      formulaBonus: '🏆 Bonus',
+      formulaTotal: 'Total',
+    },
   },
 
   // ── Common ──────────────────────────────────────────────
