@@ -35,6 +35,12 @@ export const en: Translations = {
     btnReady: 'I\'m ready!',
     btnCancelReady: 'Cancel',
     btnStart: 'Start the game!',
+    // Bots in multiplayer waiting room
+    botsTitle: '🤖 Bots',
+    addBotLabel: '+ Add a bot',
+    removeBotLabel: '✕',
+    botSlotLabel: (name: string, profile: string) => `${name} (${profile})`,
+    playerCount: (humans: number, bots: number, max: number) => `${humans} player(s) + ${bots} bot(s) / ${max} max`,
   },
 
   // ── SoloSetup ───────────────────────────────────────────
