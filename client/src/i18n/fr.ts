@@ -145,10 +145,10 @@ export const fr = {
       gameOver: (pseudo: string) => `🏆 ${pseudo} remporte la partie !`,
       gameOverFallback: 'Fin de partie',
       // Mode flux — Recharge
-      rechargeStars: (rechargers: string, winners: string) =>
-        `🔄 ${rechargers} recharge — ⭐ ${winners} gagne${winners.includes(',') ? 'nt' : ''} une étoile`,
+      rechargeStars: (rechargers: string, winners: string, starCount: number) =>
+        `🔄 ${rechargers} recharge${rechargers.includes(',') ? 'nt' : ''} — ⭐×${starCount} pour ${winners} (valeur unique)`,
       rechargeStarsNoWinner: (rechargers: string) =>
-        `🔄 ${rechargers} recharge — aucune étoile (doublons)`,
+        `🔄 ${rechargers} recharge${rechargers.includes(',') ? 'nt' : ''} — aucune étoile (toutes les valeurs en doublon)`,
       rechargeAllDiscard: '🔄 Tout le monde recharge — carte Score défaussée',
     },
   },
@@ -295,6 +295,89 @@ export const fr = {
         text: 'La partie dure un nombre de manches fixe selon le nombre de joueurs. <strong>Plus il y a de joueurs</strong>, moins il y a de manches — mais la compétition est d\'autant plus intense !',
       },
     ],
+  },
+
+  // ── Tutoriel Flux ─────────────────────────────────────
+  fluxTutorial: {
+    btnOpen: '🔄 Règles Flux',
+    btnPrev: '← Précédent',
+    btnNext: 'Suivant →',
+    btnClose: "C'est parti !",
+    counter: (cur: number, total: number) => `${cur} / ${total}`,
+    slides: [
+      {
+        icon: '🎯',
+        title: 'But du jeu — Mode Flux',
+        text: 'Remportez un maximum de <em>cartes Score</em> positives et évitez les négatives. Le joueur avec le <strong>plus de points</strong> en fin de partie gagne ! Le mode Flux remplace les manches fixes par un <strong>flux continu de cartes</strong>.',
+      },
+      {
+        icon: '🖐️',
+        title: 'Votre main',
+        text: 'Chaque joueur commence avec <strong>1 à 8 cartes</strong> numérotées + <strong>1 carte Recharge</strong>. Vous avez toujours <em>une carte mystère</em> face cachée devant vous — elle change à chaque recharge !',
+      },
+      {
+        icon: '🌊',
+        title: 'Le flux de cartes Score',
+        text: 'Les cartes Score arrivent en <strong>flux continu</strong>. Les cartes <strong class="green">vertes</strong> sont remportées par la <em>plus grande valeur</em>. Les cartes <strong class="red">rouges</strong> sont remportées par la <em>plus petite valeur</em>. Des cartes <strong>spéciales</strong> s\'y glissent aussi !',
+      },
+      {
+        icon: '✕',
+        title: "Les doublons s'annulent",
+        text: "Si deux joueurs ou plus jouent la <strong>même valeur</strong>, leurs cartes <em>s'annulent mutuellement</em>. La carte Score est alors remportée par la valeur la plus haute (ou basse) <strong>restante</strong>. Si tout s'annule, la carte est <em>défaussée</em>.",
+      },
+      {
+        icon: '🔄',
+        title: 'La carte Recharge',
+        text: 'Jouez votre <strong>carte Recharge</strong> à la place d\'une carte normale pour <em>récupérer toutes vos cartes jouées</em>. Votre <strong>carte mystère est remplacée</strong> par une nouvelle. Les joueurs ayant joué une <em>valeur unique</em> (non annulée) ce tour gagnent autant d\'étoiles qu\'il y a de <strong>joueurs ayant rechargé</strong>. Ex : 3 joueurs rechargent → chaque valeur unique rapporte <strong>3 étoiles</strong> !',
+      },
+      {
+        icon: '⭐',
+        title: 'Les étoiles',
+        text: 'Les étoiles sur les cartes Score servent <strong>uniquement au comptage de la majorité</strong> (pas de point immédiat). Les étoiles gagnées via une <strong>Recharge</strong> comptent pour la majorité <em>et</em> valent <strong>+1 point immédiat chacune</strong>. Le joueur avec le plus d\'étoiles totales en fin de partie gagne <em>+5 points bonus</em>.',
+      },
+      {
+        icon: '🏆',
+        title: 'Fin de partie',
+        text: 'La partie se termine quand le deck de cartes Score est épuisé. On additionne les <em>points des cartes Score</em> + les <em>points de Recharge</em> + le <strong>bonus majorité étoiles (+5 pts)</strong>. Le joueur avec le <strong>total le plus élevé</strong> remporte la partie !',
+      },
+    ],
+    illu: {
+      // Slide 1 — But
+      wonCards: 'Cartes gagnées',
+      finalScore: 'Score final',
+      victory: 'Victoire !',
+      // Slide 2 — Main
+      handTitle: 'Votre main',
+      handMin: '1 carte min',
+      handMax: '8 cartes max',
+      handRecharge: '+ 1 Recharge',
+      handMystery: 'Toujours 1 mystère',
+      // Slide 3 — Flux
+      fluxGreen: 'Vertes → plus grande valeur',
+      fluxRed: 'Rouges → plus petite valeur',
+      fluxSpecial: 'Spéciales → effets !',
+      fluxContinuous: 'Flux continu',
+      // Slide 4 — Doublons
+      dupCancel: 'Doublons annulés',
+      dupWinner: 'Valeur unique gagne',
+      dupDiscard: 'Tout annulé → défaussée',
+      // Slide 5 — Recharge
+      rechargePlay: 'Jouer Recharge',
+      rechargeGet: 'Main récupérée',
+      rechargeNewMystery: 'Nouvelle carte mystère',
+      rechargeStarBonus: '⭐ × nb rechargeurs → majorité + pts',
+      // Slide 6 — Étoiles
+      starsOnCards: 'Étoiles cartes Score',
+      starsMajority: 'Majorité uniquement',
+      starsRecharge: 'Étoiles Recharge',
+      starsRechargeBonus: 'Majorité + 1 pt immédiat chacune',
+      starsEndBonus: '+5 pts au joueur avec le plus d\'étoiles',
+      // Slide 7 — Fin
+      formulaCards: '🃏 Cartes',
+      formulaRecharge: '🔄 Recharge',
+      formulaBonus: '🏆 Bonus',
+      formulaTotal: 'Total',
+    },
   },
 
   // ── Commun ──────────────────────────────────────────────
