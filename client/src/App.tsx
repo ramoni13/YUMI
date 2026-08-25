@@ -18,7 +18,7 @@ function App() {
     if (!gameState) return;
     if (gameState.phase === 'GAME_OVER') {
       setView('gameover');
-    } else if (gameState.phase !== 'LOBBY') {
+    } else if (gameState.phase !== 'LOBBY' && gameState.phase !== 'SETUP') {
       setView('game');
     }
   }, [gameState?.phase]);
@@ -28,14 +28,21 @@ function App() {
     setView('lobby');
   };
 
-  // Priorité : gameState (en cours de partie) > selectedGameMode (choix local immédiat) > room > 'classic'
-  const gameMode = gameState?.gameMode ?? selectedGameMode ?? room?.gameMode ?? 'classic';
+  // Résolution du mode — recalculé à chaque render
+  // gameState.gameMode est la source absolue dès que la partie tourne
+  // Elle est toujours disponible au moment où view === 'game'
+  // car c'est gameState.phase qui déclenche setView('game')
+  const resolvedGameMode =
+    gameState?.gameMode ??
+    selectedGameMode ??
+    room?.gameMode ??
+    'classic';
 
   return (
     <div className="app">
       {view === 'lobby' && <Lobby onGameStart={() => setView('game')} />}
       {view === 'game' && (
-        gameMode === 'flux' ? <FluxBoard /> : <Board />
+        resolvedGameMode === 'flux' ? <FluxBoard /> : <Board />
       )}
       {view === 'gameover' && <GameOver onReplay={handleReplay} />}
     </div>
