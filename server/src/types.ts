@@ -124,6 +124,7 @@ export interface PublicGameState {
   // Champs spécifiques mode flux
   rechargedPlayerIds: string[];
   rechargeStarWinners: string[];
+  rechargeStarCount: number;      // nb d'étoiles gagnées par chaque gagnant ce tour
 }
 
 // ----------------------------
@@ -202,7 +203,8 @@ export interface TrickSummary {
   stolenFrom: string | null;
   bonusStarsAwarded: number;
   rechargedPlayerIds: string[];
-  rechargeStarWinners: string[];
+  rechargeStarWinners: string[];  // joueurs ayant gagné des étoiles (carte valeur unique)
+  rechargeStarCount: number;      // nb d'étoiles gagnées par chaque gagnant (= nb de rechargeurs)
 }
 
 export interface RoundEndSummary {
