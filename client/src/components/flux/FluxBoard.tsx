@@ -158,7 +158,8 @@ export function FluxBoard() {
               ) : null}
               {(gameState.rechargeStarWinners ?? []).length > 0 && (
                 <div className={styles.starInfo}>
-                  ⭐ Étoile(s) Recharge : {(gameState.rechargeStarWinners ?? [])
+                  ⭐×{gameState.rechargeStarCount ?? 1} Recharge — 
+                  {(gameState.rechargeStarWinners ?? [])
                     .map(id => gameState.players.find(p => p.id === id)?.pseudo)
                     .join(', ')}
                 </div>
@@ -198,7 +199,14 @@ export function FluxBoard() {
         {myPlayer && privateInfo && (
           <div className={styles.myZone}>
             <div className={styles.myStats}>
-              <span>⭐ {myPlayer.stars} étoile(s)</span>
+              <span title="Étoiles Recharge (+1 pt chacune) + Étoiles cartes Score (majorité)">
+                ⭐ {myPlayer.rechargeStars + myPlayer.stars} étoile(s)
+                {myPlayer.rechargeStars > 0 && (
+                  <span style={{ fontSize: '0.7em', opacity: 0.7, marginLeft: '0.3em' }}>
+                    ({myPlayer.rechargeStars}🔄 + {myPlayer.stars}🃏)
+                  </span>
+                )}
+              </span>
               <span>🃏 {myPlayer.scorePileCount} carte(s) Score</span>
               {myPlayer.topScoreCard && (
                 <span>Dernière : {myPlayer.topScoreCard.displayValue}</span>
