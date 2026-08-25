@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { BotProfile, GameOptions, DEFAULT_GAME_OPTIONS } from '../../types';
+import { BotProfile, GameMode, GameOptions, DEFAULT_GAME_OPTIONS } from '../../types';
 import { useGameStore } from '../../store/gameStore';
 import { useLangStore } from '../../store/langStore';
 import { getSocket, ensureConnected } from '../../hooks/useSocket';
@@ -20,6 +20,7 @@ export function Lobby({ onGameStart }: LobbyProps) {
   const [error, setError] = useState('');
   const [soloError, setSoloError] = useState('');
   const [gameOptions, setGameOptions] = useState<GameOptions>({ ...DEFAULT_GAME_OPTIONS });
+  const [gameMode, setGameMode] = useState<GameMode>('classic');
   const [showTutorial, setShowTutorial] = useState(false);
 
   const t = useT();
@@ -30,7 +31,7 @@ export function Lobby({ onGameStart }: LobbyProps) {
   const handleCreate = () => {
     if (!pseudoInput.trim()) return setError(t.lobby.errorNoPseudo);
     ensureConnected(() => {
-      socket.emit('create_room', { pseudo: pseudoInput.trim() }, (res: any) => {
+      socket.emit('create_room', { pseudo: pseudoInput.trim(), gameMode }, (res: any) => {
         if ('error' in res) return setError(res.error);
         setPlayerId(res.playerId);
         setRoomCode(res.roomCode);
@@ -51,19 +52,10 @@ export function Lobby({ onGameStart }: LobbyProps) {
   const handleSoloConfirm = (bots: BotProfile[], opts: GameOptions) => {
     setGameOptions(opts);
     setSoloError('');
-    console.log('=== [SOLO] handleSoloConfirm appelé ===');
-    console.log('[SOLO] pseudo:', pseudoInput.trim(), '| bots:', bots);
-    console.log('[SOLO] socket.connected:', socket.connected, '| socket.id:', socket.id);
 
     const doEmit = () => {
-      console.log('[SOLO] emit create_solo_room...');
-      socket.emit('create_solo_room', { pseudo: pseudoInput.trim(), bots, gameOptions: opts }, (res: any) => {
-        console.log('[SOLO] callback reçu:', JSON.stringify(res));
-        if ('error' in res) {
-          console.error('[SOLO] ERREUR serveur:', res.error);
-          return setSoloError(res.error);
-        }
-        console.log('[SOLO] OK - playerId:', res.playerId, '| roomCode:', res.roomCode);
+      socket.emit('create_solo_room', { pseudo: pseudoInput.trim(), bots, gameOptions: opts, gameMode }, (res: any) => {
+        if ('error' in res) return setSoloError(res.error);
         setPlayerId(res.playerId);
         setRoomCode(res.roomCode);
         setPseudo(pseudoInput.trim());
@@ -225,6 +217,22 @@ export function Lobby({ onGameStart }: LobbyProps) {
           maxLength={20}
           onKeyDown={e => e.key === 'Enter' && handleCreate()}
         />
+
+        {/* Sélecteur de mode */}
+        <div className={styles.modeSelector}>
+          <button
+            className={`${styles.modeBtn} ${gameMode === 'classic' ? styles.modeBtnActive : ''}`}
+            onClick={() => setGameMode('classic')}
+          >
+            🎴 Classique
+          </button>
+          <button
+            className={`${styles.modeBtn} ${gameMode === 'flux' ? styles.modeBtnActive : ''}`}
+            onClick={() => setGameMode('flux')}
+          >
+            🔄 Flux
+          </button>
+        </div>
 
         <button className={`${styles.btn} ${styles.btnSolo}`} onClick={handleSoloClick}>
           {t.lobby.btnSolo}
