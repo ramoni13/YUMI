@@ -148,6 +148,64 @@ export function createSoloRoom(
 }
 
 // ============================================================
+// Ajouter un bot dans une salle multijoueur (hôte uniquement)
+// ============================================================
+export function addBotToRoom(
+  roomCode: string,
+  hostId: string,
+  profile: BotProfile
+): { ok: boolean; error?: string; room?: Room } {
+  const room = rooms.get(roomCode);
+  if (!room) return { ok: false, error: 'Salle introuvable' };
+  if (room.hostId !== hostId) return { ok: false, error: 'Seul le créateur peut ajouter des bots' };
+  if (room.status !== 'waiting') return { ok: false, error: 'La partie est déjà en cours' };
+  if (room.players.length >= 6) return { ok: false, error: 'Salle pleine (max 6 joueurs)' };
+
+  const botIndex = room.bots.length;
+  const botId = `bot_${room.id}_${Date.now()}_${botIndex}`;
+  const config = BOT_PROFILES[profile];
+
+  const botPlayer: Player = {
+    id: botId,
+    pseudo: `${config.emoji} ${config.name}`,
+    color: 'blue',
+    hand: [],
+    scorePile: [],
+    stars: 0,
+    rechargeStars: 0,
+    isReady: true,
+    isConnected: true,
+  };
+
+  room.players.push(botPlayer);
+  room.bots.push({ id: botId, profile });
+
+  return { ok: true, room };
+}
+
+// ============================================================
+// Retirer un bot d'une salle multijoueur (hôte uniquement)
+// ============================================================
+export function removeBotFromRoom(
+  roomCode: string,
+  hostId: string,
+  botId: string
+): { ok: boolean; error?: string; room?: Room } {
+  const room = rooms.get(roomCode);
+  if (!room) return { ok: false, error: 'Salle introuvable' };
+  if (room.hostId !== hostId) return { ok: false, error: 'Seul le créateur peut retirer des bots' };
+  if (room.status !== 'waiting') return { ok: false, error: 'La partie est déjà en cours' };
+
+  const botExists = room.bots.some(b => b.id === botId);
+  if (!botExists) return { ok: false, error: 'Bot introuvable dans cette salle' };
+
+  room.players = room.players.filter(p => p.id !== botId);
+  room.bots = room.bots.filter(b => b.id !== botId);
+
+  return { ok: true, room };
+}
+
+// ============================================================
 // Vérifier si un joueur est un bot
 // ============================================================
 export function getBotProfile(room: Room, playerId: string): BotProfile | null {
@@ -305,7 +363,9 @@ export function startGame(
   if (room.hostId !== hostId) return { ok: false, error: 'Seul le créateur peut lancer la partie' };
   if (room.players.length < 3) return { ok: false, error: 'Il faut au moins 3 joueurs' };
   if (room.players.length > 6) return { ok: false, error: 'Maximum 6 joueurs' };
-  if (!room.isSoloMode && !room.players.every(p => p.isReady)) {
+  // Les bots sont toujours prêts — vérifier uniquement les humains
+  const humanPlayers = room.players.filter(p => !room.bots.some(b => b.id === p.id));
+  if (!humanPlayers.every(p => p.isReady)) {
     return { ok: false, error: 'Tous les joueurs doivent être prêts' };
   }
 
@@ -345,7 +405,9 @@ export function startFluxGame(
   if (room.hostId !== hostId) return { ok: false, error: 'Seul le créateur peut lancer la partie' };
   if (room.players.length < 3) return { ok: false, error: 'Il faut au moins 3 joueurs' };
   if (room.players.length > 6) return { ok: false, error: 'Maximum 6 joueurs' };
-  if (!room.isSoloMode && !room.players.every(p => p.isReady)) {
+  // Les bots sont toujours prêts — vérifier uniquement les humains
+  const humanPlayers = room.players.filter(p => !room.bots.some(b => b.id === p.id));
+  if (!humanPlayers.every(p => p.isReady)) {
     return { ok: false, error: 'Tous les joueurs doivent être prêts' };
   }
 
@@ -437,6 +499,7 @@ export function reconnectPlayer(
 export function toPublicRoom(room: Room): PublicRoom {
   const botSlots: BotSlot[] = room.bots.map(b => ({
     ...BOT_PROFILES_INFO[b.profile],
+    id: b.id,
   }));
 
   return {
