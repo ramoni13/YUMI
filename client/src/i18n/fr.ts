@@ -96,8 +96,9 @@ export const fr = {
     gameIcon: '🎮',
     winnerLine: (pseudo: string, score: number) => `${pseudo} remporte la partie avec ${score} points !`,
     cardScoreTitle: 'Points des cartes Score',
-    starScoreTitle: '1 pt par étoile',
-    starBonusTitle: "Bonus : le plus d'étoiles",
+    rechargeStarScoreTitle: 'Étoiles Recharge (+1 pt chacune)',
+    starScoreTitle: 'Étoiles cartes Score (majorité uniquement)',
+    starBonusTitle: "Bonus : le plus d'étoiles totales (+5 pts)",
     pts: (n: number) => `${n} pts`,
     btnReplay: 'Rejouer',
   },
@@ -143,6 +144,12 @@ export const fr = {
       cardPlayed: (pseudo: string) => `${pseudo} a joué sa carte`,
       gameOver: (pseudo: string) => `🏆 ${pseudo} remporte la partie !`,
       gameOverFallback: 'Fin de partie',
+      // Mode flux — Recharge
+      rechargeStars: (rechargers: string, winners: string) =>
+        `🔄 ${rechargers} recharge — ⭐ ${winners} gagne${winners.includes(',') ? 'nt' : ''} une étoile`,
+      rechargeStarsNoWinner: (rechargers: string) =>
+        `🔄 ${rechargers} recharge — aucune étoile (doublons)`,
+      rechargeAllDiscard: '🔄 Tout le monde recharge — carte Score défaussée',
     },
   },
 
