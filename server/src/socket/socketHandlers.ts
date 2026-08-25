@@ -4,6 +4,7 @@ import {
   createRoom,
   createSoloRoom,
   joinRoom,
+  rejoinRoom,
   setPlayerReady,
   startGame,
   startFluxGame,
@@ -438,6 +439,40 @@ export function registerSocketHandlers(io: Server, socket: Socket) {
       });
     } catch (e: any) {
       console.error('[Solo] Erreur catch externe :', e.message);
+      callback({ error: e.message });
+    }
+  });
+
+  // ----------------------------------------------------------
+  // Rejoindre une partie EN COURS après déconnexion (nouveau socket.id)
+  // Le client envoie son ancien playerId stocké en localStorage
+  // ----------------------------------------------------------
+  socket.on('rejoin_room', ({ roomCode, oldPlayerId }, callback) => {
+    try {
+      const result = rejoinRoom(roomCode, oldPlayerId, socket.id);
+      if (!result.ok || !result.room) {
+        return callback({ error: result.error ?? 'Impossible de rejoindre' });
+      }
+      const room = result.room;
+      socket.join(room.id);
+      socket.data.roomCode = room.id;
+      socket.data.pseudo = room.players.find(p => p.id === socket.id)?.pseudo ?? '';
+
+      // Confirmer avec le nouveau playerId
+      callback({ ok: true, playerId: socket.id, gameMode: room.gameMode });
+
+      // Remettre à jour tout le monde
+      io.to(room.id).emit('room_updated', toPublicRoom(room));
+
+      // Renvoyer l'état de jeu complet au joueur reconnecté
+      if (room.gameMode === 'flux' && room.fluxGameState) {
+        broadcastFluxState(io, room.id, room.fluxGameState);
+      } else if (room.gameState) {
+        broadcastGameState(io, room.id, room.gameState);
+      }
+
+      console.log(`[Rejoin] ${socket.id} a repris le slot de ${oldPlayerId} dans ${room.id}`);
+    } catch (e: any) {
       callback({ error: e.message });
     }
   });
