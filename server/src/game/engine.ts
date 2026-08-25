@@ -87,7 +87,8 @@ export function initGame(
     color: colors[i],
     hand: buildPlayerHand(playerCount),
     scorePile: [],
-    stars: 0,
+    stars: 0,          // Étoiles cartes Score (majorité uniquement)
+    rechargeStars: 0,  // Étoiles Recharge (majorité + +1 pt) — toujours 0 en mode classic
     isReady: true,
     isConnected: true,
   }));
@@ -269,6 +270,8 @@ export function resolveTrickPhase(
     swapBetween: null,
     stolenFrom: null,
     bonusStarsAwarded: 0,
+    rechargedPlayerIds: [],   // Pas de Recharge en mode classic
+    rechargeStarWinners: [],
   };
 
   if (result.winnerId && !result.discarded) {
@@ -511,6 +514,7 @@ export function toPublicState(state: InternalGameState): PublicGameState {
     topScoreCard: p.scorePile.length > 0 ? p.scorePile[p.scorePile.length - 1] : null,
     scorePileCount: p.scorePile.length,
     stars: p.stars,
+    rechargeStars: p.rechargeStars,
     isReady: p.isReady,
     isConnected: p.isConnected,
     hasPlayedCard: state.playedCards[p.id] !== undefined,
@@ -523,6 +527,7 @@ export function toPublicState(state: InternalGameState): PublicGameState {
 
   return {
     phase: state.phase,
+    gameMode: 'classic',
     currentRound: state.currentRound,
     totalRounds: state.totalRounds,
     currentTrick: state.currentTrick,
@@ -544,5 +549,7 @@ export function toPublicState(state: InternalGameState): PublicGameState {
     roundEndSummary: state.roundEndSummary,
     finalScores: state.finalScores,
     gameOptions: state.gameOptions,
+    rechargedPlayerIds: [],   // Pas de Recharge en mode classic
+    rechargeStarWinners: [],
   };
 }
