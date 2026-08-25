@@ -13,7 +13,7 @@ interface LobbyProps {
 }
 
 export function Lobby({ onGameStart }: LobbyProps) {
-  const { room, playerId, setRoom, setPlayerId, setRoomCode, setPseudo, roomCode } = useGameStore();
+  const { room, playerId, setRoom, setPlayerId, setRoomCode, setPseudo, roomCode, setSelectedGameMode } = useGameStore();
   const [pseudoInput, setPseudoInput] = useState('');
   const [codeInput, setCodeInput] = useState('');
   const [view, setView] = useState<'home' | 'waiting' | 'solo_setup'>('home');
@@ -33,6 +33,7 @@ export function Lobby({ onGameStart }: LobbyProps) {
     ensureConnected(() => {
       socket.emit('create_room', { pseudo: pseudoInput.trim(), gameMode }, (res: any) => {
         if ('error' in res) return setError(res.error);
+        setSelectedGameMode(gameMode); // stocker le mode avant que room arrive
         setPlayerId(res.playerId);
         setRoomCode(res.roomCode);
         setPseudo(pseudoInput.trim());
@@ -56,6 +57,7 @@ export function Lobby({ onGameStart }: LobbyProps) {
     const doEmit = () => {
       socket.emit('create_solo_room', { pseudo: pseudoInput.trim(), bots, gameOptions: opts, gameMode }, (res: any) => {
         if ('error' in res) return setSoloError(res.error);
+        setSelectedGameMode(gameMode); // stocker le mode AVANT onGameStart()
         setPlayerId(res.playerId);
         setRoomCode(res.roomCode);
         setPseudo(pseudoInput.trim());
