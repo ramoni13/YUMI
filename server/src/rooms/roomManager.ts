@@ -188,6 +188,93 @@ export function joinRoom(
 }
 
 // ============================================================
+// Rejoindre une partie EN COURS après déconnexion
+// Le client fournit son ancien playerId (stocké côté client).
+// On remplace l'ancien socket.id par le nouveau dans toute la salle.
+// ============================================================
+export function rejoinRoom(
+  roomCode: string,
+  oldPlayerId: string,
+  newSocketId: string
+): { ok: boolean; error?: string; room?: Room } {
+  const room = rooms.get(roomCode);
+  if (!room) return { ok: false, error: 'Salle introuvable' };
+
+  const player = room.players.find(p => p.id === oldPlayerId);
+  if (!player) return { ok: false, error: 'Joueur introuvable dans cette salle' };
+
+  // Mettre à jour l'id du joueur partout dans la salle
+  player.id = newSocketId;
+  player.isConnected = true;
+
+  // Si c'était l'hôte, mettre à jour hostId
+  if (room.hostId === oldPlayerId) {
+    room.hostId = newSocketId;
+  }
+
+  // Mettre à jour les références dans gameState (classic)
+  if (room.gameState) {
+    const gs = room.gameState;
+    const gp = gs.players.find(p => p.id === oldPlayerId);
+    if (gp) gp.id = newSocketId;
+    // playedCards
+    if (oldPlayerId in gs.playedCards) {
+      gs.playedCards[newSocketId] = gs.playedCards[oldPlayerId];
+      delete gs.playedCards[oldPlayerId];
+    }
+    // mysteryCards
+    if (oldPlayerId in gs.mysteryCards) {
+      gs.mysteryCards[newSocketId] = gs.mysteryCards[oldPlayerId];
+      delete gs.mysteryCards[oldPlayerId];
+    }
+    if (oldPlayerId in gs.mysteryCardOwners) {
+      gs.mysteryCardOwners[newSocketId] = gs.mysteryCardOwners[oldPlayerId];
+      delete gs.mysteryCardOwners[oldPlayerId];
+    }
+    if (oldPlayerId in gs.missingCards) {
+      gs.missingCards[newSocketId] = gs.missingCards[oldPlayerId];
+      delete gs.missingCards[oldPlayerId];
+    }
+    // stealRequest / swapRequest
+    if (gs.stealRequestPlayerId === oldPlayerId) gs.stealRequestPlayerId = newSocketId;
+    if (gs.swapRequestPlayerId === oldPlayerId) gs.swapRequestPlayerId = newSocketId;
+    if (gs.swapChosenA === oldPlayerId) gs.swapChosenA = newSocketId;
+    gs.stealEligibleTargets = gs.stealEligibleTargets.map(id => id === oldPlayerId ? newSocketId : id);
+    gs.swapEligibleTargets = gs.swapEligibleTargets.map(id => id === oldPlayerId ? newSocketId : id);
+  }
+
+  // Mettre à jour les références dans fluxGameState (flux)
+  if (room.fluxGameState) {
+    const gs = room.fluxGameState;
+    const gp = gs.players.find(p => p.id === oldPlayerId);
+    if (gp) gp.id = newSocketId;
+    if (oldPlayerId in gs.playedCards) {
+      gs.playedCards[newSocketId] = gs.playedCards[oldPlayerId];
+      delete gs.playedCards[oldPlayerId];
+    }
+    if (oldPlayerId in gs.mysteryCards) {
+      gs.mysteryCards[newSocketId] = gs.mysteryCards[oldPlayerId];
+      delete gs.mysteryCards[oldPlayerId];
+    }
+    if (oldPlayerId in gs.mysteryCardOwners) {
+      gs.mysteryCardOwners[newSocketId] = gs.mysteryCardOwners[oldPlayerId];
+      delete gs.mysteryCardOwners[oldPlayerId];
+    }
+    if (oldPlayerId in gs.missingCards) {
+      gs.missingCards[newSocketId] = gs.missingCards[oldPlayerId];
+      delete gs.missingCards[oldPlayerId];
+    }
+    if (gs.stealRequestPlayerId === oldPlayerId) gs.stealRequestPlayerId = newSocketId;
+    if (gs.swapRequestPlayerId === oldPlayerId) gs.swapRequestPlayerId = newSocketId;
+    if (gs.swapChosenA === oldPlayerId) gs.swapChosenA = newSocketId;
+    gs.stealEligibleTargets = gs.stealEligibleTargets.map(id => id === oldPlayerId ? newSocketId : id);
+    gs.swapEligibleTargets = gs.swapEligibleTargets.map(id => id === oldPlayerId ? newSocketId : id);
+  }
+
+  return { ok: true, room };
+}
+
+// ============================================================
 // Marquer un joueur comme prêt
 // ============================================================
 export function setPlayerReady(
