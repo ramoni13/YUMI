@@ -265,6 +265,56 @@ function EventRow({ event, myId, t }: EventRowProps) {
   );
   }
 
+  // Étoiles Recharge (mode flux)
+  if (event.kind === 'FLUX_RECHARGE_STARS') {
+    const hasWinners = (event.rechargeStarWinners?.length ?? 0) > 0;
+    const allRecharge = (event.rechargedPlayers?.length ?? 0) > 0 &&
+      event.rechargeStarWinners !== undefined &&
+      event.rechargeStarWinners.length === 0 &&
+      event.message?.includes('défaussée');
+
+    return (
+      <div className={`${styles.row} ${hasWinners ? styles.rowRechargeStars : styles.rowRechargeNoStar}`}>
+        <span className={styles.icon}>🔄</span>
+        <div className={styles.rechargeContent}>
+          {/* Joueurs qui ont rechargé */}
+          {event.rechargedPlayers && event.rechargedPlayers.length > 0 && (
+            <div className={styles.rechargeWho}>
+              {event.rechargedPlayers.map((p, i) => (
+                <span key={i} className={styles.rechargePlayer}>
+                  <span className={styles.dot} style={{ background: COLOR_HEX[p.color] }} />
+                  {p.pseudo}
+                </span>
+              ))}
+              <span className={styles.rechargeLabel}> recharge</span>
+            </div>
+          )}
+          {/* Gagnants d'étoile */}
+          {hasWinners && (
+            <div className={styles.rechargeStarList}>
+              {event.rechargeStarWinners!.map((w, i) => (
+                <span key={i} className={styles.rechargeStarItem}>
+                  <span className={styles.dot} style={{ background: COLOR_HEX[w.color] }} />
+                  <strong>{w.pseudo}</strong>
+                  <span className={styles.starTag}>⭐ +1</span>
+                  <span className={styles.rechargeCardVal}>(carte {w.cardValue})</span>
+                </span>
+              ))}
+            </div>
+          )}
+          {/* Aucun gagnant */}
+          {!hasWinners && !allRecharge && (
+            <span className={styles.rechargeNoStar}>Aucune étoile — doublons</span>
+          )}
+          {/* Tout le monde a rechargé */}
+          {allRecharge && (
+            <span className={styles.rechargeNoStar}>Carte défaussée</span>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   // Tous les autres événements : ligne simple avec icône
   const { icon, rowClass } = getEventStyle(event.kind);
   return (
