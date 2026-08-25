@@ -5,6 +5,7 @@ import type {
   PrivateInfo,
   FinalScore,
   GameEvent,
+  GameMode,
 } from '../types';
 
 interface GameStore {
@@ -15,6 +16,9 @@ interface GameStore {
 
   // Salle
   room: PublicRoom | null;
+
+  // Mode de jeu choisi localement (source de vérité avant que gameState arrive)
+  selectedGameMode: GameMode;
 
   // État du jeu
   gameState: PublicGameState | null;
@@ -34,8 +38,8 @@ interface GameStore {
   setRoomCode: (code: string) => void;
   setPseudo: (pseudo: string) => void;
   setRoom: (room: PublicRoom) => void;
+  setSelectedGameMode: (mode: GameMode) => void;
   setGameState: (state: PublicGameState) => void;
-  // Fusionne les infos privées (préserve mysteryCard/Owner entre les broadcasts)
   mergePrivateInfo: (info: PrivateInfo) => void;
   setLastReveal: (cards: Record<string, number> | null) => void;
   clearLastReveal: () => void;
@@ -49,6 +53,7 @@ export const useGameStore = create<GameStore>((set) => ({
   roomCode: null,
   pseudo: null,
   room: null,
+  selectedGameMode: 'classic',
   gameState: null,
   privateInfo: null,
   lastReveal: null,
@@ -59,6 +64,7 @@ export const useGameStore = create<GameStore>((set) => ({
   setRoomCode: (code) => set({ roomCode: code }),
   setPseudo: (pseudo) => set({ pseudo }),
   setRoom: (room) => set({ room }),
+  setSelectedGameMode: (mode) => set({ selectedGameMode: mode }),
   setGameState: (gameState) => set({ gameState }),
   mergePrivateInfo: (info) =>
     set((state) => ({
@@ -89,6 +95,7 @@ export const useGameStore = create<GameStore>((set) => ({
       roomCode: null,
       pseudo: null,
       room: null,
+      selectedGameMode: 'classic',
       gameState: null,
       privateInfo: null,
       lastReveal: null,
