@@ -329,6 +329,91 @@
   color: #d1fae5;
 }
 
+/* ── Lignes Recharge étoiles (mode flux) ─────────────────── */
+.rowRechargeStars {
+  background: rgba(52, 211, 153, 0.12);
+  border-left: 3px solid #34d399;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.45rem 0.55rem;
+}
+
+.rowRechargeNoStar {
+  background: rgba(255, 255, 255, 0.04);
+  border-left: 3px solid rgba(255, 255, 255, 0.15);
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 0.4rem 0.5rem;
+}
+
+.rechargeContent {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  width: 100%;
+}
+
+/* Ligne "X recharge" */
+.rechargeWho {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  flex-wrap: wrap;
+  font-size: 0.68rem;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.rechargePlayer {
+  display: flex;
+  align-items: center;
+  gap: 0.2rem;
+  font-weight: 600;
+  color: #34d399;
+}
+
+.rechargeLabel {
+  font-style: italic;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+/* Liste des gagnants d'étoile */
+.rechargeStarList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  margin-top: 0.05rem;
+}
+
+.rechargeStarItem {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.72rem;
+  color: #fbbf24;
+  font-weight: 700;
+}
+
+.starTag {
+  font-size: 0.65rem;
+  background: rgba(251, 191, 36, 0.2);
+  color: #fbbf24;
+  padding: 0.05rem 0.3rem;
+  border-radius: 4px;
+}
+
+.rechargeCardVal {
+  font-size: 0.62rem;
+  color: rgba(255, 255, 255, 0.4);
+  font-weight: 400;
+}
+
+/* Aucune étoile */
+.rechargeNoStar {
+  font-size: 0.65rem;
+  color: rgba(255, 255, 255, 0.3);
+  font-style: italic;
+}
+
 @keyframes slideIn {
   from { opacity: 0; transform: translateY(-6px); }
   to   { opacity: 1; transform: translateY(0); }
