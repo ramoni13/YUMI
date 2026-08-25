@@ -124,7 +124,6 @@ export interface PublicGameState {
   // Champs spécifiques mode flux
   rechargedPlayerIds: string[];
   rechargeStarWinners: string[];
-  rechargeStarCount: number;      // nb d'étoiles gagnées par chaque gagnant ce tour
 }
 
 // ----------------------------
