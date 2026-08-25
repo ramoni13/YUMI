@@ -158,7 +158,7 @@ export function FluxBoard() {
               ) : null}
               {(gameState.rechargeStarWinners ?? []).length > 0 && (
                 <div className={styles.starInfo}>
-                  ⭐×{gameState.rechargeStarCount ?? 1} Recharge — 
+                  ⭐×{gameState.lastTrickSummary?.rechargeStarCount ?? 1} Recharge — 
                   {(gameState.rechargeStarWinners ?? [])
                     .map(id => gameState.players.find(p => p.id === id)?.pseudo)
                     .join(', ')}
