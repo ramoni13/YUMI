@@ -1,16 +1,18 @@
 import { Server, Socket } from 'socket.io';
-import { BotProfile, GameOptions, PrivateInfo } from '../types';
+import { BotProfile, GameMode, GameOptions, PrivateInfo } from '../types';
 import {
   createRoom,
   createSoloRoom,
   joinRoom,
   setPlayerReady,
   startGame,
+  startFluxGame,
   getRoom,
   getRoomByPlayerId,
   getBotProfile,
   handleDisconnect,
   toPublicRoom,
+  gameModeFromCode,
   Room,
 } from '../rooms/roomManager';
 import {
@@ -27,31 +29,40 @@ import {
   toPublicState,
   InternalGameState,
 } from '../game/engine';
+import {
+  startFluxTrick,
+  playFluxCard,
+  resolveFluxTrick,
+  resolveFluxSteal,
+  resolveFluxSwapChooseA,
+  resolveFluxSwapChooseB,
+  endFluxTrick,
+  toFluxPublicState,
+  FluxGameState,
+} from '../game/flux/engine';
 import { decideBotCard, decideBotStealTarget, decideBotSwapTargets } from '../game/bot';
+import { decideBotFluxCard } from '../game/flux/bot';
 
-const SWAP_TIMEOUT = 15000;   // ms
-const BOT_PLAY_DELAY = 800;   // ms de délai avant qu'un bot joue (pour l'animation)
-const REVEAL_DELAY = 1500;    // ms entre la dernière carte jouée et la révélation
-const NEXT_TRICK_DELAY = 1500; // ms entre la fin d'une mène et la suivante
-const ROUND_END_DELAY = 2000; // ms pour afficher le résumé de fin de manche
-const NEXT_ROUND_DELAY = 1000; // ms avant de démarrer la manche suivante
+const SWAP_TIMEOUT = 15000;
+const BOT_PLAY_DELAY = 800;
+const REVEAL_DELAY = 1500;
+const NEXT_TRICK_DELAY = 1500;
+const ROUND_END_DELAY = 2000;
+const NEXT_ROUND_DELAY = 1000;
 
 // ============================================================
-// Broadcast de l'état du jeu à tous les joueurs de la salle
+// Broadcast — mode classic
 // ============================================================
 function broadcastGameState(io: Server, roomCode: string, state: InternalGameState) {
   const publicState = toPublicState(state);
   io.to(roomCode).emit('game_state_updated', publicState);
 
-  // Envoyer les infos privées à chaque joueur
   for (let i = 0; i < state.players.length; i++) {
     const player = state.players[i];
     const privateInfo: PrivateInfo = { hand: player.hand };
-
-    // Ce joueur a vu la carte mystère d'un autre joueur
     if (state.mysteryCards[player.id] !== undefined) {
       privateInfo.mysteryCard = state.mysteryCards[player.id];
-      privateInfo.mysteryCardOwner = state.mysteryCardOwners[player.id]; // pseudo direct, sans calcul d'index
+      privateInfo.mysteryCardOwner = state.mysteryCardOwners[player.id];
     }
     if (state.missingCards[player.id] !== undefined) {
       privateInfo.missingCardValue = state.missingCards[player.id];
@@ -61,7 +72,29 @@ function broadcastGameState(io: Server, roomCode: string, state: InternalGameSta
 }
 
 // ============================================================
-// Faire jouer tous les bots de la salle (phase CARD_SELECTION)
+// Broadcast — mode flux
+// ============================================================
+function broadcastFluxState(io: Server, roomCode: string, state: FluxGameState) {
+  const publicState = toFluxPublicState(state);
+  io.to(roomCode).emit('game_state_updated', publicState);
+
+  for (let i = 0; i < state.players.length; i++) {
+    const player = state.players[i];
+    const privateInfo: PrivateInfo = { hand: player.hand };
+    // Carte mystère rattachée à la dernière Recharge
+    if (state.mysteryCards[player.id] !== undefined) {
+      privateInfo.mysteryCard = state.mysteryCards[player.id];
+      privateInfo.mysteryCardOwner = state.mysteryCardOwners[player.id];
+    }
+    if (state.missingCards[player.id] !== undefined) {
+      privateInfo.missingCardValue = state.missingCards[player.id];
+    }
+    io.to(player.id).emit('private_info', privateInfo);
+  }
+}
+
+// ============================================================
+// Faire jouer tous les bots — mode classic
 // ============================================================
 function scheduleBotPlays(
   io: Server,
@@ -106,7 +139,148 @@ function scheduleBotPlays(
 }
 
 // ============================================================
-// Révélation + résolution (factorisé pour humains et bots)
+// Faire jouer tous les bots — mode flux
+// ============================================================
+function scheduleFluxBotPlays(
+  io: Server,
+  roomCode: string,
+  state: FluxGameState,
+  room: Room
+) {
+  const botsToPlay = room.bots.filter(
+    b => state.playedCards[b.id] === undefined && state.players.find(p => p.id === b.id)
+  );
+  if (botsToPlay.length === 0) return;
+
+  botsToPlay.forEach((bot, index) => {
+    const delay = BOT_PLAY_DELAY + index * 300 + Math.floor(Math.random() * 400);
+    setTimeout(() => {
+      const currentRoom = getRoom(roomCode);
+      if (!currentRoom?.fluxGameState) return;
+      if (currentRoom.fluxGameState.phase !== 'CARD_SELECTION') return;
+      if (currentRoom.fluxGameState.playedCards[bot.id] !== undefined) return;
+
+      try {
+        const cardValue = decideBotFluxCard(currentRoom.fluxGameState, bot.id, bot.profile);
+        const result = playFluxCard(currentRoom.fluxGameState, bot.id, cardValue);
+        if (!result.ok) return;
+
+        io.to(roomCode).emit('card_played', { playerId: bot.id, isHidden: true });
+        broadcastFluxState(io, roomCode, result.state);
+
+        if (result.state.phase === 'REVEAL') {
+          triggerFluxRevealAndResolve(io, roomCode, result.state, currentRoom);
+        }
+      } catch (err) {
+        console.error(`[Bot Flux ${bot.id}] Erreur :`, err);
+      }
+    }, delay);
+  });
+}
+
+// ============================================================
+// Révélation + résolution flux
+// ============================================================
+function triggerFluxRevealAndResolve(
+  io: Server,
+  roomCode: string,
+  state: FluxGameState,
+  room: Room
+) {
+  setTimeout(() => {
+    io.to(roomCode).emit('reveal', {
+      playedCards: state.playedCards as Record<string, number>,
+    });
+
+    let resolvedState = resolveFluxTrick(state);
+    broadcastFluxState(io, roomCode, resolvedState);
+
+    if (resolvedState.phase === 'SPECIAL_EFFECT') {
+      const actorId = resolvedState.stealRequestPlayerId ?? resolvedState.swapRequestPlayerId;
+      const botProfile = actorId ? getBotProfile(room, actorId) : null;
+
+      if (botProfile && actorId) {
+        setTimeout(() => {
+          const currentRoom = getRoom(roomCode);
+          if (!currentRoom?.fluxGameState) return;
+          const gs = currentRoom.fluxGameState;
+
+          if (gs.stealRequestPlayerId) {
+            const targetId = decideBotStealTarget(gs as any, actorId, botProfile);
+            if (!targetId) { gs.stealRequestPlayerId = null; gs.stealEligibleTargets = []; gs.phase = 'TRICK_END'; }
+            else {
+              const r = resolveFluxSteal(gs, targetId);
+              if (!r.ok) return;
+              broadcastFluxState(io, roomCode, r.state);
+            }
+          } else if (gs.swapRequestPlayerId) {
+            const [idA, idB] = decideBotSwapTargets(gs as any, actorId, botProfile);
+            if (!idA || !idB) { gs.swapRequestPlayerId = null; gs.swapEligibleTargets = []; gs.swapChosenA = null; gs.phase = 'TRICK_END'; }
+            else {
+              const rA = resolveFluxSwapChooseA(gs, idA);
+              if (!rA.ok) return;
+              const rB = resolveFluxSwapChooseB(rA.state, idB);
+              if (!rB.ok) return;
+              broadcastFluxState(io, roomCode, rB.state);
+            }
+          }
+
+          const s = endFluxTrick(currentRoom.fluxGameState);
+          broadcastFluxState(io, roomCode, s);
+          advanceAfterFluxTrick(io, roomCode, s, currentRoom);
+        }, BOT_PLAY_DELAY + 500);
+      } else {
+        // Humain : timeout automatique
+        const swapTimer = setTimeout(() => {
+          const currentRoom = getRoom(roomCode);
+          if (!currentRoom?.fluxGameState) return;
+          const gs = currentRoom.fluxGameState;
+          gs.swapRequestPlayerId = null; gs.swapEligibleTargets = []; gs.swapChosenA = null;
+          gs.stealRequestPlayerId = null; gs.stealEligibleTargets = [];
+          gs.phase = 'TRICK_END';
+          const s = endFluxTrick(gs);
+          broadcastFluxState(io, roomCode, s);
+          advanceAfterFluxTrick(io, roomCode, s, currentRoom);
+        }, SWAP_TIMEOUT);
+        resolvedState.swapTimeout = swapTimer;
+      }
+    } else {
+      const s = endFluxTrick(resolvedState);
+      broadcastFluxState(io, roomCode, s);
+      advanceAfterFluxTrick(io, roomCode, s, room);
+    }
+  }, REVEAL_DELAY);
+}
+
+// ============================================================
+// Avancer après la fin d'une mène flux
+// ============================================================
+function advanceAfterFluxTrick(
+  io: Server,
+  roomCode: string,
+  state: FluxGameState,
+  room: Room
+) {
+  if (state.phase === 'FLUX_TRICK_START') {
+    setTimeout(() => {
+      const currentRoom = getRoom(roomCode);
+      if (!currentRoom?.fluxGameState) return;
+      const newState = startFluxTrick(currentRoom.fluxGameState);
+      broadcastFluxState(io, roomCode, newState);
+      if (currentRoom.isSoloMode) {
+        scheduleFluxBotPlays(io, roomCode, newState, currentRoom);
+      }
+    }, NEXT_TRICK_DELAY);
+  } else if (state.phase === 'GAME_OVER') {
+    io.to(roomCode).emit('game_over', {
+      finalScores: state.finalScores,
+      winnerId: state.finalScores?.[0]?.playerId ?? null,
+    });
+  }
+}
+
+// ============================================================
+// Révélation + résolution classic (factorisé pour humains et bots)
 // ============================================================
 function triggerRevealAndResolve(
   io: Server,
@@ -187,11 +361,11 @@ function triggerRevealAndResolve(
 // ============================================================
 export function registerSocketHandlers(io: Server, socket: Socket) {
   // ----------------------------------------------------------
-  // Créer une salle classique
+  // Créer une salle
   // ----------------------------------------------------------
-  socket.on('create_room', ({ pseudo }, callback) => {
+  socket.on('create_room', ({ pseudo, gameMode }, callback) => {
     try {
-      const room = createRoom(socket.id, pseudo);
+      const room = createRoom(socket.id, pseudo, (gameMode as GameMode) ?? 'flux');
       socket.join(room.id);
       socket.data.roomCode = room.id;
       socket.data.pseudo = pseudo;
@@ -205,23 +379,40 @@ export function registerSocketHandlers(io: Server, socket: Socket) {
   // ----------------------------------------------------------
   // Créer une salle solo (1 humain + bots)
   // ----------------------------------------------------------
-  socket.on('create_solo_room', ({ pseudo, bots, gameOptions }, callback) => {
+  socket.on('create_solo_room', ({ pseudo, bots, gameOptions, gameMode }, callback) => {
     try {
       if (!pseudo?.trim()) return callback({ error: 'Entrez un pseudo' });
       if (!bots || bots.length < 2 || bots.length > 5) {
         return callback({ error: 'Choisissez entre 2 et 5 bots' });
       }
 
-      const room = createSoloRoom(socket.id, pseudo.trim(), bots as BotProfile[]);
+      const room = createSoloRoom(socket.id, pseudo.trim(), bots as BotProfile[], (gameMode as GameMode) ?? 'flux');
       socket.join(room.id);
       socket.data.roomCode = room.id;
       socket.data.pseudo = pseudo.trim();
 
-      // Répondre au client d'abord, puis démarrer la partie dans le tick suivant
       callback({ roomCode: room.id, playerId: socket.id });
 
       setImmediate(() => {
         try {
+          // ---- Mode flux ----
+          if (room.gameMode === 'flux') {
+            const startResult = startFluxGame(room.id, socket.id, gameOptions as GameOptions | undefined);
+            if (!startResult.ok || !startResult.room) {
+              console.error('[Solo Flux] startFluxGame échoué :', startResult.error);
+              return;
+            }
+            io.to(room.id).emit('room_updated', toPublicRoom(startResult.room));
+            const gameRoom = startResult.room;
+            if (gameRoom.fluxGameState) {
+              const state = startFluxTrick(gameRoom.fluxGameState);
+              broadcastFluxState(io, room.id, state);
+              scheduleFluxBotPlays(io, room.id, state, gameRoom);
+            }
+            return;
+          }
+
+          // ---- Mode classic ----
           const startResult = startGame(room.id, socket.id, (state) => {
             broadcastGameState(io, room.id, state);
           }, gameOptions as GameOptions | undefined);
@@ -256,14 +447,16 @@ export function registerSocketHandlers(io: Server, socket: Socket) {
   // ----------------------------------------------------------
   socket.on('join_room', ({ roomCode, pseudo }, callback) => {
     try {
-      const result = joinRoom(roomCode.toUpperCase(), socket.id, pseudo);
+      const code = roomCode.toUpperCase();
+      const result = joinRoom(code, socket.id, pseudo);
       if (!result.ok || !result.room) {
         return callback({ error: result.error ?? 'Erreur inconnue' });
       }
       socket.join(result.room.id);
       socket.data.roomCode = result.room.id;
       socket.data.pseudo = pseudo;
-      callback({ playerId: socket.id });
+      // Renvoyer le gameMode déduit du code au client
+      callback({ playerId: socket.id, gameMode: gameModeFromCode(code) });
       io.to(result.room.id).emit('room_updated', toPublicRoom(result.room));
     } catch (e: any) {
       callback({ error: e.message });
@@ -293,7 +486,23 @@ export function registerSocketHandlers(io: Server, socket: Socket) {
   socket.on('start_game', ({ gameOptions } = {} as any, callback) => {
     try {
       const roomCode = socket.data.roomCode;
+      const room = getRoom(roomCode);
+      if (!room) return callback({ error: 'Salle introuvable' });
 
+      // ---- Mode flux ----
+      if (room.gameMode === 'flux') {
+        const result = startFluxGame(roomCode, socket.id, gameOptions as GameOptions | undefined);
+        if (!result.ok || !result.room) return callback({ error: result.error ?? 'Erreur' });
+        callback({ ok: true });
+        io.to(roomCode).emit('room_updated', toPublicRoom(result.room));
+        if (result.room.fluxGameState) {
+          const state = startFluxTrick(result.room.fluxGameState);
+          broadcastFluxState(io, roomCode, state);
+        }
+        return;
+      }
+
+      // ---- Mode classic ----
       const result = startGame(roomCode, socket.id, (state) => {
         broadcastGameState(io, roomCode, state);
       }, gameOptions as GameOptions | undefined);
@@ -305,12 +514,9 @@ export function registerSocketHandlers(io: Server, socket: Socket) {
       callback({ ok: true });
       io.to(roomCode).emit('room_updated', toPublicRoom(result.room));
 
-      // Démarrer la première manche
-      const room = result.room;
-      if (room.gameState) {
-        let state = startRound(room.gameState, () => { });
+      if (result.room.gameState) {
+        let state = startRound(result.room.gameState, () => { });
         broadcastGameState(io, roomCode, state);
-        // Démarrer directement la première mène (pas de mémorisation)
         state = startTrick(state);
         broadcastGameState(io, roomCode, state);
       }
@@ -326,22 +532,34 @@ export function registerSocketHandlers(io: Server, socket: Socket) {
     try {
       const roomCode = socket.data.roomCode;
       const room = getRoom(roomCode);
-      if (!room?.gameState) return callback({ error: 'Partie introuvable' });
+      if (!room) return callback({ error: 'Partie introuvable' });
 
+      // ---- Mode flux ----
+      if (room.gameMode === 'flux') {
+        if (!room.fluxGameState) return callback({ error: 'Partie introuvable' });
+        const result = playFluxCard(room.fluxGameState, socket.id, cardValue);
+        if (!result.ok) return callback({ error: result.error });
+        callback({ ok: true });
+        io.to(roomCode).emit('card_played', { playerId: socket.id, isHidden: true });
+        broadcastFluxState(io, roomCode, result.state);
+        if (result.state.phase === 'REVEAL') {
+          triggerFluxRevealAndResolve(io, roomCode, result.state, room);
+        } else if (room.isSoloMode && result.state.phase === 'CARD_SELECTION') {
+          scheduleFluxBotPlays(io, roomCode, result.state, room);
+        }
+        return;
+      }
+
+      // ---- Mode classic ----
+      if (!room.gameState) return callback({ error: 'Partie introuvable' });
       const result = playCard(room.gameState, socket.id, cardValue);
       if (!result.ok) return callback({ error: result.error });
-
       callback({ ok: true });
-
-      // Notifier que le joueur a joué (face cachée)
       io.to(roomCode).emit('card_played', { playerId: socket.id, isHidden: true });
       broadcastGameState(io, roomCode, result.state);
-
-      // Si tous ont joué → révélation
       if (result.state.phase === 'REVEAL') {
         triggerRevealAndResolve(io, roomCode, result.state, room);
       } else if (room.isSoloMode && result.state.phase === 'CARD_SELECTION') {
-        // En mode solo : faire jouer les bots qui n'ont pas encore joué
         scheduleBotPlays(io, roomCode, result.state, room);
       }
     } catch (e: any) {
@@ -356,15 +574,31 @@ export function registerSocketHandlers(io: Server, socket: Socket) {
     try {
       const roomCode = socket.data.roomCode;
       const room = getRoom(roomCode);
-      if (!room?.gameState) return callback({ error: 'Partie introuvable' });
+      if (!room) return callback({ error: 'Partie introuvable' });
+
+      // ---- Mode flux ----
+      if (room.gameMode === 'flux') {
+        if (!room.fluxGameState) return callback({ error: 'Partie introuvable' });
+        if (room.fluxGameState.stealRequestPlayerId !== socket.id)
+          return callback({ error: "Ce n'est pas votre tour de voler" });
+        if (room.fluxGameState.swapTimeout) { clearTimeout(room.fluxGameState.swapTimeout); room.fluxGameState.swapTimeout = null; }
+        const result = resolveFluxSteal(room.fluxGameState, targetPlayerId);
+        if (!result.ok) return callback({ error: result.error });
+        callback({ ok: true });
+        broadcastFluxState(io, roomCode, result.state);
+        const s = endFluxTrick(result.state);
+        broadcastFluxState(io, roomCode, s);
+        advanceAfterFluxTrick(io, roomCode, s, room);
+        return;
+      }
+
+      // ---- Mode classic ----
+      if (!room.gameState) return callback({ error: 'Partie introuvable' });
       if (room.gameState.stealRequestPlayerId !== socket.id)
-        return callback({ error: 'Ce n\'est pas votre tour de voler' });
-
+        return callback({ error: "Ce n'est pas votre tour de voler" });
       if (room.gameState.swapTimeout) { clearTimeout(room.gameState.swapTimeout); room.gameState.swapTimeout = null; }
-
       const result = resolveSteal(room.gameState, targetPlayerId);
       if (!result.ok) return callback({ error: result.error });
-
       callback({ ok: true });
       broadcastGameState(io, roomCode, result.state);
       let state = endTrick(result.state);
@@ -380,20 +614,43 @@ export function registerSocketHandlers(io: Server, socket: Socket) {
     try {
       const roomCode = socket.data.roomCode;
       const room = getRoom(roomCode);
-      if (!room?.gameState) return callback({ error: 'Partie introuvable' });
+      if (!room) return callback({ error: 'Partie introuvable' });
+
+      // ---- Mode flux ----
+      if (room.gameMode === 'flux') {
+        if (!room.fluxGameState) return callback({ error: 'Partie introuvable' });
+        if (room.fluxGameState.swapRequestPlayerId !== socket.id)
+          return callback({ error: "Ce n'est pas votre tour d'échanger" });
+        const gs = room.fluxGameState;
+        if (!gs.swapChosenA) {
+          const rA = resolveFluxSwapChooseA(gs, targetPlayerId);
+          if (!rA.ok) return callback({ error: rA.error });
+          callback({ ok: true });
+          broadcastFluxState(io, roomCode, rA.state);
+        } else {
+          if (gs.swapTimeout) { clearTimeout(gs.swapTimeout); gs.swapTimeout = null; }
+          const rB = resolveFluxSwapChooseB(gs, targetPlayerId);
+          if (!rB.ok) return callback({ error: rB.error });
+          callback({ ok: true });
+          broadcastFluxState(io, roomCode, rB.state);
+          const s = endFluxTrick(rB.state);
+          broadcastFluxState(io, roomCode, s);
+          advanceAfterFluxTrick(io, roomCode, s, room);
+        }
+        return;
+      }
+
+      // ---- Mode classic ----
+      if (!room.gameState) return callback({ error: 'Partie introuvable' });
       if (room.gameState.swapRequestPlayerId !== socket.id)
-        return callback({ error: 'Ce n\'est pas votre tour d\'échanger' });
-
+        return callback({ error: "Ce n'est pas votre tour d'échanger" });
       const gs = room.gameState;
-
       if (!gs.swapChosenA) {
-        // Étape 1 : choisir le joueur A
         const rA = resolveSwapChooseA(gs, targetPlayerId);
         if (!rA.ok) return callback({ error: rA.error });
         callback({ ok: true });
-        broadcastGameState(io, roomCode, rA.state); // informe le client que A est choisi
+        broadcastGameState(io, roomCode, rA.state);
       } else {
-        // Étape 2 : choisir le joueur B → exécute l'échange
         if (room.gameState.swapTimeout) { clearTimeout(room.gameState.swapTimeout); room.gameState.swapTimeout = null; }
         const rB = resolveSwapChooseB(gs, targetPlayerId);
         if (!rB.ok) return callback({ error: rB.error });
