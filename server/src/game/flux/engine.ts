@@ -5,140 +5,124 @@ import {
   GamePhase,
   ScoreCard,
   TrickSummary,
+  RoundEndSummary,
   FinalScore,
   GameOptions,
   DEFAULT_GAME_OPTIONS,
+  GAME_CONFIGS,
   PLAYER_COLORS,
   PlayerColor,
-  RECHARGE_CARD_VALUE,
-} from '../../types';
+} from '../types';
 
 import {
-  buildFullScoreDeck,
+  buildPlayerHand,
   drawMysteryCard,
+  drawScoreCards,
+  prepareScoreDeck,
   shuffle,
-} from '../deck';
+} from './deck';
 
-import { resolveTrick } from '../resolver';
+import { resolveTrick } from './resolver';
 import {
   applyDouble,
   applySwap,
   canApplyDouble,
+  computeBonusStars,
   computeFinalScores,
-} from '../scoring';
+} from './scoring';
 
 // ============================================================
-// Constantes mode flux
+// État interne complet du jeu (côté serveur)
 // ============================================================
-
-// Toutes les cartes valeur de 1 à 8 (identique pour tous les joueurs)
-const FLUX_MAX_CARD = 8;
-
-// ============================================================
-// État interne complet du jeu flux (côté serveur)
-// ============================================================
-export interface FluxGameState {
+export interface InternalGameState {
   phase: GamePhase;
-  currentTrick: number;         // Numéro de la mène en cours (total depuis le début)
-  scoreDeck: ScoreCard[];       // Pioche Score (flux continu)
+  currentRound: number;
+  totalRounds: number;
+  currentTrick: number;
+  scoreDeck: ScoreCard[];
+  scoreColumn: ScoreCard[];          // Cartes Score de la manche (ordonnées)
+  scoreColumnRevealed: boolean[];    // true = face visible
   currentScoreCard: ScoreCard | null;
   players: Player[];
-  playedCards: Record<string, number | null>; // 0 = Recharge
-  // Carte mystère : rattachée à chaque Recharge individuelle
-  mysteryCards: Record<string, number>;       // joueur_id (voisin de droite) → valeur vue
+  playedCards: Record<string, number | null>;
+  mysteryCards: Record<string, number>;      // joueur_id (voisin de droite) → valeur de la carte vue
   mysteryCardOwners: Record<string, string>;  // joueur_id (voisin de droite) → pseudo du joueur pioché
-  missingCards: Record<string, number>;       // joueur_id (pioché) → valeur manquante
+  missingCards: Record<string, number>;       // joueur_id (pioché) → valeur de la carte manquante
   trickWinnerId: string | null;
   cancelledValues: number[];
   scoreCardDiscarded: boolean;
-  // Recharge
-  rechargedPlayerIds: string[];   // Joueurs ayant joué Recharge cette mène
-  rechargeStarWinners: string[];  // Joueurs ayant gagné une étoile (carte non annulée)
-  // Effets spéciaux
-  swapRequestPlayerId: string | null;
-  swapEligibleTargets: string[];
-  swapChosenA: string | null;
-  stealRequestPlayerId: string | null;
-  stealEligibleTargets: string[];
+  memorizeTimer: number | null;
+  // SWAP : le gagnant choisit 2 joueurs dont on échange les cartes du sommet
+  swapRequestPlayerId: string | null;   // joueur qui doit choisir (gagnant du pli)
+  swapEligibleTargets: string[];        // joueurs ayant une carte score (pour SWAP et STEAL)
+  swapChosenA: string | null;           // 1er joueur choisi pour le SWAP
+  // STEAL : le gagnant choisit 1 adversaire dont il vole la carte du sommet
+  stealRequestPlayerId: string | null;  // joueur qui doit choisir la cible du VOL
+  stealEligibleTargets: string[];       // adversaires ayant au moins 1 carte score
   lastTrickSummary: TrickSummary | null;
+  roundEndSummary: RoundEndSummary | null;
   finalScores: FinalScore[] | null;
   swapTimeout: ReturnType<typeof setTimeout> | null;
+  memorizeInterval: ReturnType<typeof setInterval> | null;
   gameOptions: GameOptions;
 }
 
 // ============================================================
-// Initialisation d'une nouvelle partie flux
+// Initialisation d'une nouvelle partie
 // ============================================================
-export function initFluxGame(
+export function initGame(
   players: { id: string; pseudo: string }[],
+  onStateChange: (state: InternalGameState) => void,
   gameOptions: GameOptions = DEFAULT_GAME_OPTIONS
-): FluxGameState {
+): InternalGameState {
   const playerCount = players.length;
-  if (playerCount < 3 || playerCount > 6) {
-    throw new Error(`Nombre de joueurs invalide : ${playerCount}`);
-  }
+  const config = GAME_CONFIGS[playerCount];
+  if (!config) throw new Error(`Nombre de joueurs invalide : ${playerCount}`);
 
   const colors = shuffle([...PLAYER_COLORS]).slice(0, playerCount) as PlayerColor[];
 
-  // Construire les mains initiales avec carte mystère dès le début
-  // Chaque joueur repart avec 1–8 amputé d'une carte (voisin de droite la voit)
-  const mysteryCards: Record<string, number> = {};
-  const mysteryCardOwners: Record<string, string> = {};
-  const missingCards: Record<string, number> = {};
-
-  // Créer d'abord les joueurs avec leur pseudo/couleur
   const gamePlayers: Player[] = players.map((p, i) => ({
     id: p.id,
     pseudo: p.pseudo,
     color: colors[i],
-    hand: [],   // rempli juste après
+    hand: buildPlayerHand(playerCount),
     scorePile: [],
     stars: 0,          // Étoiles cartes Score (majorité uniquement)
-    rechargeStars: 0,  // Étoiles Recharge (majorité + +1 pt chacune)
+    rechargeStars: 0,  // Étoiles Recharge (majorité + +1 pt) — toujours 0 en mode classic
     isReady: true,
     isConnected: true,
   }));
 
-  // Appliquer la carte mystère initiale pour chaque joueur
-  for (let i = 0; i < gamePlayers.length; i++) {
-    const player = gamePlayers[i];
-    const rightNeighborIndex = (i + 1) % gamePlayers.length;
-    const rightNeighbor = gamePlayers[rightNeighborIndex];
+  const scoreDeck = prepareScoreDeck(playerCount);
 
-    const { newHand, mysteryCard } = drawMysteryCard(buildFluxHand());
-    player.hand = newHand;
-
-    mysteryCards[rightNeighbor.id] = mysteryCard;
-    mysteryCardOwners[rightNeighbor.id] = player.pseudo;
-    missingCards[player.id] = mysteryCard;
-  }
-
-  // Paquet Score complet mélangé (30 cartes, aucune écartée en mode flux)
-  const scoreDeck = shuffle(buildFullScoreDeck());
-
-  const state: FluxGameState = {
+  const state: InternalGameState = {
     phase: 'SETUP',
+    currentRound: 0,
+    totalRounds: config.totalRounds,
     currentTrick: 0,
     scoreDeck,
+    scoreColumn: [],
+    scoreColumnRevealed: [],
     currentScoreCard: null,
     players: gamePlayers,
     playedCards: {},
-    mysteryCards,
-    mysteryCardOwners,
-    missingCards,
+    mysteryCards: {},
+    mysteryCardOwners: {},
+    missingCards: {},
     trickWinnerId: null,
     cancelledValues: [],
     scoreCardDiscarded: false,
-    rechargedPlayerIds: [],
-    rechargeStarWinners: [],
+    memorizeTimer: null,
     swapRequestPlayerId: null,
     swapEligibleTargets: [],
     swapChosenA: null,
     stealRequestPlayerId: null,
     stealEligibleTargets: [],
     lastTrickSummary: null,
+    roundEndSummary: null,
     finalScores: null,
     swapTimeout: null,
+    memorizeInterval: null,
     gameOptions,
   };
 
@@ -146,34 +130,68 @@ export function initFluxGame(
 }
 
 // ============================================================
-// Génère une main complète 1 à 8 (mode flux)
+// Début d'une manche
 // ============================================================
-export function buildFluxHand(): number[] {
-  const hand: number[] = [];
-  for (let i = 1; i <= FLUX_MAX_CARD; i++) {
-    hand.push(i);
+export function startRound(
+  state: InternalGameState,
+  onStateChange: (state: InternalGameState) => void
+): InternalGameState {
+  const playerCount = state.players.length;
+  const config = GAME_CONFIGS[playerCount];
+
+  state.currentRound += 1;
+  state.currentTrick = 0;
+  state.lastTrickSummary = null;
+  state.roundEndSummary = null;
+
+  // 1. Reconstruire les mains (les joueurs gardent leur scorePile d'une manche à l'autre)
+  //    puis piocher la carte mystère
+  state.mysteryCards = {};
+  state.mysteryCardOwners = {};
+  state.missingCards = {};
+
+  // Reconstruire toutes les mains d'abord (sans piocher)
+  for (const player of state.players) {
+    player.hand = buildPlayerHand(playerCount);
   }
-  return hand;
+
+  // Puis piocher les cartes mystères
+  for (let i = 0; i < state.players.length; i++) {
+    const player = state.players[i];
+    const rightNeighborIndex = (i + 1) % state.players.length;
+    const rightNeighbor = state.players[rightNeighborIndex];
+
+    const { newHand, mysteryCard } = drawMysteryCard(player.hand);
+    player.hand = newHand;
+
+    // Le voisin de droite (rightNeighbor) a vu la carte mystère du joueur i
+    // On stocke directement la valeur ET le pseudo du propriétaire
+    state.mysteryCards[rightNeighbor.id] = mysteryCard;
+    state.mysteryCardOwners[rightNeighbor.id] = player.pseudo; // pseudo du joueur pioché
+    // Le joueur i sait quelle carte lui manque
+    state.missingCards[player.id] = mysteryCard;
+  }
+
+  // 2. Piocher les cartes Score de la manche — toutes visibles dès le départ
+  state.scoreColumn = drawScoreCards(state.scoreDeck, config.scoreCardsPerRound);
+  state.scoreColumnRevealed = new Array(state.scoreColumn.length).fill(true);
+
+  // Pas de phase de mémorisation : on passe directement à TRICK_START
+  state.memorizeTimer = null;
+  state.phase = 'TRICK_START';
+
+  return state;
 }
 
 // ============================================================
-// Début d'une mène flux
+// Début d'une mène
 // ============================================================
-export function startFluxTrick(state: FluxGameState): FluxGameState {
-  if (state.scoreDeck.length === 0) {
-    // Plus de cartes → fin de partie
-    state.phase = 'GAME_OVER';
-    state.finalScores = computeFinalScores(state.players);
-    return state;
-  }
-
+export function startTrick(state: InternalGameState): InternalGameState {
   state.currentTrick += 1;
   state.playedCards = {};
   state.trickWinnerId = null;
   state.cancelledValues = [];
   state.scoreCardDiscarded = false;
-  state.rechargedPlayerIds = [];
-  state.rechargeStarWinners = [];
   state.lastTrickSummary = null;
   state.swapRequestPlayerId = null;
   state.swapEligibleTargets = [];
@@ -181,47 +199,43 @@ export function startFluxTrick(state: FluxGameState): FluxGameState {
   state.stealRequestPlayerId = null;
   state.stealEligibleTargets = [];
 
-  // Piocher la carte Score active
-  state.currentScoreCard = state.scoreDeck.splice(0, 1)[0];
-  state.phase = 'CARD_SELECTION';
+  // Pointer la carte Score active (toutes sont déjà visibles)
+  const trickIndex = state.currentTrick - 1;
+  state.currentScoreCard = state.scoreColumn[trickIndex];
 
+  state.phase = 'CARD_SELECTION';
   return state;
 }
 
 // ============================================================
-// Jouer une carte (valeur 1-8) ou Recharge (valeur 0)
+// Jouer une carte
 // ============================================================
-export function playFluxCard(
-  state: FluxGameState,
+export function playCard(
+  state: InternalGameState,
   playerId: string,
   cardValue: number
-): { ok: boolean; error?: string; state: FluxGameState } {
+): { ok: boolean; error?: string; state: InternalGameState } {
   if (state.phase !== 'CARD_SELECTION') {
     return { ok: false, error: 'Phase incorrecte', state };
   }
 
   const player = state.players.find(p => p.id === playerId);
   if (!player) return { ok: false, error: 'Joueur introuvable', state };
-
+  if (!player.hand.includes(cardValue)) {
+    return { ok: false, error: 'Carte non disponible', state };
+  }
   if (state.playedCards[playerId] !== undefined) {
     return { ok: false, error: 'Carte déjà jouée', state };
   }
 
-  if (cardValue === RECHARGE_CARD_VALUE) {
-    // Jouer la carte Recharge — toujours autorisé
-    state.playedCards[playerId] = RECHARGE_CARD_VALUE;
-  } else {
-    // Jouer une carte valeur — doit être en main
-    if (!player.hand.includes(cardValue)) {
-      return { ok: false, error: 'Carte non disponible', state };
-    }
-    // Retirer la carte de la main
-    player.hand = player.hand.filter(c => c !== cardValue);
-    state.playedCards[playerId] = cardValue;
-  }
+  // Retirer la carte de la main
+  player.hand = player.hand.filter(c => c !== cardValue);
+  state.playedCards[playerId] = cardValue;
 
   // Vérifier si tous les joueurs ont joué
-  const allPlayed = state.players.every(p => state.playedCards[p.id] !== undefined);
+  const allPlayed = state.players.every(
+    p => state.playedCards[p.id] !== undefined
+  );
   if (allPlayed) {
     state.phase = 'REVEAL';
   }
@@ -230,106 +244,57 @@ export function playFluxCard(
 }
 
 // ============================================================
-// Résolution d'une mène flux
+// Résolution du pli
 // ============================================================
-export function resolveFluxTrick(state: FluxGameState): FluxGameState {
-  const allPlayed = state.playedCards as Record<string, number>;
+export function resolveTrickPhase(
+  state: InternalGameState
+): InternalGameState {
+  const played = state.playedCards as Record<string, number>;
+  const result = resolveTrick(played, state.gameOptions, state.currentScoreCard?.type);
 
-  // Séparer les joueurs qui rechargent de ceux qui jouent une carte valeur
-  const rechargedIds: string[] = [];
-  const valuePlays: Record<string, number> = {};
-
-  for (const [pid, val] of Object.entries(allPlayed)) {
-    if (val === RECHARGE_CARD_VALUE) {
-      rechargedIds.push(pid);
-    } else {
-      valuePlays[pid] = val;
-    }
-  }
-
-  state.rechargedPlayerIds = rechargedIds;
-
-  // --- Cas : tout le monde recharge ---
-  if (rechargedIds.length === state.players.length) {
-    state.scoreCardDiscarded = true;
-    state.trickWinnerId = null;
-    state.cancelledValues = [];
-    state.rechargeStarWinners = [];
-
-    // Tout le monde recharge quand même
-    for (const pid of rechargedIds) {
-      applyRecharge(state, pid);
-    }
-
-    state.lastTrickSummary = buildTrickSummary(state, allPlayed, [], null, true);
-    state.phase = 'TRICK_END';
-    return state;
-  }
-
-  // --- Cas normal : au moins un joueur joue une carte valeur ---
-
-  // 1. Résoudre le pli entre les cartes valeur uniquement
-  const result = resolveTrick(valuePlays, state.gameOptions, state.currentScoreCard?.type);
   state.trickWinnerId = result.winnerId;
   state.cancelledValues = result.cancelledValues;
   state.scoreCardDiscarded = result.discarded;
 
-  // 2. Étoiles Recharge :
-  //    Les joueurs ayant joué une carte VALEUR UNIQUE (non annulée) gagnent
-  //    autant d'étoiles Recharge qu'il y a de joueurs ayant joué Recharge ce tour.
-  //    Ex : 2 joueurs rechargent + Alice joue un 7 unique → Alice gagne 2 étoiles.
-  //    Ces étoiles vont dans rechargeStars (majorité + +1 pt chacune au score final)
-  const starWinners: string[] = [];
-  const rechargeStarCount = rechargedIds.length; // nb d'étoiles à distribuer par gagnant (= nb rechargeurs)
-  if (rechargedIds.length > 0) {
-    // Compter les occurrences de chaque valeur jouée
-    const valueCounts = new Map<number, number>();
-    for (const val of Object.values(valuePlays)) {
-      valueCounts.set(val, (valueCounts.get(val) ?? 0) + 1);
-    }
-    for (const [pid, val] of Object.entries(valuePlays)) {
-      // Étoile(s) uniquement si la valeur est unique (pas en doublon)
-      if ((valueCounts.get(val) ?? 0) === 1) {
-        const player = state.players.find(p => p.id === pid);
-        if (player) {
-          player.rechargeStars += rechargeStarCount; // autant d'étoiles que de rechargeurs
-          starWinners.push(pid);
-        }
-      }
-    }
-  }
-  state.rechargeStarWinners = starWinners;
-
-  // 3. Appliquer les Recharges
-  for (const pid of rechargedIds) {
-    applyRecharge(state, pid);
-  }
-
-  // 4. Résumé de base
-  state.lastTrickSummary = buildTrickSummary(
-    state, allPlayed, result.cancelledValues, result.winnerId, result.discarded, rechargeStarCount
-  );
-
   const scoreCard = state.currentScoreCard!;
 
-  // 5. Attribution de la carte Score au gagnant
+  // Résumé de base (complété plus bas)
+  state.lastTrickSummary = {
+    playedCards: played,
+    cancelledValues: result.cancelledValues,
+    winnerId: result.winnerId,
+    scoreCard,
+    discarded: result.discarded,
+    specialEffect: scoreCard.specialEffect,
+    doubleAppliedTo: null,
+    swapBetween: null,
+    stolenFrom: null,
+    bonusStarsAwarded: 0,
+    rechargedPlayerIds: [],   // Pas de Recharge en mode classic
+    rechargeStarWinners: [],
+    rechargeStarCount: 0,
+  };
+
   if (result.winnerId && !result.discarded) {
     const winner = state.players.find(p => p.id === result.winnerId)!;
 
-    // Étoiles bonus immédiates (cartes -1⭐ et -2⭐⭐)
-    // → vont dans stars (majorité uniquement, pas de +1 pt)
+    // Étoiles bonus immédiates (cartes -1 et -2)
     if (scoreCard.bonusStars > 0) {
-      winner.stars += scoreCard.bonusStars; // ← stars, pas rechargeStars
+      winner.stars += scoreCard.bonusStars;
       state.lastTrickSummary.bonusStarsAwarded = scoreCard.bonusStars;
     }
 
     if (scoreCard.specialEffect === 'DOUBLE') {
+      // La carte ×2 est défaussée (ne va pas dans la pile)
+      // On applique le doublement sur la dernière carte numérique de la pile
       if (canApplyDouble(winner.scorePile)) {
         winner.scorePile = applyDouble(winner.scorePile);
       }
       state.phase = 'TRICK_END';
 
     } else if (scoreCard.specialEffect === 'STEAL') {
+      // La carte VOL est défaussée
+      // Le gagnant choisit 1 adversaire ayant au moins 1 carte score
       const eligible = state.players.filter(
         p => p.id !== result.winnerId && p.scorePile.length > 0
       );
@@ -338,10 +303,12 @@ export function resolveFluxTrick(state: FluxGameState): FluxGameState {
         state.stealEligibleTargets = eligible.map(p => p.id);
         state.phase = 'SPECIAL_EFFECT';
       } else {
-        state.phase = 'TRICK_END';
+        state.phase = 'TRICK_END'; // Effet perdu
       }
 
     } else if (scoreCard.specialEffect === 'SWAP') {
+      // La carte ⇄ est défaussée
+      // Le gagnant choisit 2 joueurs (peut être lui-même) ayant des cartes score
       const eligible = state.players.filter(p => p.scorePile.length > 0);
       if (eligible.length >= 2) {
         state.swapRequestPlayerId = result.winnerId;
@@ -349,15 +316,16 @@ export function resolveFluxTrick(state: FluxGameState): FluxGameState {
         state.swapChosenA = null;
         state.phase = 'SPECIAL_EFFECT';
       } else {
-        state.phase = 'TRICK_END';
+        state.phase = 'TRICK_END'; // Effet perdu
       }
 
     } else {
-      // Carte numérique → pile du gagnant
+      // Carte numérique normale : va dans la pile
       winner.scorePile.push({ ...scoreCard });
       state.phase = 'TRICK_END';
     }
   } else {
+    // Carte défaussée
     state.phase = 'TRICK_END';
   }
 
@@ -365,12 +333,13 @@ export function resolveFluxTrick(state: FluxGameState): FluxGameState {
 }
 
 // ============================================================
-// Résolution du VOL (STEAL) — identique au mode classic
+// Résolution du VOL (STEAL)
+// Le gagnant vole la carte du sommet d'un adversaire
 // ============================================================
-export function resolveFluxSteal(
-  state: FluxGameState,
+export function resolveSteal(
+  state: InternalGameState,
   targetPlayerId: string
-): { ok: boolean; error?: string; state: FluxGameState } {
+): { ok: boolean; error?: string; state: InternalGameState } {
   if (state.phase !== 'SPECIAL_EFFECT' || !state.stealRequestPlayerId) {
     return { ok: false, error: 'Phase incorrecte', state };
   }
@@ -382,9 +351,10 @@ export function resolveFluxSteal(
   const victim = state.players.find(p => p.id === targetPlayerId)!;
 
   if (victim.scorePile.length === 0) {
-    return { ok: false, error: "Cet adversaire n'a pas de carte Score", state };
+    return { ok: false, error: 'Cet adversaire n\'a pas de carte Score', state };
   }
 
+  // Voler uniquement la valeur (pas les étoiles bonus déjà attribuées)
   const stolenCard = victim.scorePile[victim.scorePile.length - 1];
   victim.scorePile = victim.scorePile.slice(0, -1);
   thief.scorePile.push({ ...stolenCard });
@@ -401,12 +371,16 @@ export function resolveFluxSteal(
 }
 
 // ============================================================
-// Résolution du SWAP — étape A puis étape B
+// Résolution de l'échange (SWAP)
+// Le gagnant choisit 2 joueurs (peut être lui-même) et échange
+// leurs cartes du sommet. Se fait en 2 étapes :
+//   1. resolveSwapChooseA : choisir le joueur A
+//   2. resolveSwapChooseB : choisir le joueur B → exécute l'échange
 // ============================================================
-export function resolveFluxSwapChooseA(
-  state: FluxGameState,
+export function resolveSwapChooseA(
+  state: InternalGameState,
   playerAId: string
-): { ok: boolean; error?: string; state: FluxGameState } {
+): { ok: boolean; error?: string; state: InternalGameState } {
   if (state.phase !== 'SPECIAL_EFFECT' || !state.swapRequestPlayerId) {
     return { ok: false, error: 'Phase incorrecte', state };
   }
@@ -417,10 +391,10 @@ export function resolveFluxSwapChooseA(
   return { ok: true, state };
 }
 
-export function resolveFluxSwapChooseB(
-  state: FluxGameState,
+export function resolveSwapChooseB(
+  state: InternalGameState,
   playerBId: string
-): { ok: boolean; error?: string; state: FluxGameState } {
+): { ok: boolean; error?: string; state: InternalGameState } {
   if (state.phase !== 'SPECIAL_EFFECT' || !state.swapRequestPlayerId || !state.swapChosenA) {
     return { ok: false, error: 'Phase incorrecte', state };
   }
@@ -451,15 +425,78 @@ export function resolveFluxSwapChooseB(
 }
 
 // ============================================================
-// Fin de mène flux → mène suivante ou fin de partie
+// Fin de mène → préparer la suivante ou fin de manche
 // ============================================================
-export function endFluxTrick(state: FluxGameState): FluxGameState {
-  if (state.scoreDeck.length === 0) {
-    // Plus de cartes Score → fin de partie
+export function endTrick(state: InternalGameState): InternalGameState {
+  const config = GAME_CONFIGS[state.players.length];
+
+  if (state.currentTrick < config.scoreCardsPerRound) {
+    // Mène suivante
+    state.phase = 'TRICK_START';
+  } else {
+    // Fin de manche → bonus étoile
+    state.phase = 'ROUND_END';
+  }
+
+  return state;
+}
+
+// ============================================================
+// Fin de manche — bonus étoile
+// ============================================================
+export function endRound(state: InternalGameState): InternalGameState {
+  // Révéler les dernières cartes
+  const lastCards: Record<string, number> = {};
+  for (const player of state.players) {
+    // La dernière carte en main (il en reste 1 après la manche)
+    if (player.hand.length > 0) {
+      lastCards[player.id] = player.hand[0];
+    }
+  }
+
+  const bonusWinners = computeBonusStars(lastCards);
+  for (const playerId of bonusWinners) {
+    const player = state.players.find(p => p.id === playerId);
+    if (player) player.stars += 1;
+  }
+
+  // Les mains seront reconstruites au début de la prochaine manche (startRound)
+  // Les scorePiles sont conservées d'une manche à l'autre
+
+  // Score intermédiaire (cartes Score uniquement, sans étoiles — pour affichage)
+  const scores: Record<string, number> = {};
+  const stars: Record<string, number> = {};
+  for (const player of state.players) {
+    scores[player.id] = player.scorePile.reduce(
+      (t, c) => t + (c.specialEffect ? 0 : c.value),
+      0
+    );
+    stars[player.id] = player.stars;
+  }
+
+  state.roundEndSummary = {
+    lastCards,
+    bonusStarWinners: bonusWinners,
+    scores,
+    stars,
+  };
+
+  state.phase = 'BONUS_STAR';
+  return state;
+}
+
+// ============================================================
+// Passer à la manche suivante ou fin de partie
+// ============================================================
+export function nextRoundOrGameOver(
+  state: InternalGameState
+): InternalGameState {
+  if (state.currentRound >= state.totalRounds) {
+    // Fin de partie
     state.finalScores = computeFinalScores(state.players);
     state.phase = 'GAME_OVER';
   } else {
-    state.phase = 'FLUX_TRICK_START';
+    state.phase = 'ROUND_START';
   }
   return state;
 }
@@ -467,7 +504,9 @@ export function endFluxTrick(state: FluxGameState): FluxGameState {
 // ============================================================
 // Sérialisation vers la vue publique (filtrée)
 // ============================================================
-export function toFluxPublicState(state: FluxGameState): PublicGameState {
+export function toPublicState(state: InternalGameState): PublicGameState {
+  const config = GAME_CONFIGS[state.players.length];
+
   const publicPlayers: PublicPlayer[] = state.players.map(p => ({
     id: p.id,
     pseudo: p.pseudo,
@@ -482,91 +521,37 @@ export function toFluxPublicState(state: FluxGameState): PublicGameState {
     hasPlayedCard: state.playedCards[p.id] !== undefined,
   }));
 
+  // Colonne Score : masquer les cartes face cachée
+  const scoreColumn = state.scoreColumn.map((card, i) =>
+    state.scoreColumnRevealed[i] ? card : null
+  );
+
   return {
     phase: state.phase,
-    gameMode: 'flux',
-    currentRound: 1,           // Pas de manches en mode flux
-    totalRounds: 1,
+    gameMode: 'classic',
+    currentRound: state.currentRound,
+    totalRounds: state.totalRounds,
     currentTrick: state.currentTrick,
-    totalTricks: 30,           // 30 cartes Score au total
-    scoreColumn: [],           // Pas de colonne Score en mode flux
+    totalTricks: config?.scoreCardsPerRound ?? 0,
+    scoreColumn,
     currentScoreCard: state.currentScoreCard,
     scoreDeckCount: state.scoreDeck.length,
     players: publicPlayers,
     trickWinnerId: state.trickWinnerId,
     cancelledValues: state.cancelledValues,
     scoreCardDiscarded: state.scoreCardDiscarded,
-    memorizeTimer: null,
+    memorizeTimer: state.memorizeTimer,
     swapRequestPlayerId: state.swapRequestPlayerId,
     swapEligibleTargets: state.swapEligibleTargets,
     swapChosenA: state.swapChosenA,
     stealRequestPlayerId: state.stealRequestPlayerId,
     stealEligibleTargets: state.stealEligibleTargets,
     lastTrickSummary: state.lastTrickSummary,
-    roundEndSummary: null,     // Pas de fin de manche en mode flux
+    roundEndSummary: state.roundEndSummary,
     finalScores: state.finalScores,
     gameOptions: state.gameOptions,
-    rechargedPlayerIds: state.rechargedPlayerIds,
-    rechargeStarWinners: state.rechargeStarWinners,
-    rechargeStarCount: state.lastTrickSummary?.rechargeStarCount ?? 0,
-  };
-}
-
-// ============================================================
-// Helpers privés
-// ============================================================
-
-/**
- * Applique la Recharge pour un joueur :
- * - Récupère toutes ses cartes valeur défaussées (repart avec 1 à 8)
- * - Le voisin de droite écarte secrètement 1 carte (nouvelle carte mystère)
- */
-function applyRecharge(state: FluxGameState, playerId: string): void {
-  const playerIndex = state.players.findIndex(p => p.id === playerId);
-  if (playerIndex === -1) return;
-
-  const player = state.players[playerIndex];
-
-  // Reconstruire la main complète
-  const fullHand = buildFluxHand();
-
-  // Piocher la carte mystère (voisin de droite)
-  const rightNeighborIndex = (playerIndex + 1) % state.players.length;
-  const rightNeighbor = state.players[rightNeighborIndex];
-
-  const { newHand, mysteryCard } = drawMysteryCard(fullHand);
-  player.hand = newHand;
-
-  // Stocker la carte mystère
-  state.mysteryCards[rightNeighbor.id] = mysteryCard;
-  state.mysteryCardOwners[rightNeighbor.id] = player.pseudo;
-  state.missingCards[player.id] = mysteryCard;
-}
-
-/**
- * Construit le TrickSummary pour la mène en cours
- */
-function buildTrickSummary(
-  state: FluxGameState,
-  allPlayed: Record<string, number>,
-  cancelledValues: number[],
-  winnerId: string | null,
-  discarded: boolean,
-  rechargeStarCount = 0
-): TrickSummary {
-  return {
-    playedCards: allPlayed,
-    cancelledValues,
-    winnerId,
-    scoreCard: state.currentScoreCard!,
-    discarded,
-    specialEffect: state.currentScoreCard?.specialEffect ?? null,
-    doubleAppliedTo: null,
-    swapBetween: null,
-    stolenFrom: null,
-    bonusStarsAwarded: 0,
-    rechargedPlayerIds: state.rechargedPlayerIds,
-    rechargeStarWinners: state.rechargeStarWinners,
-    rechargeStarCount,
+    rechargedPlayerIds: [],   // Pas de Recharge en mode classic
+    rechargeStarWinners: [],
+    rechargeStarCount: 0,
   };
 }
