@@ -115,10 +115,10 @@ export function FluxBoard() {
               {gameState.players.map(p => {
                 const value = lastReveal[p.id];
                 const isRecharge = value === RECHARGE_CARD_VALUE;
-                const cancelled = !isRecharge && gameState.cancelledValues.includes(value);
+                const cancelled = !isRecharge && (gameState.cancelledValues ?? []).includes(value);
                 const isWinner = p.id === gameState.trickWinnerId;
-                const gotStar = gameState.rechargeStarWinners.includes(p.id);
-                const didRecharge = gameState.rechargedPlayerIds.includes(p.id);
+                const gotStar = (gameState.rechargeStarWinners ?? []).includes(p.id);
+                const didRecharge = (gameState.rechargedPlayerIds ?? []).includes(p.id);
                 return (
                   <div key={p.id} className={styles.playedCardSlot}>
                     <span className={styles.playerLabel}>{p.pseudo}</span>
@@ -156,9 +156,9 @@ export function FluxBoard() {
                   {gameState.players.find(p => p.id === gameState.trickWinnerId)?.pseudo} remporte la carte !
                 </span>
               ) : null}
-              {gameState.rechargeStarWinners.length > 0 && (
+              {(gameState.rechargeStarWinners ?? []).length > 0 && (
                 <div className={styles.starInfo}>
-                  ⭐ Étoile(s) Recharge : {gameState.rechargeStarWinners
+                  ⭐ Étoile(s) Recharge : {(gameState.rechargeStarWinners ?? [])
                     .map(id => gameState.players.find(p => p.id === id)?.pseudo)
                     .join(', ')}
                 </div>
@@ -246,4 +246,3 @@ export function FluxBoard() {
     </div>
   );
 }
-
