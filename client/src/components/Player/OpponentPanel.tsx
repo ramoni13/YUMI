@@ -51,7 +51,7 @@ export function OpponentPanel({ player, isSwapTarget, onSwapSelect, isStealTarge
       </div>
 
       <div className={styles.opponentStats}>
-        <span className={styles.stars}>⭐ {player.stars}</span>
+        <span className={styles.stars} title="Étoiles totales (cartes + Recharge)">⭐ {player.stars + player.rechargeStars}</span>
         <span className={styles.handCount}>🃏 {player.handCount}</span>
         {player.hasPlayedCard && <span className={styles.played}>✓</span>}
       </div>
