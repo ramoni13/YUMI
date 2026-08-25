@@ -35,6 +35,34 @@ export function getSocket(): Socket {
   return socket;
 }
 
+// ============================================================
+// Session persistante : sauvegarde / restauration dans localStorage
+// ============================================================
+const SESSION_KEY = 'yumi_session';
+
+export interface YumiSession {
+  playerId: string;
+  roomCode: string;
+  pseudo: string;
+}
+
+export function saveSession(session: YumiSession) {
+  localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+}
+
+export function loadSession(): YumiSession | null {
+  try {
+    const raw = localStorage.getItem(SESSION_KEY);
+    return raw ? (JSON.parse(raw) as YumiSession) : null;
+  } catch {
+    return null;
+  }
+}
+
+export function clearSession() {
+  localStorage.removeItem(SESSION_KEY);
+}
+
 /** Connecte le socket si ce n'est pas déjà fait, puis appelle cb() */
 export function ensureConnected(cb: () => void) {
   const s = getSocket();
@@ -89,17 +117,34 @@ export function useSocket() {
 
     s.on('disconnect', (reason) => {
       console.warn('[useSocket] DECONNECTE — raison:', reason);
-      // Sur transport error : Socket.IO tente de se reconnecter automatiquement
-      // Sur fermeture volontaire (io server disconnect) : on ne reconnecte pas
       if (reason === 'io server disconnect') {
-        // Le serveur a coupé volontairement → reconnexion manuelle
         s.connect();
       }
-      // Pour 'transport error' et 'transport close' : reconnexion automatique gérée par Socket.IO
     });
 
     s.on('reconnect', (attempt) => {
-      console.log(`[useSocket] RECONNECTE après ${attempt} tentative(s)`);
+      console.log(`[useSocket] RECONNECTE après ${attempt} tentative(s) — nouveau id: ${s.id}`);
+
+      // ⭐ Tentative de reprise de session automatique
+      const session = loadSession();
+      if (session) {
+        console.log(`[useSocket] Tentative de rejoin: room=${session.roomCode} oldId=${session.playerId}`);
+        s.emit('rejoin_room', { roomCode: session.roomCode, oldPlayerId: session.playerId },
+          (res: { ok?: boolean; playerId?: string; gameMode?: string; error?: string }) => {
+            if (res.error) {
+              console.warn('[useSocket] Rejoin échoué:', res.error);
+              // La session est invalide (partie terminée, serveur redémarré...)
+              clearSession();
+              useGameStore.getState().reset();
+            } else if (res.playerId) {
+              console.log('[useSocket] Rejoin réussi — nouveau playerId:', res.playerId);
+              // Mettre à jour le playerId dans le store avec le nouveau socket.id
+              useGameStore.getState().setPlayerId(res.playerId);
+              saveSession({ ...session, playerId: res.playerId });
+            }
+          }
+        );
+      }
     });
 
     s.on('reconnect_attempt', (attempt) => {
