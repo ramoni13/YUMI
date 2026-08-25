@@ -277,10 +277,10 @@ export function useSocket() {
             });
           } else if (summary.rechargeStarWinners.length > 0) {
             // Au moins un gagnant d'étoile
+            const starCount = summary.rechargeStarCount ?? 1;
             const winners = summary.rechargeStarWinners
               .map(id => {
                 const p = state.players.find(pl => pl.id === id);
-                // Retrouver la valeur jouée par ce joueur
                 const cardValue = summary.playedCards[id] ?? 0;
                 return { pseudo: p?.pseudo ?? '?', color: p?.color ?? 'red' as const, cardValue };
               });
@@ -288,7 +288,7 @@ export function useSocket() {
             pushEvent({
               ...base,
               kind: 'FLUX_RECHARGE_STARS',
-              message: t.history.socket.rechargeStars(rechargers, winnerNames),
+              message: t.history.socket.rechargeStars(rechargers, winnerNames, starCount),
               rechargedPlayers: summary.rechargedPlayerIds.map(id => {
                 const p = state.players.find(pl => pl.id === id);
                 return { pseudo: p?.pseudo ?? '?', color: p?.color ?? 'red' };
