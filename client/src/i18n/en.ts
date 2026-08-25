@@ -97,8 +97,9 @@ export const en: Translations = {
     gameIcon: '🎮',
     winnerLine: (pseudo: string, score: number) => `${pseudo} wins the game with ${score} points!`,
     cardScoreTitle: 'Score card points',
-    starScoreTitle: '1 pt per star',
-    starBonusTitle: 'Bonus: most stars',
+    rechargeStarScoreTitle: 'Recharge stars (+1 pt each)',
+    starScoreTitle: 'Score card stars (majority only)',
+    starBonusTitle: 'Bonus: most total stars (+5 pts)',
     pts: (n: number) => `${n} pts`,
     btnReplay: 'Play again',
   },
@@ -144,6 +145,12 @@ export const en: Translations = {
       cardPlayed: (pseudo: string) => `${pseudo} played a card`,
       gameOver: (pseudo: string) => `🏆 ${pseudo} wins the game!`,
       gameOverFallback: 'Game over',
+      // Flux mode — Recharge
+      rechargeStars: (rechargers: string, winners: string) =>
+        `🔄 ${rechargers} recharge${rechargers.includes(',') ? 's' : 's'} — ⭐ ${winners} gain${winners.includes(',') ? '' : 's'} a star`,
+      rechargeStarsNoWinner: (rechargers: string) =>
+        `🔄 ${rechargers} recharges — no star (duplicates)`,
+      rechargeAllDiscard: '🔄 Everyone recharges — Score card discarded',
     },
   },
 
