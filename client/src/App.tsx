@@ -11,7 +11,7 @@ type AppView = 'lobby' | 'game' | 'gameover';
 
 function App() {
   useSocket();
-  const { gameState, room, reset } = useGameStore();
+  const { gameState, room, selectedGameMode, reset } = useGameStore();
   const [view, setView] = useState<AppView>('lobby');
 
   useEffect(() => {
@@ -28,9 +28,8 @@ function App() {
     setView('lobby');
   };
 
-  // Déterminer le mode depuis gameState (source de vérité en cours de partie)
-  // ou depuis room (avant le démarrage)
-  const gameMode = gameState?.gameMode ?? room?.gameMode ?? 'classic';
+  // Priorité : gameState (en cours de partie) > selectedGameMode (choix local immédiat) > room > 'classic'
+  const gameMode = gameState?.gameMode ?? selectedGameMode ?? room?.gameMode ?? 'classic';
 
   return (
     <div className="app">
