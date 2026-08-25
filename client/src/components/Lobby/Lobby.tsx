@@ -20,7 +20,7 @@ export function Lobby({ onGameStart }: LobbyProps) {
   const [error, setError] = useState('');
   const [soloError, setSoloError] = useState('');
   const [gameOptions, setGameOptions] = useState<GameOptions>({ ...DEFAULT_GAME_OPTIONS });
-  const [gameMode, setGameMode] = useState<GameMode>('classic');
+  const [gameMode, setGameMode] = useState<GameMode>('flux'); // Flux par défaut
   const [showTutorial, setShowTutorial] = useState(false);
 
   const t = useT();
@@ -71,10 +71,14 @@ export function Lobby({ onGameStart }: LobbyProps) {
   const handleJoin = () => {
     if (!pseudoInput.trim()) return setError(t.lobby.errorNoPseudo);
     if (!codeInput.trim()) return setError(t.lobby.errorNoCode);
-    socket.emit('join_room', { pseudo: pseudoInput.trim(), roomCode: codeInput.trim().toUpperCase() }, (res: any) => {
+    const code = codeInput.trim().toUpperCase();
+    socket.emit('join_room', { pseudo: pseudoInput.trim(), roomCode: code }, (res: any) => {
       if ('error' in res) return setError(res.error);
+      // Le gameMode est déduit du code de salle (F = flux, C = classic)
+      const joinedMode: GameMode = res.gameMode ?? (code.startsWith('F') ? 'flux' : 'classic');
+      setSelectedGameMode(joinedMode);
       setPlayerId(res.playerId);
-      setRoomCode(codeInput.trim().toUpperCase());
+      setRoomCode(code);
       setPseudo(pseudoInput.trim());
       setView('waiting');
       setError('');
