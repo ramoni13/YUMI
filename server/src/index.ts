@@ -17,9 +17,16 @@ const io = new Server(httpServer, {
     origin: '*',
     methods: ['GET', 'POST'],
   },
-  // Augmenter les timeouts pour éviter les déconnexions "transport error" sur réseau instable
-  pingTimeout: 30000,   // 30s avant de considérer la connexion morte (défaut: 20s)
-  pingInterval: 10000,  // Ping toutes les 10s (défaut: 25s)
+  // Timeouts généreux pour éviter les déconnexions "transport error"
+  pingTimeout: 30000,        // 30s sans réponse avant de couper (défaut: 20s)
+  pingInterval: 10000,       // Ping toutes les 10s (défaut: 25s)
+  // Privilégier WebSocket natif (plus stable que le long-polling HTTP)
+  transports: ['websocket', 'polling'],
+  // Taille max des messages (utile si les états de jeu sont volumineux)
+  maxHttpBufferSize: 1e6,    // 1 MB
+  // Upgrade automatique polling → websocket
+  allowUpgrades: true,
+  upgradeTimeout: 10000,
 });
 
 // Route de santé
