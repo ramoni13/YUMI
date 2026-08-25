@@ -1,5 +1,6 @@
-import { Player, PublicRoom, RoomStatus, BotProfile, BotSlot, BOT_PROFILES_INFO, GameOptions, DEFAULT_GAME_OPTIONS } from '../types';
+import { Player, PublicRoom, RoomStatus, BotProfile, BotSlot, BOT_PROFILES_INFO, GameOptions, DEFAULT_GAME_OPTIONS, GameMode } from '../types';
 import { InternalGameState, initGame } from '../game/engine';
+import { FluxGameState, initFluxGame } from '../game/flux/engine';
 import { BOT_PROFILES } from '../game/bot';
 
 // ============================================================
@@ -9,12 +10,14 @@ export interface Room {
   id: string;
   hostId: string;
   players: Player[];
-  bots: Array<{ id: string; profile: BotProfile }>; // Bots avec leur ID interne
+  bots: Array<{ id: string; profile: BotProfile }>;
   status: RoomStatus;
-  gameState: InternalGameState | null;
+  gameState: InternalGameState | null;     // Mode classic
+  fluxGameState: FluxGameState | null;     // Mode flux
   createdAt: Date;
   isSoloMode: boolean;
   gameOptions: GameOptions;
+  gameMode: GameMode;
 }
 
 // ============================================================
@@ -24,30 +27,41 @@ const rooms = new Map<string, Room>();
 
 // ============================================================
 // Génération d'un code de salle unique (6 caractères)
+// Le 1er caractère encode le mode : F = flux, C = classic
 // ============================================================
-function generateRoomCode(): string {
+function generateRoomCode(gameMode: GameMode): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  const prefix = gameMode === 'flux' ? 'F' : 'C';
   let code = '';
   do {
-    code = Array.from({ length: 6 }, () =>
+    const suffix = Array.from({ length: 5 }, () =>
       chars[Math.floor(Math.random() * chars.length)]
     ).join('');
+    code = prefix + suffix;
   } while (rooms.has(code));
   return code;
 }
 
 // ============================================================
+// Déduire le mode de jeu depuis le code de salle
+// ============================================================
+export function gameModeFromCode(roomCode: string): GameMode {
+  return roomCode.startsWith('F') ? 'flux' : 'classic';
+}
+
+// ============================================================
 // Créer une salle multijoueur classique
 // ============================================================
-export function createRoom(hostId: string, pseudo: string): Room {
-  const code = generateRoomCode();
+export function createRoom(hostId: string, pseudo: string, gameMode: GameMode = 'flux'): Room {
+  const code = generateRoomCode(gameMode);
   const host: Player = {
     id: hostId,
     pseudo,
-    color: 'red', // sera réattribué au démarrage
+    color: 'red',
     hand: [],
     scorePile: [],
     stars: 0,
+    rechargeStars: 0,
     isReady: false,
     isConnected: true,
   };
@@ -59,9 +73,11 @@ export function createRoom(hostId: string, pseudo: string): Room {
     bots: [],
     status: 'waiting',
     gameState: null,
+    fluxGameState: null,
     createdAt: new Date(),
     isSoloMode: false,
     gameOptions: { ...DEFAULT_GAME_OPTIONS },
+    gameMode,
   };
 
   rooms.set(code, room);
@@ -74,13 +90,14 @@ export function createRoom(hostId: string, pseudo: string): Room {
 export function createSoloRoom(
   hostId: string,
   pseudo: string,
-  botProfiles: BotProfile[]
+  botProfiles: BotProfile[],
+  gameMode: GameMode = 'flux'
 ): Room {
   if (botProfiles.length < 2 || botProfiles.length > 5) {
     throw new Error('Il faut entre 2 et 5 bots pour une partie solo');
   }
 
-  const code = generateRoomCode();
+  const code = generateRoomCode(gameMode);
   const host: Player = {
     id: hostId,
     pseudo,
@@ -88,7 +105,8 @@ export function createSoloRoom(
     hand: [],
     scorePile: [],
     stars: 0,
-    isReady: true, // L'hôte est automatiquement prêt en mode solo
+    rechargeStars: 0,
+    isReady: true,
     isConnected: true,
   };
 
@@ -98,10 +116,11 @@ export function createSoloRoom(
     return {
       id: `bot_${code}_${i}`,
       pseudo: `${config.emoji} ${config.name}`,
-      color: 'blue', // sera réattribué au démarrage
+      color: 'blue',
       hand: [],
       scorePile: [],
       stars: 0,
+      rechargeStars: 0,
       isReady: true,
       isConnected: true,
     };
@@ -117,9 +136,11 @@ export function createSoloRoom(
     })),
     status: 'waiting',
     gameState: null,
+    fluxGameState: null,
     createdAt: new Date(),
     isSoloMode: true,
     gameOptions: { ...DEFAULT_GAME_OPTIONS },
+    gameMode,
   };
 
   rooms.set(code, room);
@@ -153,10 +174,11 @@ export function joinRoom(
   const player: Player = {
     id: playerId,
     pseudo,
-    color: 'blue', // sera réattribué au démarrage
+    color: 'blue',
     hand: [],
     scorePile: [],
     stars: 0,
+    rechargeStars: 0,
     isReady: false,
     isConnected: true,
   };
@@ -183,7 +205,7 @@ export function setPlayerReady(
 }
 
 // ============================================================
-// Démarrer la partie
+// Démarrer la partie (mode classic)
 // ============================================================
 export function startGame(
   roomCode: string,
@@ -200,7 +222,6 @@ export function startGame(
     return { ok: false, error: 'Tous les joueurs doivent être prêts' };
   }
 
-  // Appliquer les options si fournies
   if (gameOptions) room.gameOptions = { ...DEFAULT_GAME_OPTIONS, ...gameOptions };
 
   const gameState = initGame(
@@ -209,7 +230,6 @@ export function startGame(
     room.gameOptions
   );
 
-  // Synchroniser les joueurs avec l'état du jeu
   for (const gp of gameState.players) {
     const rp = room.players.find(p => p.id === gp.id);
     if (rp) {
@@ -219,6 +239,46 @@ export function startGame(
   }
 
   room.gameState = gameState;
+  room.gameMode = 'classic';
+  room.status = 'playing';
+
+  return { ok: true, room };
+}
+
+// ============================================================
+// Démarrer la partie (mode flux)
+// ============================================================
+export function startFluxGame(
+  roomCode: string,
+  hostId: string,
+  gameOptions?: GameOptions
+): { ok: boolean; error?: string; room?: Room } {
+  const room = rooms.get(roomCode);
+  if (!room) return { ok: false, error: 'Salle introuvable' };
+  if (room.hostId !== hostId) return { ok: false, error: 'Seul le créateur peut lancer la partie' };
+  if (room.players.length < 3) return { ok: false, error: 'Il faut au moins 3 joueurs' };
+  if (room.players.length > 6) return { ok: false, error: 'Maximum 6 joueurs' };
+  if (!room.isSoloMode && !room.players.every(p => p.isReady)) {
+    return { ok: false, error: 'Tous les joueurs doivent être prêts' };
+  }
+
+  if (gameOptions) room.gameOptions = { ...DEFAULT_GAME_OPTIONS, ...gameOptions };
+
+  const fluxState = initFluxGame(
+    room.players.map(p => ({ id: p.id, pseudo: p.pseudo })),
+    room.gameOptions
+  );
+
+  for (const gp of fluxState.players) {
+    const rp = room.players.find(p => p.id === gp.id);
+    if (rp) {
+      rp.color = gp.color;
+      rp.hand = gp.hand;
+    }
+  }
+
+  room.fluxGameState = fluxState;
+  room.gameMode = 'flux';
   room.status = 'playing';
 
   return { ok: true, room };
@@ -303,6 +363,7 @@ export function toPublicRoom(room: Room): PublicRoom {
       topScoreCard: p.scorePile.length > 0 ? p.scorePile[p.scorePile.length - 1] : null,
       scorePileCount: p.scorePile.length,
       stars: p.stars,
+      rechargeStars: p.rechargeStars,
       isReady: p.isReady,
       isConnected: p.isConnected,
       hasPlayedCard: false,
@@ -313,5 +374,6 @@ export function toPublicRoom(room: Room): PublicRoom {
     maxPlayers: 6,
     isSoloMode: room.isSoloMode,
     gameOptions: room.gameOptions,
+    gameMode: room.gameMode,
   };
 }
