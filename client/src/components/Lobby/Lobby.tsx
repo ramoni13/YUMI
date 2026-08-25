@@ -6,6 +6,7 @@ import { getSocket, ensureConnected, saveSession, clearSession } from '../../hoo
 import { useT } from '../../hooks/useT';
 import { SoloSetup } from './SoloSetup';
 import { Tutorial } from '../Tutorial/Tutorial';
+import { FluxTutorial } from '../Tutorial/FluxTutorial';
 import styles from './Lobby.module.css';
 
 interface LobbyProps {
@@ -22,6 +23,7 @@ export function Lobby({ onGameStart }: LobbyProps) {
   const [gameOptions, setGameOptions] = useState<GameOptions>({ ...DEFAULT_GAME_OPTIONS });
   const [gameMode, setGameMode] = useState<GameMode>('flux'); // Flux par défaut
   const [showTutorial, setShowTutorial] = useState(false);
+  const [showFluxTutorial, setShowFluxTutorial] = useState(false);
 
   const t = useT();
   const { lang, toggleLang } = useLangStore();
@@ -208,13 +210,37 @@ export function Lobby({ onGameStart }: LobbyProps) {
         {lang === 'fr' ? '🇬🇧 EN' : '🇫🇷 FR'}
       </button>
 
-      {/* Bouton Règles */}
-      <button className={styles.tutorialBtn} onClick={() => setShowTutorial(true)}>
-        {t.tutorial.btnOpen}
-      </button>
+      {/* Boutons Règles — classique et flux côte à côte */}
+      <div style={{
+        position: 'absolute',
+        top: '1.25rem',
+        left: '1.25rem',
+        display: 'flex',
+        gap: '0.5rem',
+        zIndex: 10,
+      }}>
+        <button
+          className={styles.tutorialBtn}
+          style={gameMode === 'classic' ? { borderColor: '#fbbf24', color: '#fbbf24' } : {}}
+          onClick={() => setShowTutorial(true)}
+        >
+          {t.tutorial.btnOpen}
+        </button>
+        <button
+          className={styles.tutorialBtn}
+          style={gameMode === 'flux'
+            ? { borderColor: '#38bdf8', color: '#38bdf8' }
+            : { opacity: 0.65 }
+          }
+          onClick={() => setShowFluxTutorial(true)}
+        >
+          {t.fluxTutorial.btnOpen}
+        </button>
+      </div>
 
-      {/* Modale tutoriel */}
+      {/* Modales tutoriels */}
       {showTutorial && <Tutorial onClose={() => setShowTutorial(false)} />}
+      {showFluxTutorial && <FluxTutorial onClose={() => setShowFluxTutorial(false)} />}
 
       <h1 className={styles.title}>{t.lobby.title}</h1>
       <p className={styles.subtitle}>{t.lobby.subtitle}</p>
