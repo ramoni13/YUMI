@@ -42,7 +42,8 @@ export interface Player {
   color: PlayerColor;
   hand: number[];           // Cartes en main (valeurs 1 à 8)
   scorePile: ScoreCard[];   // Pile de cartes Score gagnées
-  stars: number;            // Nombre de jetons étoile
+  stars: number;            // Étoiles cartes Score (majorité uniquement, pas de +1 pt)
+  rechargeStars: number;    // Étoiles Recharge (majorité + +1 pt chacune)
   isReady: boolean;
   isConnected: boolean;
 }
@@ -55,56 +56,74 @@ export interface PublicPlayer {
   handCount: number;        // Nombre de cartes en main (sans les valeurs)
   topScoreCard: ScoreCard | null; // Dernière carte Score visible
   scorePileCount: number;
-  stars: number;
+  stars: number;            // Étoiles cartes Score (majorité uniquement)
+  rechargeStars: number;    // Étoiles Recharge (majorité + +1 pt)
   isReady: boolean;
   isConnected: boolean;
-  hasPlayedCard: boolean;   // A-t-il joué sa carte cette mène ?
+  hasPlayedCard: boolean;
 }
+
+// ----------------------------
+// Mode de jeu
+// ----------------------------
+export type GameMode = 'classic' | 'flux';
+
+// Valeur réservée pour la carte Recharge (mode flux)
+export const RECHARGE_CARD_VALUE = 0;
 
 // ----------------------------
 // Phases de jeu
 // ----------------------------
 export type GamePhase =
+  // Phases communes
   | 'LOBBY'
   | 'SETUP'
-  | 'ROUND_START'
-  | 'MEMORIZATION'
-  | 'TRICK_START'
   | 'CARD_SELECTION'
   | 'REVEAL'
   | 'RESOLUTION'
   | 'SPECIAL_EFFECT'
   | 'TRICK_END'
+  | 'GAME_OVER'
+  // Phases mode classic uniquement
+  | 'ROUND_START'
+  | 'MEMORIZATION'
+  | 'TRICK_START'
   | 'ROUND_END'
   | 'BONUS_STAR'
-  | 'GAME_OVER';
+  // Phases mode flux uniquement
+  | 'FLUX_TRICK_START'
+  | 'FLUX_RECHARGE';
 
 // ----------------------------
 // État du jeu (version publique envoyée aux clients)
 // ----------------------------
 export interface PublicGameState {
   phase: GamePhase;
+  gameMode: GameMode;
   currentRound: number;
   totalRounds: number;
   currentTrick: number;
-  totalTricks: number;          // = nombre de joueurs
-  scoreColumn: (ScoreCard | null)[]; // null = face cachée
+  totalTricks: number;
+  scoreColumn: (ScoreCard | null)[];
   currentScoreCard: ScoreCard | null;
-  scoreDeckCount: number;       // Nombre de cartes Score restantes
-  players: PublicPlayer[];      // Tous les joueurs (vue publique)
+  scoreDeckCount: number;
+  players: PublicPlayer[];
   trickWinnerId: string | null;
   cancelledValues: number[];
   scoreCardDiscarded: boolean;
-  memorizeTimer: number | null; // Secondes restantes (ou null)
-  swapRequestPlayerId: string | null; // Joueur qui doit choisir les 2 joueurs à échanger
-  swapEligibleTargets: string[];      // IDs des joueurs éligibles (SWAP et STEAL)
-  swapChosenA: string | null;         // 1er joueur déjà choisi pour le SWAP
-  stealRequestPlayerId: string | null; // Joueur qui doit choisir la cible du VOL
-  stealEligibleTargets: string[];      // IDs des adversaires éligibles pour le VOL
+  memorizeTimer: number | null;
+  swapRequestPlayerId: string | null;
+  swapEligibleTargets: string[];
+  swapChosenA: string | null;
+  stealRequestPlayerId: string | null;
+  stealEligibleTargets: string[];
   lastTrickSummary: TrickSummary | null;
   roundEndSummary: RoundEndSummary | null;
   finalScores: FinalScore[] | null;
-  gameOptions: GameOptions;     // Options de la partie
+  gameOptions: GameOptions;
+  // Champs spécifiques mode flux
+  rechargedPlayerIds: string[];
+  rechargeStarWinners: string[];
 }
 
 // ----------------------------
@@ -131,6 +150,7 @@ export type GameEventKind =
   | 'SPECIAL_DOUBLE'     // Effet ×2
   | 'SPECIAL_SWAP'       // Effet échange
   | 'BONUS_STAR'         // Étoile bonus fin de manche
+  | 'FLUX_RECHARGE_STARS' // Étoiles gagnées lors d'une Recharge (mode flux)
   | 'ROUND_END'          // Fin de manche (dernières cartes + bonus étoile)
   | 'ROUND_WINNER'       // Classement de la manche
   | 'GAME_OVER';         // Fin de partie
@@ -162,22 +182,27 @@ export interface GameEvent {
   doubledValue?: number; // valeur après ×2
   previousValue?: number;
   message?: string;      // Message libre
+  // Champs spécifiques mode flux — étoiles Recharge
+  rechargeStarWinners?: Array<{ pseudo: string; color: PlayerColor; cardValue: number }>;
+  rechargedPlayers?: Array<{ pseudo: string; color: PlayerColor }>;
 }
 
 // ----------------------------
 // Résumés
 // ----------------------------
 export interface TrickSummary {
-  playedCards: Record<string, number>; // joueur_id → valeur jouée
+  playedCards: Record<string, number>; // joueur_id → valeur jouée (0 = Recharge)
   cancelledValues: number[];
   winnerId: string | null;
   scoreCard: ScoreCard;
   discarded: boolean;
   specialEffect: SpecialEffect;
-  doubleAppliedTo: string | null;       // joueur_id dont la carte a été doublée
-  swapBetween: [string, string] | null; // [joueur_id_A, joueur_id_B] échangés
-  stolenFrom: string | null;            // joueur_id victime du VOL
-  bonusStarsAwarded: number;            // étoiles bonus données au gagnant (cartes -1/-2)
+  doubleAppliedTo: string | null;
+  swapBetween: [string, string] | null;
+  stolenFrom: string | null;
+  bonusStarsAwarded: number;
+  rechargedPlayerIds: string[];
+  rechargeStarWinners: string[];
 }
 
 export interface RoundEndSummary {
@@ -192,9 +217,11 @@ export interface FinalScore {
   pseudo: string;
   color: PlayerColor;
   scoreFromCards: number;
-  stars: number;
-  starBonus: number;    // +5 pts pour le joueur avec le plus d'étoiles (0 sinon)
-  totalScore: number;
+  stars: number;            // Étoiles cartes Score (pour la majorité)
+  rechargeStars: number;    // Étoiles Recharge (+1 pt chacune + pour la majorité)
+  totalStars: number;       // stars + rechargeStars (pour déterminer le majoritaire)
+  starBonus: number;        // +5 pts pour le joueur majoritaire en étoiles
+  totalScore: number;       // scoreFromCards + rechargeStars + starBonus
   rank: number;
 }
 
@@ -240,20 +267,21 @@ export interface PublicRoom {
   id: string;
   hostId: string;
   players: PublicPlayer[];
-  bots: BotSlot[];     // Bots configurés dans la salle
+  bots: BotSlot[];
   status: RoomStatus;
   playerCount: number;
   maxPlayers: number;
-  isSoloMode: boolean; // true = partie solo contre des bots
+  isSoloMode: boolean;
   gameOptions: GameOptions;
+  gameMode: GameMode;
 }
 
 // ----------------------------
 // Événements WebSocket — Client → Serveur
 // ----------------------------
 export interface ClientEvents {
-  create_room: (payload: { pseudo: string; gameOptions?: GameOptions }, callback: (res: { roomCode: string; playerId: string } | { error: string }) => void) => void;
-  create_solo_room: (payload: { pseudo: string; bots: BotProfile[]; gameOptions?: GameOptions }, callback: (res: { roomCode: string; playerId: string } | { error: string }) => void) => void;
+  create_room: (payload: { pseudo: string; gameOptions?: GameOptions; gameMode?: GameMode }, callback: (res: { roomCode: string; playerId: string } | { error: string }) => void) => void;
+  create_solo_room: (payload: { pseudo: string; bots: BotProfile[]; gameOptions?: GameOptions; gameMode?: GameMode }, callback: (res: { roomCode: string; playerId: string } | { error: string }) => void) => void;
   join_room: (payload: { roomCode: string; pseudo: string }, callback: (res: { playerId: string } | { error: string }) => void) => void;
   player_ready: (callback: (res: { ok: boolean } | { error: string }) => void) => void;
   start_game: (payload: { gameOptions?: GameOptions }, callback: (res: { ok: boolean } | { error: string }) => void) => void;
