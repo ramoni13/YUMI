@@ -29,14 +29,15 @@ function App() {
   };
 
   // Résolution du mode — recalculé à chaque render
-  // gameState.gameMode est la source absolue dès que la partie tourne
-  // Elle est toujours disponible au moment où view === 'game'
-  // car c'est gameState.phase qui déclenche setView('game')
+  // gameState.gameMode : source absolue quand la partie tourne
+  // selectedGameMode   : fixé dès le choix dans le Lobby ou le join_room
+  // room.gameMode      : fallback depuis la salle
+  // 'flux'             : valeur par défaut
   const resolvedGameMode =
     gameState?.gameMode ??
     selectedGameMode ??
     room?.gameMode ??
-    'classic';
+    'flux';
 
   return (
     <div className="app">
