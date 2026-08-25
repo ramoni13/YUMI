@@ -17,6 +17,9 @@ const io = new Server(httpServer, {
     origin: '*',
     methods: ['GET', 'POST'],
   },
+  // Augmenter les timeouts pour éviter les déconnexions "transport error" sur réseau instable
+  pingTimeout: 30000,   // 30s avant de considérer la connexion morte (défaut: 20s)
+  pingInterval: 10000,  // Ping toutes les 10s (défaut: 25s)
 });
 
 // Route de santé
@@ -33,7 +36,12 @@ io.on('connection', (socket) => {
   });
   // Logger TOUS les événements reçus de ce socket
   socket.onAny((event, ...args) => {
-    console.log(`[Socket][${socket.id}] Événement reçu: "${event}"`, args.length ? (JSON.stringify(args[0]) ?? String(args[0])).slice(0, 120) : '');
+    // Filtrer les fonctions (callbacks Socket.IO internes) pour ne logger que les vraies données
+    const dataArgs = args.filter(a => typeof a !== 'function');
+    const preview = dataArgs.length
+      ? JSON.stringify(dataArgs[0]).slice(0, 120)
+      : '(no data)';
+    console.log(`[Socket][${socket.id}] Événement reçu: "${event}"`, preview);
   });
 });
 
