@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { BotProfile, GameMode, GameOptions, DEFAULT_GAME_OPTIONS } from '../../types';
 import { useGameStore } from '../../store/gameStore';
 import { useLangStore } from '../../store/langStore';
-import { getSocket, ensureConnected } from '../../hooks/useSocket';
+import { getSocket, ensureConnected, saveSession, clearSession } from '../../hooks/useSocket';
 import { useT } from '../../hooks/useT';
 import { SoloSetup } from './SoloSetup';
 import { Tutorial } from '../Tutorial/Tutorial';
@@ -33,10 +33,12 @@ export function Lobby({ onGameStart }: LobbyProps) {
     ensureConnected(() => {
       socket.emit('create_room', { pseudo: pseudoInput.trim(), gameMode }, (res: any) => {
         if ('error' in res) return setError(res.error);
-        setSelectedGameMode(gameMode); // stocker le mode avant que room arrive
+        setSelectedGameMode(gameMode);
         setPlayerId(res.playerId);
         setRoomCode(res.roomCode);
         setPseudo(pseudoInput.trim());
+        // Sauvegarder la session pour la reprise après déconnexion
+        saveSession({ playerId: res.playerId, roomCode: res.roomCode, pseudo: pseudoInput.trim() });
         setView('waiting');
         setError('');
       });
@@ -57,10 +59,12 @@ export function Lobby({ onGameStart }: LobbyProps) {
     const doEmit = () => {
       socket.emit('create_solo_room', { pseudo: pseudoInput.trim(), bots, gameOptions: opts, gameMode }, (res: any) => {
         if ('error' in res) return setSoloError(res.error);
-        setSelectedGameMode(gameMode); // stocker le mode AVANT onGameStart()
+        setSelectedGameMode(gameMode);
         setPlayerId(res.playerId);
         setRoomCode(res.roomCode);
         setPseudo(pseudoInput.trim());
+        // Sauvegarder la session pour la reprise après déconnexion
+        saveSession({ playerId: res.playerId, roomCode: res.roomCode, pseudo: pseudoInput.trim() });
         onGameStart();
       });
     };
@@ -80,6 +84,8 @@ export function Lobby({ onGameStart }: LobbyProps) {
       setPlayerId(res.playerId);
       setRoomCode(code);
       setPseudo(pseudoInput.trim());
+      // Sauvegarder la session pour la reprise après déconnexion
+      saveSession({ playerId: res.playerId, roomCode: code, pseudo: pseudoInput.trim() });
       setView('waiting');
       setError('');
     });
