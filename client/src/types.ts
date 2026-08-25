@@ -245,14 +245,20 @@ export const DEFAULT_GAME_OPTIONS: GameOptions = {
 // ----------------------------
 export type BotProfile = 'LOGIQUE' | 'KAMIKAZE' | 'HASARD' | 'PRUDENT' | 'SABOTEUR';
 
-export interface BotSlot {
+// Informations statiques d'un profil de bot (sans id de salle)
+export interface BotSlotInfo {
   profile: BotProfile;
   name: string;        // Nom du bot (ex: ARIA, BLITZ…)
   emoji: string;       // Emoji du bot
   description: string; // Description courte
 }
 
-export const BOT_PROFILES_INFO: Record<BotProfile, BotSlot> = {
+// Vue publique d'un bot dans une salle (avec id unique)
+export interface BotSlot extends BotSlotInfo {
+  id: string;          // Identifiant unique du bot dans la salle
+}
+
+export const BOT_PROFILES_INFO: Record<BotProfile, BotSlotInfo> = {
   LOGIQUE: { profile: 'LOGIQUE', name: 'ARIA', emoji: '🤖', description: 'Joue de façon calculée. Évite les doublons et vise les meilleures cartes Score.' },
   KAMIKAZE: { profile: 'KAMIKAZE', name: 'BLITZ', emoji: '💥', description: 'Fonce tête baissée ! Joue toujours sa carte la plus haute, quoi qu\'il arrive.' },
   HASARD: { profile: 'HASARD', name: 'DINGO', emoji: '🎲', description: 'Complètement imprévisible. Joue n\'importe quelle carte au hasard.' },
@@ -294,6 +300,8 @@ export interface ClientEvents {
   steal_target: (payload: { targetPlayerId: string }, callback: (res: { ok: boolean } | { error: string }) => void) => void;
   swap_choose_players: (payload: { playerAId: string; playerBId: string }, callback: (res: { ok: boolean } | { error: string }) => void) => void;
   next_phase: () => void;
+  add_bot: (payload: { profile: BotProfile }, callback: (res: { ok: boolean } | { error: string }) => void) => void;
+  remove_bot: (payload: { botId: string }, callback: (res: { ok: boolean } | { error: string }) => void) => void;
 }
 
 // ----------------------------
