@@ -272,6 +272,7 @@ export function resolveTrickPhase(
     bonusStarsAwarded: 0,
     rechargedPlayerIds: [],   // Pas de Recharge en mode classic
     rechargeStarWinners: [],
+    rechargeStarCount: 0,
   };
 
   if (result.winnerId && !result.discarded) {
@@ -280,7 +281,9 @@ export function resolveTrickPhase(
     // Étoiles bonus immédiates (cartes -1 et -2)
     if (scoreCard.bonusStars > 0) {
       winner.stars += scoreCard.bonusStars;
-      state.lastTrickSummary.bonusStarsAwarded = scoreCard.bonusStars;
+      if (state.lastTrickSummary) {
+        state.lastTrickSummary.bonusStarsAwarded = scoreCard.bonusStars;
+      }
     }
 
     if (scoreCard.specialEffect === 'DOUBLE') {
