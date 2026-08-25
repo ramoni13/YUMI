@@ -274,10 +274,13 @@ export function resolveFluxTrick(state: FluxGameState): FluxGameState {
   state.cancelledValues = result.cancelledValues;
   state.scoreCardDiscarded = result.discarded;
 
-  // 2. Étoiles Recharge : 1 étoile par joueur dont la carte valeur est UNIQUE (non annulée)
-  //    Condition : au moins un joueur a joué Recharge cette mène
-  //    Ces étoiles vont dans rechargeStars (majorité + +1 pt au score final)
+  // 2. Étoiles Recharge :
+  //    Les joueurs ayant joué une carte VALEUR UNIQUE (non annulée) gagnent
+  //    autant d'étoiles Recharge qu'il y a de joueurs ayant joué Recharge ce tour.
+  //    Ex : 2 joueurs rechargent + Alice joue un 7 unique → Alice gagne 2 étoiles.
+  //    Ces étoiles vont dans rechargeStars (majorité + +1 pt chacune au score final)
   const starWinners: string[] = [];
+  const rechargeStarCount = rechargedIds.length; // nb d'étoiles à distribuer par gagnant (= nb rechargeurs)
   if (rechargedIds.length > 0) {
     // Compter les occurrences de chaque valeur jouée
     const valueCounts = new Map<number, number>();
@@ -285,11 +288,11 @@ export function resolveFluxTrick(state: FluxGameState): FluxGameState {
       valueCounts.set(val, (valueCounts.get(val) ?? 0) + 1);
     }
     for (const [pid, val] of Object.entries(valuePlays)) {
-      // Étoile uniquement si la valeur est unique (pas en doublon)
+      // Étoile(s) uniquement si la valeur est unique (pas en doublon)
       if ((valueCounts.get(val) ?? 0) === 1) {
         const player = state.players.find(p => p.id === pid);
         if (player) {
-          player.rechargeStars += 1; // ← rechargeStars, pas stars
+          player.rechargeStars += rechargeStarCount; // autant d'étoiles que de rechargeurs
           starWinners.push(pid);
         }
       }
@@ -304,7 +307,7 @@ export function resolveFluxTrick(state: FluxGameState): FluxGameState {
 
   // 4. Résumé de base
   state.lastTrickSummary = buildTrickSummary(
-    state, allPlayed, result.cancelledValues, result.winnerId, result.discarded
+    state, allPlayed, result.cancelledValues, result.winnerId, result.discarded, rechargeStarCount
   );
 
   const scoreCard = state.currentScoreCard!;
@@ -505,6 +508,7 @@ export function toFluxPublicState(state: FluxGameState): PublicGameState {
     gameOptions: state.gameOptions,
     rechargedPlayerIds: state.rechargedPlayerIds,
     rechargeStarWinners: state.rechargeStarWinners,
+    rechargeStarCount: state.lastTrickSummary?.rechargeStarCount ?? 0,
   };
 }
 
@@ -547,7 +551,8 @@ function buildTrickSummary(
   allPlayed: Record<string, number>,
   cancelledValues: number[],
   winnerId: string | null,
-  discarded: boolean
+  discarded: boolean,
+  rechargeStarCount = 0
 ): TrickSummary {
   return {
     playedCards: allPlayed,
@@ -562,6 +567,6 @@ function buildTrickSummary(
     bonusStarsAwarded: 0,
     rechargedPlayerIds: state.rechargedPlayerIds,
     rechargeStarWinners: state.rechargeStarWinners,
+    rechargeStarCount,
   };
 }
-
