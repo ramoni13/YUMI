@@ -19,9 +19,15 @@ export function getSocket(): Socket {
   if (!socket) {
     socket = io(SOCKET_URL, {
       autoConnect: false,
-      reconnectionAttempts: 5,
+      // Reconnexion illimitée avec backoff exponentiel plafonné
+      reconnection: true,
+      reconnectionAttempts: Infinity,
       reconnectionDelay: 1000,
-      timeout: 5000,
+      reconnectionDelayMax: 8000,
+      // Timeout de connexion initiale
+      timeout: 10000,
+      // Forcer WebSocket en priorité (évite le polling HTTP qui est plus fragile)
+      transports: ['websocket', 'polling'],
     });
   }
   return socket;
@@ -81,6 +87,29 @@ export function useSocket() {
 
     s.on('disconnect', (reason) => {
       console.warn('[useSocket] DECONNECTE — raison:', reason);
+      // Sur transport error : Socket.IO tente de se reconnecter automatiquement
+      // Sur fermeture volontaire (io server disconnect) : on ne reconnecte pas
+      if (reason === 'io server disconnect') {
+        // Le serveur a coupé volontairement → reconnexion manuelle
+        s.connect();
+      }
+      // Pour 'transport error' et 'transport close' : reconnexion automatique gérée par Socket.IO
+    });
+
+    s.on('reconnect', (attempt) => {
+      console.log(`[useSocket] RECONNECTE après ${attempt} tentative(s)`);
+    });
+
+    s.on('reconnect_attempt', (attempt) => {
+      console.log(`[useSocket] Tentative de reconnexion #${attempt}...`);
+    });
+
+    s.on('reconnect_error', (err) => {
+      console.warn('[useSocket] Échec reconnexion:', err.message);
+    });
+
+    s.on('reconnect_failed', () => {
+      console.error('[useSocket] Reconnexion définitivement échouée');
     });
 
     s.on('room_updated', (room) => {
