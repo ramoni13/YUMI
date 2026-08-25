@@ -3,17 +3,17 @@ import { useSocket } from './hooks/useSocket';
 import { useGameStore } from './store/gameStore';
 import { Lobby } from './components/Lobby/Lobby';
 import { Board } from './components/Board/Board';
+import { FluxBoard } from './components/flux/FluxBoard';
 import { GameOver } from './components/Scores/GameOver';
 import './App.css';
 
 type AppView = 'lobby' | 'game' | 'gameover';
 
 function App() {
-  useSocket(); // Initialise la connexion WebSocket
-  const { gameState, reset } = useGameStore();
+  useSocket();
+  const { gameState, room, reset } = useGameStore();
   const [view, setView] = useState<AppView>('lobby');
 
-  // Surveiller la phase de jeu pour naviguer automatiquement
   useEffect(() => {
     if (!gameState) return;
     if (gameState.phase === 'GAME_OVER') {
@@ -28,10 +28,16 @@ function App() {
     setView('lobby');
   };
 
+  // Déterminer le mode depuis gameState (source de vérité en cours de partie)
+  // ou depuis room (avant le démarrage)
+  const gameMode = gameState?.gameMode ?? room?.gameMode ?? 'classic';
+
   return (
     <div className="app">
       {view === 'lobby' && <Lobby onGameStart={() => setView('game')} />}
-      {view === 'game' && <Board />}
+      {view === 'game' && (
+        gameMode === 'flux' ? <FluxBoard /> : <Board />
+      )}
       {view === 'gameover' && <GameOver onReplay={handleReplay} />}
     </div>
   );
