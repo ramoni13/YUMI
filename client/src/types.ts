@@ -203,7 +203,8 @@ export interface TrickSummary {
   bonusStarsAwarded: number;
   // Champs spécifiques mode flux
   rechargedPlayerIds: string[];
-  rechargeStarWinners: string[];
+  rechargeStarWinners: string[];  // joueurs ayant gagné des étoiles (carte valeur unique)
+  rechargeStarCount: number;      // nb d'étoiles gagnées par chaque gagnant (= nb de rechargeurs)
 }
 
 export interface RoundEndSummary {
