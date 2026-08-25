@@ -283,6 +283,7 @@ export interface ClientEvents {
   create_room: (payload: { pseudo: string; gameOptions?: GameOptions; gameMode?: GameMode }, callback: (res: { roomCode: string; playerId: string } | { error: string }) => void) => void;
   create_solo_room: (payload: { pseudo: string; bots: BotProfile[]; gameOptions?: GameOptions; gameMode?: GameMode }, callback: (res: { roomCode: string; playerId: string } | { error: string }) => void) => void;
   join_room: (payload: { roomCode: string; pseudo: string }, callback: (res: { playerId: string; gameMode: GameMode } | { error: string }) => void) => void;
+  rejoin_room: (payload: { roomCode: string; oldPlayerId: string }, callback: (res: { ok: boolean; playerId: string; gameMode: GameMode } | { error: string }) => void) => void;
   player_ready: (callback: (res: { ok: boolean } | { error: string }) => void) => void;
   start_game: (payload: { gameOptions?: GameOptions }, callback: (res: { ok: boolean } | { error: string }) => void) => void;
   yumi_shout: (payload: { clientTimestamp: number }) => void;
