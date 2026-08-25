@@ -34,6 +34,12 @@ export const fr = {
     btnReady: 'Je suis prêt !',
     btnCancelReady: 'Annuler',
     btnStart: 'Lancer la partie !',
+    // Bots en salle d'attente multijoueur
+    botsTitle: '🤖 Bots',
+    addBotLabel: '+ Ajouter un bot',
+    removeBotLabel: '✕',
+    botSlotLabel: (name: string, profile: string) => `${name} (${profile})`,
+    playerCount: (humans: number, bots: number, max: number) => `${humans} joueur(s) + ${bots} bot(s) / ${max} max`,
   },
 
   // ── SoloSetup ───────────────────────────────────────────
