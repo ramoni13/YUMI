@@ -14,6 +14,8 @@ import {
   handleDisconnect,
   toPublicRoom,
   gameModeFromCode,
+  addBotToRoom,
+  removeBotFromRoom,
   Room,
 } from '../rooms/roomManager';
 import {
@@ -268,7 +270,7 @@ function advanceAfterFluxTrick(
       if (!currentRoom?.fluxGameState) return;
       const newState = startFluxTrick(currentRoom.fluxGameState);
       broadcastFluxState(io, roomCode, newState);
-      if (currentRoom.isSoloMode) {
+      if (currentRoom.bots.length > 0) {
         scheduleFluxBotPlays(io, roomCode, newState, currentRoom);
       }
     }, NEXT_TRICK_DELAY);
@@ -516,6 +518,36 @@ export function registerSocketHandlers(io: Server, socket: Socket) {
   });
 
   // ----------------------------------------------------------
+  // Ajouter un bot dans la salle (hôte uniquement, salle d'attente)
+  // ----------------------------------------------------------
+  socket.on('add_bot', ({ profile }, callback) => {
+    try {
+      const roomCode = socket.data.roomCode;
+      const result = addBotToRoom(roomCode, socket.id, profile as BotProfile);
+      if (!result.ok || !result.room) return callback({ error: result.error ?? 'Erreur' });
+      callback({ ok: true });
+      io.to(roomCode).emit('room_updated', toPublicRoom(result.room));
+    } catch (e: any) {
+      callback({ error: e.message });
+    }
+  });
+
+  // ----------------------------------------------------------
+  // Retirer un bot de la salle (hôte uniquement, salle d'attente)
+  // ----------------------------------------------------------
+  socket.on('remove_bot', ({ botId }, callback) => {
+    try {
+      const roomCode = socket.data.roomCode;
+      const result = removeBotFromRoom(roomCode, socket.id, botId);
+      if (!result.ok || !result.room) return callback({ error: result.error ?? 'Erreur' });
+      callback({ ok: true });
+      io.to(roomCode).emit('room_updated', toPublicRoom(result.room));
+    } catch (e: any) {
+      callback({ error: e.message });
+    }
+  });
+
+  // ----------------------------------------------------------
   // Lancer la partie
   // ----------------------------------------------------------
   socket.on('start_game', ({ gameOptions } = {} as any, callback) => {
@@ -533,6 +565,10 @@ export function registerSocketHandlers(io: Server, socket: Socket) {
         if (result.room.fluxGameState) {
           const state = startFluxTrick(result.room.fluxGameState);
           broadcastFluxState(io, roomCode, state);
+          // Déclencher les bots si la salle en contient (solo OU multi+bots)
+          if (result.room.bots.length > 0) {
+            scheduleFluxBotPlays(io, roomCode, state, result.room);
+          }
         }
         return;
       }
@@ -554,6 +590,10 @@ export function registerSocketHandlers(io: Server, socket: Socket) {
         broadcastGameState(io, roomCode, state);
         state = startTrick(state);
         broadcastGameState(io, roomCode, state);
+        // Déclencher les bots si la salle en contient (solo OU multi+bots)
+        if (result.room.bots.length > 0) {
+          scheduleBotPlays(io, roomCode, state, result.room);
+        }
       }
     } catch (e: any) {
       callback({ error: e.message });
@@ -579,7 +619,7 @@ export function registerSocketHandlers(io: Server, socket: Socket) {
         broadcastFluxState(io, roomCode, result.state);
         if (result.state.phase === 'REVEAL') {
           triggerFluxRevealAndResolve(io, roomCode, result.state, room);
-        } else if (room.isSoloMode && result.state.phase === 'CARD_SELECTION') {
+        } else if (room.bots.length > 0 && result.state.phase === 'CARD_SELECTION') {
           scheduleFluxBotPlays(io, roomCode, result.state, room);
         }
         return;
@@ -594,7 +634,7 @@ export function registerSocketHandlers(io: Server, socket: Socket) {
       broadcastGameState(io, roomCode, result.state);
       if (result.state.phase === 'REVEAL') {
         triggerRevealAndResolve(io, roomCode, result.state, room);
-      } else if (room.isSoloMode && result.state.phase === 'CARD_SELECTION') {
+      } else if (room.bots.length > 0 && result.state.phase === 'CARD_SELECTION') {
         scheduleBotPlays(io, roomCode, result.state, room);
       }
     } catch (e: any) {
@@ -728,7 +768,7 @@ function advanceAfterTrick(
       if (!currentRoom?.gameState) return;
       const newState = startTrick(currentRoom.gameState);
       broadcastGameState(io, roomCode, newState);
-      if (currentRoom.isSoloMode) {
+      if (currentRoom.bots.length > 0) {
         scheduleBotPlays(io, roomCode, newState, currentRoom);
       }
     }, NEXT_TRICK_DELAY);
@@ -753,7 +793,7 @@ function advanceAfterTrick(
             broadcastGameState(io, roomCode, newState);
             newState = startTrick(newState);
             broadcastGameState(io, roomCode, newState);
-            if (r.isSoloMode) {
+            if (r.bots.length > 0) {
               scheduleBotPlays(io, roomCode, newState, r);
             }
           }, NEXT_ROUND_DELAY);
