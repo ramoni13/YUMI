@@ -26,8 +26,10 @@ export function getSocket(): Socket {
       reconnectionDelayMax: 8000,
       // Timeout de connexion initiale
       timeout: 10000,
-      // Forcer WebSocket en priorité (évite le polling HTTP qui est plus fragile)
-      transports: ['websocket', 'polling'],
+      // Démarrer en polling HTTP (compatible avec tous les reverse proxies dont Render.com)
+      // puis Socket.IO upgarde automatiquement vers WebSocket une fois la session établie.
+      // NE PAS mettre 'websocket' en premier : Render bloque les WS à froid sans handshake HTTP.
+      transports: ['polling', 'websocket'],
     });
   }
   return socket;
