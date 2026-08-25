@@ -289,19 +289,23 @@ function EventRow({ event, myId, t }: EventRowProps) {
               <span className={styles.rechargeLabel}> recharge</span>
             </div>
           )}
-          {/* Gagnants d'étoile */}
-          {hasWinners && (
-            <div className={styles.rechargeStarList}>
-              {event.rechargeStarWinners!.map((w, i) => (
-                <span key={i} className={styles.rechargeStarItem}>
-                  <span className={styles.dot} style={{ background: COLOR_HEX[w.color] }} />
-                  <strong>{w.pseudo}</strong>
-                  <span className={styles.starTag}>⭐ +1</span>
-                  <span className={styles.rechargeCardVal}>(carte {w.cardValue})</span>
-                </span>
-              ))}
-            </div>
-          )}
+                    {/* Gagnants d'étoile */}
+          {hasWinners && (() => {
+            // nb d'étoiles = nb de joueurs ayant rechargé ce tour
+            const starCount = event.rechargedPlayers?.length ?? 1;
+            return (
+              <div className={styles.rechargeStarList}>
+                {event.rechargeStarWinners!.map((w, i) => (
+                  <span key={i} className={styles.rechargeStarItem}>
+                    <span className={styles.dot} style={{ background: COLOR_HEX[w.color] }} />
+                    <strong>{w.pseudo}</strong>
+                    <span className={styles.starTag}>⭐ +{starCount}</span>
+                    <span className={styles.rechargeCardVal}>(carte {w.cardValue})</span>
+                  </span>
+                ))}
+              </div>
+            );
+          })()}
           {/* Aucun gagnant */}
           {!hasWinners && !allRecharge && (
             <span className={styles.rechargeNoStar}>Aucune étoile — doublons</span>
