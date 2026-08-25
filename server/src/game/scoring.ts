@@ -87,41 +87,57 @@ export function computeBonusStars(
     .map(([playerId]) => playerId);
 }
 
-const STAR_BONUS = 5; // Bonus pour le joueur avec le plus d'étoiles
+const STAR_BONUS = 5; // Bonus pour le joueur majoritaire en étoiles
 
 // ============================================================
 // Calcul du classement final
+//
+// Règles étoiles :
+//   stars         = étoiles cartes Score (-1⭐, -2⭐⭐, VOL)
+//                   → comptent pour la majorité uniquement (pas de +1 pt)
+//   rechargeStars = étoiles Recharge
+//                   → comptent pour la majorité ET +1 pt chacune
+//   totalStars    = stars + rechargeStars → détermine le majoritaire
+//   starBonus     = +5 pts pour le joueur avec le plus de totalStars
+//   totalScore    = scoreFromCards + rechargeStars + starBonus
 // ============================================================
 export function computeFinalScores(players: Player[]): FinalScore[] {
-  // 1. Trouver le nombre maximum d'étoiles
-  const maxStars = Math.max(...players.map(p => p.stars));
+  // 1. Calculer le total d'étoiles de chaque joueur (les deux sources)
+  const totals = players.map(p => p.stars + p.rechargeStars);
+  const maxTotalStars = Math.max(...totals);
 
-  // 2. Joueurs qui ont le max d'étoiles (peut être plusieurs en cas d'égalité)
+  // 2. Joueurs majoritaires (peuvent être plusieurs en cas d'égalité)
   const starBonusWinners = new Set(
-    players.filter(p => p.stars === maxStars).map(p => p.id)
+    players
+      .filter(p => (p.stars + p.rechargeStars) === maxTotalStars)
+      .map(p => p.id)
   );
 
   // 3. Calculer les scores
   const scores: FinalScore[] = players.map(player => {
     const scoreFromCards = computeScoreFromPile(player.scorePile);
+    const totalStars = player.stars + player.rechargeStars;
     const starBonus = starBonusWinners.has(player.id) ? STAR_BONUS : 0;
-    const totalScore = scoreFromCards + player.stars + starBonus;
+    // rechargeStars valent +1 pt chacune ; stars cartes ne valent rien
+    const totalScore = scoreFromCards + player.rechargeStars + starBonus;
     return {
       playerId: player.id,
       pseudo: player.pseudo,
       color: player.color,
       scoreFromCards,
       stars: player.stars,
+      rechargeStars: player.rechargeStars,
+      totalStars,
       starBonus,
       totalScore,
       rank: 0,
     };
   });
 
-  // 4. Trier par score total décroissant, puis par étoiles en cas d'égalité
+  // 4. Trier par score total décroissant, puis par totalStars en cas d'égalité
   scores.sort((a, b) => {
     if (b.totalScore !== a.totalScore) return b.totalScore - a.totalScore;
-    return b.stars - a.stars;
+    return b.totalStars - a.totalStars;
   });
 
   // 5. Attribuer les rangs (ex-aequo possible)
@@ -130,7 +146,7 @@ export function computeFinalScores(players: Player[]): FinalScore[] {
     if (i > 0) {
       const prev = scores[i - 1];
       const curr = scores[i];
-      if (curr.totalScore === prev.totalScore && curr.stars === prev.stars) {
+      if (curr.totalScore === prev.totalScore && curr.totalStars === prev.totalStars) {
         scores[i].rank = prev.rank;
       } else {
         rank = i + 1;
