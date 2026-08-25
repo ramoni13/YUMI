@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { BotProfile, GameMode, GameOptions, DEFAULT_GAME_OPTIONS } from '../../types';
+import { BotProfile, BOT_PROFILES_INFO, GameMode, GameOptions, DEFAULT_GAME_OPTIONS } from '../../types';
 import { useGameStore } from '../../store/gameStore';
 import { useLangStore } from '../../store/langStore';
 import { getSocket, ensureConnected, saveSession, clearSession } from '../../hooks/useSocket';
@@ -93,6 +93,8 @@ export function Lobby({ onGameStart }: LobbyProps) {
     });
   };
 
+  const [addBotProfile, setAddBotProfile] = useState<BotProfile>('HASARD');
+
   const handleReady = () => {
     socket.emit('player_ready', (res: any) => {
       if ('error' in res) setError(res.error);
@@ -106,12 +108,32 @@ export function Lobby({ onGameStart }: LobbyProps) {
     });
   };
 
+  const handleAddBot = () => {
+    socket.emit('add_bot', { profile: addBotProfile }, (res: any) => {
+      if ('error' in res) setError(res.error);
+    });
+  };
+
+  const handleRemoveBot = (botId: string) => {
+    socket.emit('remove_bot', { botId }, (res: any) => {
+      if ('error' in res) setError(res.error);
+    });
+  };
+
   const isHost = room?.hostId === playerId;
-  const allReady = room?.players.every(p => p.isReady) ?? false;
-  const canStart = isHost && allReady && (room?.players.length ?? 0) >= 3;
+  // Les bots sont toujours prêts — seuls les humains comptent pour canStart
+  const humanPlayers = room?.players.filter(p => !room.bots.some(b => b.id === p.id)) ?? [];
+  const allHumansReady = humanPlayers.every(p => p.isReady);
+  const totalPlayers = (room?.players.length ?? 0);
+  const canStart = isHost && allHumansReady && totalPlayers >= 3;
   const myPlayer = room?.players.find(p => p.id === playerId);
 
   if (view === 'waiting' && room) {
+    const botIds = new Set(room.bots.map(b => b.id));
+    const humanPlayersList = room.players.filter(p => !botIds.has(p.id));
+    const botPlayersList = room.players.filter(p => botIds.has(p.id));
+    const isFull = room.players.length >= 6;
+
     return (
       <div className={styles.container}>
         <h1 className={styles.title}>{t.lobby.title}</h1>
@@ -120,8 +142,14 @@ export function Lobby({ onGameStart }: LobbyProps) {
           <span className={styles.code}>{roomCode}</span>
         </div>
 
+        {/* Compteur joueurs */}
+        <p className={styles.playerCountInfo}>
+          {t.waiting.playerCount(humanPlayersList.length, botPlayersList.length, 6)}
+        </p>
+
+        {/* Liste des joueurs humains */}
         <div className={styles.playerList}>
-          {room.players.map(p => (
+          {humanPlayersList.map(p => (
             <div key={p.id} className={`${styles.playerRow} ${styles[p.color]}`}>
               <span className={styles.colorDot} style={{ background: colorMap[p.color] }} />
               <span className={styles.playerName}>{p.pseudo}</span>
@@ -132,6 +160,54 @@ export function Lobby({ onGameStart }: LobbyProps) {
             </div>
           ))}
         </div>
+
+        {/* Section bots */}
+        {(botPlayersList.length > 0 || isHost) && (
+          <div className={styles.botsSection}>
+            <div className={styles.botsSectionTitle}>{t.waiting.botsTitle}</div>
+
+            {/* Bots existants */}
+            {botPlayersList.map(p => {
+              const botSlot = room.bots.find(b => b.id === p.id);
+              return (
+                <div key={p.id} className={styles.botRow}>
+                  <span className={styles.botEmoji}>{botSlot ? BOT_PROFILES_INFO[botSlot.profile].emoji : '🤖'}</span>
+                  <span className={styles.botName}>{p.pseudo}</span>
+                  <span className={styles.botProfile}>{botSlot?.profile}</span>
+                  {isHost && (
+                    <button
+                      className={styles.removeBotBtn}
+                      onClick={() => handleRemoveBot(p.id)}
+                      title="Retirer ce bot"
+                    >
+                      {t.waiting.removeBotLabel}
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+
+            {/* Ajouter un bot (hôte uniquement, si pas plein) */}
+            {isHost && !isFull && (
+              <div className={styles.addBotRow}>
+                <select
+                  className={styles.botSelect}
+                  value={addBotProfile}
+                  onChange={e => setAddBotProfile(e.target.value as BotProfile)}
+                >
+                  {Object.values(BOT_PROFILES_INFO).map(p => (
+                    <option key={p.profile} value={p.profile}>
+                      {p.emoji} {p.name} — {p.profile}
+                    </option>
+                  ))}
+                </select>
+                <button className={styles.addBotBtn} onClick={handleAddBot}>
+                  {t.waiting.addBotLabel}
+                </button>
+              </div>
+            )}
+          </div>
+        )}
 
         <div className={styles.info}>
           {room.players.length < 3 && <p>{t.waiting.waitingPlayers(room.players.length)}</p>}
