@@ -47,6 +47,7 @@ export function useSocket() {
   const {
     setRoom,
     setGameState,
+    setSelectedGameMode,
     setLastReveal,
     clearLastReveal,
     pushEvent,
@@ -85,6 +86,10 @@ export function useSocket() {
     s.on('room_updated', (room) => {
       console.log('[useSocket] room_updated — status:', room.status, 'players:', room.players.length);
       setRoom(room);
+      // Synchroniser le mode de jeu pour tous les joueurs (y compris ceux qui rejoignent)
+      if (room.gameMode) {
+        setSelectedGameMode(room.gameMode);
+      }
     });
 
     // Suivi des phases déjà traitées pour éviter les doublons
@@ -162,6 +167,61 @@ export function useSocket() {
             winnerColor: winner?.color,
             message: t.history.socket.scoreWon(winner?.pseudo ?? '?', summary.scoreCard.displayValue),
           });
+        }
+
+        // Étoiles Recharge (mode flux) — au moins un joueur a rechargé
+        if (summary.rechargedPlayerIds.length > 0) {
+          const t = getT();
+          const rechargers = summary.rechargedPlayerIds
+            .map(id => state.players.find(p => p.id === id)?.pseudo ?? '?')
+            .join(', ');
+
+          if (summary.rechargedPlayerIds.length === state.players.length) {
+            // Tout le monde a rechargé → carte défaussée
+            pushEvent({
+              ...base,
+              kind: 'FLUX_RECHARGE_STARS',
+              message: t.history.socket.rechargeAllDiscard,
+              rechargedPlayers: summary.rechargedPlayerIds.map(id => {
+                const p = state.players.find(pl => pl.id === id);
+                return { pseudo: p?.pseudo ?? '?', color: p?.color ?? 'red' };
+              }),
+              rechargeStarWinners: [],
+            });
+          } else if (summary.rechargeStarWinners.length > 0) {
+            // Au moins un gagnant d'étoile
+            const winners = summary.rechargeStarWinners
+              .map(id => {
+                const p = state.players.find(pl => pl.id === id);
+                // Retrouver la valeur jouée par ce joueur
+                const cardValue = summary.playedCards[id] ?? 0;
+                return { pseudo: p?.pseudo ?? '?', color: p?.color ?? 'red' as const, cardValue };
+              });
+            const winnerNames = winners.map(w => w.pseudo).join(', ');
+            pushEvent({
+              ...base,
+              kind: 'FLUX_RECHARGE_STARS',
+              message: t.history.socket.rechargeStars(rechargers, winnerNames),
+              rechargedPlayers: summary.rechargedPlayerIds.map(id => {
+                const p = state.players.find(pl => pl.id === id);
+                return { pseudo: p?.pseudo ?? '?', color: p?.color ?? 'red' };
+              }),
+              rechargeStarWinners: winners,
+            });
+          } else {
+            // Recharge mais aucun gagnant (tous en doublon)
+            const winnerNames = '';
+            pushEvent({
+              ...base,
+              kind: 'FLUX_RECHARGE_STARS',
+              message: t.history.socket.rechargeStarsNoWinner(rechargers),
+              rechargedPlayers: summary.rechargedPlayerIds.map(id => {
+                const p = state.players.find(pl => pl.id === id);
+                return { pseudo: p?.pseudo ?? '?', color: p?.color ?? 'red' };
+              }),
+              rechargeStarWinners: [],
+            });
+          }
         }
 
         // Étoiles bonus immédiates (cartes -1/-2)
