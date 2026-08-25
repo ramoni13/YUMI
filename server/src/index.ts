@@ -20,11 +20,14 @@ const io = new Server(httpServer, {
   // Timeouts généreux pour éviter les déconnexions "transport error"
   pingTimeout: 30000,        // 30s sans réponse avant de couper (défaut: 20s)
   pingInterval: 10000,       // Ping toutes les 10s (défaut: 25s)
-  // Privilégier WebSocket natif (plus stable que le long-polling HTTP)
-  transports: ['websocket', 'polling'],
+  // NE PAS forcer les transports côté serveur :
+  // Render.com (et la plupart des reverse proxies) nécessite le handshake
+  // HTTP polling initial avant l'upgrade WebSocket.
+  // Le serveur doit accepter les deux sans ordre imposé.
+  // transports: ['websocket', 'polling'],  ← retiré volontairement
   // Taille max des messages (utile si les états de jeu sont volumineux)
   maxHttpBufferSize: 1e6,    // 1 MB
-  // Upgrade automatique polling → websocket
+  // Upgrade automatique polling → websocket (comportement par défaut, explicite ici)
   allowUpgrades: true,
   upgradeTimeout: 10000,
 });
