@@ -103,8 +103,39 @@ export function useSocket() {
     const s = getSocket();
     console.log('[useSocket] init — connected:', s.connected, 'id:', s.id);
 
+    // Flag pour distinguer la 1ère connexion des reconnexions
+    let isFirstConnect = true;
+
     s.on('connect', () => {
-      console.log('[useSocket] CONNECTE — id:', s.id);
+      console.log('[useSocket] CONNECTE — id:', s.id, '| firstConnect:', isFirstConnect);
+
+      if (isFirstConnect) {
+        // Première connexion : pas de rejoin à tenter
+        isFirstConnect = false;
+        return;
+      }
+
+      // ✅ Reconnexion : s.id est maintenant le nouveau id définitif
+      // C'est ici (et non dans 'reconnect') qu'on tente le rejoin
+      const session = loadSession();
+      if (session) {
+        console.log(`[useSocket] Reconnexion détectée — tentative de rejoin: room=${session.roomCode} oldId=${session.playerId} newId=${s.id}`);
+        s.emit(
+          'rejoin_room',
+          { roomCode: session.roomCode, oldPlayerId: session.playerId },
+          (res: { ok?: boolean; playerId?: string; gameMode?: string; error?: string }) => {
+            if (res.error) {
+              console.warn('[useSocket] Rejoin échoué:', res.error, '— session effacée');
+              clearSession();
+              useGameStore.getState().reset();
+            } else if (res.playerId) {
+              console.log('[useSocket] Rejoin réussi — nouveau playerId:', res.playerId);
+              useGameStore.getState().setPlayerId(res.playerId);
+              saveSession({ ...session, playerId: res.playerId });
+            }
+          }
+        );
+      }
     });
 
     s.on('connect_error', (err) => {
@@ -123,28 +154,8 @@ export function useSocket() {
     });
 
     s.on('reconnect', (attempt) => {
-      console.log(`[useSocket] RECONNECTE après ${attempt} tentative(s) — nouveau id: ${s.id}`);
-
-      // ⭐ Tentative de reprise de session automatique
-      const session = loadSession();
-      if (session) {
-        console.log(`[useSocket] Tentative de rejoin: room=${session.roomCode} oldId=${session.playerId}`);
-        s.emit('rejoin_room', { roomCode: session.roomCode, oldPlayerId: session.playerId },
-          (res: { ok?: boolean; playerId?: string; gameMode?: string; error?: string }) => {
-            if (res.error) {
-              console.warn('[useSocket] Rejoin échoué:', res.error);
-              // La session est invalide (partie terminée, serveur redémarré...)
-              clearSession();
-              useGameStore.getState().reset();
-            } else if (res.playerId) {
-              console.log('[useSocket] Rejoin réussi — nouveau playerId:', res.playerId);
-              // Mettre à jour le playerId dans le store avec le nouveau socket.id
-              useGameStore.getState().setPlayerId(res.playerId);
-              saveSession({ ...session, playerId: res.playerId });
-            }
-          }
-        );
-      }
+      // NOTE : à ce stade s.id n'est PAS encore le nouveau id — ne pas émettre ici
+      console.log(`[useSocket] Reconnexion réussie après ${attempt} tentative(s) — en attente de 'connect'`);
     });
 
     s.on('reconnect_attempt', (attempt) => {
