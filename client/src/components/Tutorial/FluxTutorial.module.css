@@ -1,0 +1,56 @@
+/* ============================================================
+   YUMI — FluxTutorial : surcharges visuelles pour le mode Flux
+   ============================================================ */
+
+/* ── Modal avec teinte cyan/bleu Flux ───────────────────────── */
+.fluxModal {
+  background: linear-gradient(160deg, #0c1a3a 0%, #0e3460 55%, #0c1a3a 100%);
+  border-color: rgba(56, 189, 248, 0.25);
+  box-shadow:
+    0 25px 60px rgba(0, 0, 0, 0.65),
+    0 0 0 1px rgba(56, 189, 248, 0.08),
+    0 0 40px rgba(56, 189, 248, 0.06);
+}
+
+/* ── Badge "MODE FLUX" en haut au centre ─────────────────────── */
+.fluxBadge {
+  position: absolute;
+  top: 1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(56, 189, 248, 0.12);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  color: #38bdf8;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  padding: 0.25rem 0.75rem;
+  border-radius: 20px;
+  white-space: nowrap;
+  z-index: 3;
+}
+
+/* ── Titre des slides en cyan ────────────────────────────────── */
+.fluxTitle {
+  color: #38bdf8 !important;
+  text-shadow: 0 0 20px rgba(56, 189, 248, 0.35);
+}
+
+/* ── Barre de progression cyan ───────────────────────────────── */
+.fluxProgressActive {
+  background: #38bdf8 !important;
+}
+
+.fluxProgressDone {
+  background: rgba(56, 189, 248, 0.35) !important;
+}
+
+/* ── Bouton Suivant cyan ─────────────────────────────────────── */
+.fluxBtnNext {
+  background: #0ea5e9;
+  color: white;
+}
+
+.fluxBtnNext:hover {
+  background: #0284c7;
+}
