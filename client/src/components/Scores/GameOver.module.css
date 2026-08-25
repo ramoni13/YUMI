@@ -67,7 +67,13 @@
 }
 
 .cardScore { color: #c7d2fe; }
-.starScore { color: #fbbf24; }
+/* Étoiles Recharge : +1 pt chacune + majorité */
+.rechargeStarScore {
+  color: #34d399;
+  font-weight: 700;
+}
+/* Étoiles cartes Score : majorité uniquement, pas de +1 pt */
+.starScore { color: rgba(251, 191, 36, 0.6); font-size: 0.8rem; }
 .starBonus {
   color: #f59e0b;
   font-weight: 700;
