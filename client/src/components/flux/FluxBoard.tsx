@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useGameStore } from '../../store/gameStore';
 import { useT } from '../../hooks/useT';
 import { ScoreCardDisplay } from '../Card/ScoreCardDisplay';
+import { SpecialCardInfo } from '../Card/SpecialCardInfo';
 import { PlayerCard } from '../Card/PlayerCard';
 import { OpponentPanel } from '../Player/OpponentPanel';
 import { HistoryPanel } from '../History/HistoryPanel';
@@ -10,7 +11,7 @@ import { RECHARGE_CARD_VALUE } from '../../types';
 import styles from './FluxBoard.module.css';
 
 export function FluxBoard() {
-  const { gameState, privateInfo, playerId, lastReveal } = useGameStore();
+  const { gameState, privateInfo, playerId, lastReveal, oracleCards, setOracleCards } = useGameStore();
   const t = useT();
   const [selectedCard, setSelectedCard] = useState<number | null>(null);
 
@@ -30,6 +31,18 @@ export function FluxBoard() {
 
   const isSwapPhase = phase === 'SPECIAL_EFFECT' && gameState.swapRequestPlayerId === playerId;
   const isStealPhase = phase === 'SPECIAL_EFFECT' && gameState.stealRequestPlayerId === playerId;
+
+  // Effets spéciaux où le joueur local doit choisir une cible
+  const isEclipsePhase = phase === 'SPECIAL_ECLIPSE' && gameState.eclipseRequestPlayerId === playerId;
+  const isPiochePhase = phase === 'SPECIAL_PIOCHE' && gameState.piocheRequestPlayerId === playerId;
+  const isVerrouPhase = phase === 'SPECIAL_VERROU' && gameState.verrouRequestPlayerId === playerId;
+  const isRevelationPhase = phase === 'SPECIAL_REVELATION' && gameState.revelationRequestPlayerId === playerId;
+  const isTaxePhase = phase === 'SPECIAL_TAXE' && gameState.taxeRequestPlayerId === playerId;
+
+  // Carte mystère du joueur local (valeur manquante)
+  const myMysteryCard = privateInfo?.missingCardValue;
+  // Le joueur doit jouer sa carte mystère (effet MYSTÈRE)
+  const mustPlayMystery = myPlayer?.deferred?.mustPlayMysteryCard ?? false;
 
   const handleSelect = (value: number) => {
     if (!canPlay || hasPlayed) return;
@@ -64,32 +77,129 @@ export function FluxBoard() {
     });
   };
 
+  const handleEclipseTarget = (targetId: string) => {
+    getSocket().emit('eclipse_target', { targetPlayerId: targetId }, (res: any) => {
+      if ('error' in res) console.error(res.error);
+    });
+  };
+
+  const handlePiocheTarget = (targetId: string) => {
+    getSocket().emit('pioche_target', { targetPlayerId: targetId }, (res: any) => {
+      if ('error' in res) console.error(res.error);
+    });
+  };
+
+  const handleVerrouTarget = (targetId: string) => {
+    getSocket().emit('verrou_target', { targetPlayerId: targetId }, (res: any) => {
+      if ('error' in res) console.error(res.error);
+    });
+  };
+
+  const handleRevelationTarget = (targetId: string) => {
+    getSocket().emit('revelation_target', { targetPlayerId: targetId }, (res: any) => {
+      if ('error' in res) console.error(res.error);
+    });
+  };
+
+  const handleTaxeTarget = (targetId: string) => {
+    getSocket().emit('taxe_target', { targetPlayerId: targetId }, (res: any) => {
+      if ('error' in res) console.error(res.error);
+    });
+  };
+
+  // ORACLE : le joueur a vu les cartes, il clique OK pour continuer
+  const handleOracleOk = () => {
+    setOracleCards(null);
+    getSocket().emit('oracle_ok');
+  };
+
+  // Jouer la carte mystère (effet MYSTÈRE)
+  const handlePlayMystery = () => {
+    if (!myMysteryCard || hasPlayed) return;
+    getSocket().emit('play_card', { cardValue: myMysteryCard }, (res: any) => {
+      if ('error' in res) console.error(res.error);
+    });
+  };
+
   const hand = privateInfo?.hand ?? [];
 
   return (
     <div className={styles.boardWrapper}>
       <div className={styles.board}>
 
-        {/* Header */}
+        {/* Header enrichi */}
         <div className={styles.header}>
           <div className={styles.trickInfo}>
             Mène {gameState.currentTrick}
           </div>
+
+          {/* Stats du joueur local au centre */}
+          {myPlayer && (
+            <div className={styles.headerStats}>
+              {privateInfo?.mysteryCard !== undefined && (
+                <span className={styles.headerMystery}>
+                  🔍 {privateInfo.mysteryCardOwner} : <strong>{privateInfo.mysteryCard}</strong>
+                </span>
+              )}
+              <span className={styles.headerStat}>⭐ {myPlayer.stars}</span>
+              {myPlayer.bonusPoints > 0 && (
+                <span className={styles.headerStat}>🪙 {myPlayer.bonusPoints}</span>
+              )}
+              <span className={styles.headerStat}>🃏 {myPlayer.scorePileCount}</span>
+              {myPlayer.topScoreCard && (
+                <div
+                  className={`${styles.headerTopCard} ${isSwapPhase && gameState.swapEligibleTargets.includes(playerId ?? '') ? styles.swapSelf : ''}`}
+                  onClick={() => {
+                    if (isSwapPhase && gameState.swapEligibleTargets.includes(playerId ?? '')) {
+                      handleSwapTarget(playerId ?? '');
+                    }
+                  }}
+                  title="Ma dernière carte Score"
+                >
+                  <ScoreCardDisplay card={myPlayer.topScoreCard} size="sm" />
+                </div>
+              )}
+              {myMysteryCard !== undefined && (
+                <div
+                  className={`${styles.headerMysteryCard} ${mustPlayMystery && !hasPlayed ? styles.mysteryCardPlayable : ''}`}
+                  onClick={mustPlayMystery && !hasPlayed ? handlePlayMystery : undefined}
+                  title={mustPlayMystery ? 'Cliquer pour jouer votre carte mystère' : 'Votre carte mystère'}
+                >
+                  <span className={styles.headerMysteryLabel}>🔒</span>
+                  <span className={styles.headerMysteryVal}>{myMysteryCard}</span>
+                  {mustPlayMystery && !hasPlayed && <span className={styles.headerMysteryHint}>jouer</span>}
+                </div>
+              )}
+            </div>
+          )}
+
           <div className={styles.deckCount}>
-            🃏 {gameState.scoreDeckCount} cartes restantes
+            🃏 {gameState.scoreDeckCount} restantes
           </div>
         </div>
 
         {/* Adversaires */}
+        {/* hideCurrentCard=true pendant CARD_SELECTION : masque uniquement la carte de la mène en cours */}
         <div className={styles.opponents}>
           {opponents.map(p => (
             <OpponentPanel
               key={p.id}
               player={p}
+              hideCurrentCard={phase === 'CARD_SELECTION'}
               isSwapTarget={isSwapPhase && gameState.swapEligibleTargets.includes(p.id)}
               onSwapSelect={handleSwapTarget}
               isStealTarget={isStealPhase && gameState.stealEligibleTargets.includes(p.id)}
               onStealSelect={handleStealTarget}
+              isEclipseTarget={isEclipsePhase && gameState.eclipseEligibleTargets.includes(p.id)}
+              onEclipseSelect={handleEclipseTarget}
+              isPiocheTarget={isPiochePhase && gameState.piocheEligibleTargets.includes(p.id)}
+              onPiocheSelect={handlePiocheTarget}
+              isVerrouTarget={isVerrouPhase && gameState.verrouEligibleTargets.includes(p.id)}
+              onVerrouSelect={handleVerrouTarget}
+              isRevelationTarget={isRevelationPhase && gameState.revelationEligibleTargets.includes(p.id)}
+              onRevelationSelect={handleRevelationTarget}
+              isTaxeTarget={isTaxePhase && gameState.taxeEligibleTargets.includes(p.id)}
+              onTaxeSelect={handleTaxeTarget}
             />
           ))}
         </div>
@@ -97,15 +207,20 @@ export function FluxBoard() {
         {/* Zone centrale */}
         <div className={styles.center}>
 
-          {/* Carte Score active */}
+          {/* Carte Score active + pavé d'info si carte spéciale */}
           {gameState.currentScoreCard && (
-            <div className={styles.activeCard}>
-              <div className={styles.activeLabel}>Carte Score</div>
-              <ScoreCardDisplay
-                card={gameState.currentScoreCard}
-                size="lg"
-                highlighted
-              />
+            <div className={styles.activeCardRow}>
+              <div className={styles.activeCard}>
+                <div className={styles.activeLabel}>Carte Score</div>
+                <ScoreCardDisplay
+                  card={gameState.currentScoreCard}
+                  size="lg"
+                  highlighted
+                />
+              </div>
+              {gameState.currentScoreCard.specialEffect && (
+                <SpecialCardInfo card={gameState.currentScoreCard} />
+              )}
             </div>
           )}
 
@@ -117,7 +232,7 @@ export function FluxBoard() {
                 const isRecharge = value === RECHARGE_CARD_VALUE;
                 const cancelled = !isRecharge && (gameState.cancelledValues ?? []).includes(value);
                 const isWinner = p.id === gameState.trickWinnerId;
-                const gotStar = (gameState.rechargeStarWinners ?? []).includes(p.id);
+                const gotStar = (gameState.bonusPointWinners ?? []).includes(p.id);
                 const didRecharge = (gameState.rechargedPlayerIds ?? []).includes(p.id);
                 return (
                   <div key={p.id} className={styles.playedCardSlot}>
@@ -156,26 +271,31 @@ export function FluxBoard() {
                   {gameState.players.find(p => p.id === gameState.trickWinnerId)?.pseudo} remporte la carte !
                 </span>
               ) : null}
-              {(gameState.rechargeStarWinners ?? []).length > 0 && (
+                            {(gameState.bonusPointWinners ?? []).length > 0 && (
                 <div className={styles.starInfo}>
-                  ⭐×{gameState.lastTrickSummary?.rechargeStarCount ?? 1} Recharge — 
-                  {(gameState.rechargeStarWinners ?? [])
-                    .map(id => gameState.players.find(p => p.id === id)?.pseudo)
+                  🪙×{gameState.lastTrickSummary?.bonusPointCount ?? 1} Recharge —
+                  {(gameState.bonusPointWinners ?? [])
+                    .map((id: string) => gameState.players.find(p => p.id === id)?.pseudo)
                     .join(', ')}
                 </div>
               )}
             </div>
           )}
 
-          {/* Infos privées — carte mystère après Recharge */}
-          {privateInfo?.mysteryCard !== undefined && (
-            <div className={styles.privateInfo}>
-              🔍 Carte mystère de {privateInfo.mysteryCardOwner} : <strong>{privateInfo.mysteryCard}</strong>
-            </div>
-          )}
-          {privateInfo?.missingCardValue !== undefined && (
-            <div className={styles.privateInfo}>
-              ⚠️ Votre carte manquante : <strong>{privateInfo.missingCardValue}</strong>
+          {/* DEVOILEMENT : rivière des prochaines cartes Score */}
+          {gameState.revealedUpcoming && gameState.revealedUpcoming.length > 0 && (
+            <div className={styles.revealedUpcoming}>
+              <div className={styles.revealedUpcomingLabel}>
+                📢 Prochaines cartes Score révélées :
+              </div>
+              <div className={styles.revealedUpcomingCards}>
+                {gameState.revealedUpcoming.map((card, i) => (
+                  <div key={i} className={styles.revealedUpcomingSlot}>
+                    <span className={styles.revealedUpcomingNum}>#{i + 1}</span>
+                    <ScoreCardDisplay card={card} size="sm" />
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 
@@ -198,19 +318,19 @@ export function FluxBoard() {
         {/* Ma main */}
         {myPlayer && privateInfo && (
           <div className={styles.myZone}>
-            <div className={styles.myStats}>
-              <span title="Étoiles Recharge (+1 pt chacune) + Étoiles cartes Score (majorité)">
-                ⭐ {myPlayer.rechargeStars + myPlayer.stars} étoile(s)
-                {myPlayer.rechargeStars > 0 && (
-                  <span style={{ fontSize: '0.7em', opacity: 0.7, marginLeft: '0.3em' }}>
-                    ({myPlayer.rechargeStars}🔄 + {myPlayer.stars}🃏)
-                  </span>
-                )}
-              </span>
-              <span>🃏 {myPlayer.scorePileCount} carte(s) Score</span>
-              {myPlayer.topScoreCard && (
-                <span>Dernière : {myPlayer.topScoreCard.displayValue}</span>
-              )}
+
+            {/* Ligne : historique + carte mystère côte à côte */}
+            <div className={styles.myInfoRow}>
+              {myPlayer.playedHistory && myPlayer.playedHistory.length > 0 && (
+                <div className={styles.playedHistoryZone}>
+                  <span className={styles.playedHistoryLabel}>Déjà jouées :</span>
+                  <div className={styles.playedHistoryCards}>
+                    {myPlayer.playedHistory.map((v: number, i: number) => (
+                      <span key={i} className={styles.playedHistoryCard}>{v}</span>
+                    ))}
+                  </div>
+                </div>
+            )}
             </div>
 
             {/* Cartes valeur */}
@@ -228,29 +348,64 @@ export function FluxBoard() {
               ))}
             </div>
 
-            {/* Bouton jouer */}
-            {selectedCard !== null && !hasPlayed && canPlay && (
-              <button className={styles.playBtn} onClick={handlePlay}>
-                Jouer le {selectedCard}
-              </button>
-            )}
-
-            {/* Bouton Recharge */}
-            {canPlay && !hasPlayed && (
-              <button className={styles.rechargeBtn} onClick={handleRecharge}>
-                🔄 Recharge
-              </button>
-            )}
-
-            {hasPlayed && (
-              <div className={styles.waitingMsg}>En attente des autres joueurs…</div>
-            )}
+            {/* Boutons action */}
+            <div className={styles.actionRow}>
+              {selectedCard !== null && !hasPlayed && canPlay && (
+                <button className={styles.playBtn} onClick={handlePlay}>
+                  Jouer le {selectedCard}
+                </button>
+              )}
+              {canPlay && !hasPlayed && (
+                <button className={styles.rechargeBtn} onClick={handleRecharge}>
+                  🔄 Recharge
+                </button>
+              )}
+              {hasPlayed && (
+                <div className={styles.waitingMsg}>En attente des autres joueurs…</div>
+              )}
+            </div>
           </div>
         )}
       </div>
 
       {/* Panneau historique */}
       <HistoryPanel />
+
+      {/* Modal ORACLE — visible uniquement pour le gagnant */}
+      {oracleCards && oracleCards.length > 0 && (
+        <div className={styles.oracleOverlay}>
+          <div className={styles.oracleModal}>
+            <div className={styles.oracleHeader}>
+              <span className={styles.oracleIcon}>👁️</span>
+              <div className={styles.oracleTitleBlock}>
+                <span className={styles.oracleTitle}>Oracle</span>
+                <span className={styles.oracleSubtitle}>Vision secrète — vous seul voyez ces cartes</span>
+              </div>
+            </div>
+
+            <div className={styles.oracleDivider} />
+
+            <span className={styles.oracleLabel}>Les 3 prochaines cartes Score :</span>
+
+            <div className={styles.oracleCards}>
+              {oracleCards.map((card, i) => (
+                <div key={i} className={styles.oracleCardSlot}>
+                  <span className={styles.oracleCardNum}>#{i + 1}</span>
+                  <ScoreCardDisplay card={card} size="md" />
+                </div>
+              ))}
+            </div>
+
+            <p className={styles.oracleWarning}>
+              Ces informations sont confidentielles. Les autres joueurs ne les voient pas.
+            </p>
+
+            <button className={styles.oracleOkBtn} onClick={handleOracleOk}>
+              J’ai mémorisé — Continuer
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
