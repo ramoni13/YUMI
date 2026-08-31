@@ -23,16 +23,14 @@ export function ScoreCardDisplay({ card, size = 'md', highlighted, discarded }: 
   // - Spéciale rouge (type negative) → rouge
   // - Numérique positive → vert
   // - Numérique négative → rouge
-  const typeClass = card.specialEffect
-    ? card.type === 'positive' ? styles.specialGreen : styles.specialRed
-    : card.value > 0
-    ? styles.positive
-    : styles.negative;
+  // Couleur : gain '+' = vert, gain '-' = rouge
+  const typeClass = card.gain === '+' ? styles.positive : styles.negative;
 
-  // Affichage de la valeur : séparer les étoiles sur une 2ème ligne si besoin
-  const hasStars = card.bonusStars > 0;
-  const starStr = '⭐'.repeat(card.bonusStars);
-  const baseValue = card.displayValue.replace(/⭐/g, '').trim();
+  const isSpecial = card.specialEffect !== null;
+  const hasStars = card.bonusStars !== 0;
+  const starStr = '⭐'.repeat(Math.abs(card.bonusStars));
+  // Affichage de la valeur score (ex: "+1", "-3", "0") — utile surtout pour les spéciales
+  const scoreStr = card.value > 0 ? `+${card.value}` : card.value === 0 ? '' : `${card.value}`;
 
   return (
     <div
@@ -44,15 +42,30 @@ export function ScoreCardDisplay({ card, size = 'md', highlighted, discarded }: 
         ${discarded ? styles.discarded : ''}
       `}
     >
-      {hasStars ? (
-        <>
-          <span className={styles.cardValue}>{baseValue}</span>
-          <span className={styles.cardStars}>{starStr}</span>
-        </>
-      ) : (
-        <span className={styles.cardValue}>{card.displayValue}</span>
+      {/* Nom de la carte (centre) */}
+      <span className={styles.cardName}>{card.displayName}</span>
+
+      {/* Score de la carte (en bas, visible surtout pour les spéciales) */}
+      {isSpecial && scoreStr !== '' && (
+        <span className={styles.cardScore}>{scoreStr}</span>
       )}
-      {card.appliedDouble && <span className={styles.doubledBadge}>×2✓</span>}
+
+      {/* Étoiles bonus */}
+      {hasStars && (
+        <span className={styles.cardStars}>
+          {card.bonusStars < 0 ? '-' : '+'}{starStr}
+        </span>
+      )}
+
+      {/* Points bonus immédiats */}
+      {card.bonusPoints > 0 && (
+        <span className={styles.bonusBadge}>+{card.bonusPoints}🪙</span>
+      )}
+
+      {/* Indicateur doublement appliqué */}
+      {card.appliedDouble && (
+        <span className={styles.doubledBadge}>×2✓</span>
+      )}
     </div>
   );
 }
