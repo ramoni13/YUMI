@@ -9,9 +9,10 @@ import styles from './Player.module.css';
 interface MyHandProps {
   hand: number[];
   color: PlayerColor;
+  playedHistory?: number[]; // Cartes déjà jouées lors des mènes précédentes
 }
 
-export function MyHand({ hand, color }: MyHandProps) {
+export function MyHand({ hand, color, playedHistory = [] }: MyHandProps) {
   const { gameState, playerId } = useGameStore();
   const t = useT();
   const [selectedCard, setSelectedCard] = useState<number | null>(null);
@@ -66,6 +67,18 @@ export function MyHand({ hand, color }: MyHandProps) {
 
       {hasPlayed && (
         <div className={styles.waitingMsg}>{t.hand.waiting}</div>
+      )}
+
+      {/* Cartes déjà jouées lors des mènes précédentes */}
+      {playedHistory.length > 0 && (
+        <div className={styles.playedHistory}>
+          <span className={styles.playedHistoryLabel}>Déjà jouées :</span>
+          <div className={styles.playedHistoryCards}>
+            {playedHistory.map((v, i) => (
+              <span key={i} className={`${styles.playedHistoryCard} ${styles.playedHistoryCardMine}`}>{v}</span>
+            ))}
+          </div>
+        </div>
       )}
     </div>
   );
