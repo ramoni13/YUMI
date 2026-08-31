@@ -36,7 +36,20 @@
 }
 
 .cardBack  { font-size: 1.5em; opacity: 0.4; }
-.cardValue { font-size: 1em; line-height: 1.1; }
+/* Nom principal de la carte (ex: "+5", "VOL", "MYSTÈRE") */
+.cardName  { font-size: 0.95em; font-weight: 900; line-height: 1.1; text-align: center; }
+/* Alias pour compatibilité */
+.cardValue { font-size: 0.95em; font-weight: 900; line-height: 1.1; text-align: center; }
+/* Score de la carte spéciale (ex: "+1", "-3") */
+.cardScore {
+  font-size: 0.65em;
+  font-weight: 700;
+  opacity: 0.85;
+  background: rgba(0,0,0,0.25);
+  padding: 1px 4px;
+  border-radius: 4px;
+  margin-top: 2px;
+}
 .cardStars { font-size: 0.6em; line-height: 1.2; letter-spacing: 0.05em; }
 
 .doubledBadge {
@@ -45,6 +58,16 @@
   right: 4px;
   font-size: 0.5rem;
   background: rgba(0,0,0,0.4);
+  padding: 1px 3px;
+  border-radius: 4px;
+}
+
+.bonusBadge {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  font-size: 0.5rem;
+  background: rgba(0,0,0,0.35);
   padding: 1px 3px;
   border-radius: 4px;
 }
