@@ -1,14 +1,12 @@
-import { ScoreCard, FinalScore, Player } from '../types';
+import { ScoreCard, FinalScore, Player, STAR_MAJORITY_BONUS } from '../types';
 
 // ============================================================
 // Calcul du score d'un joueur à partir de sa pile de cartes Score
-// Les effets ×2 ont déjà été appliqués (appliedDouble = true)
+// Toutes les cartes ont une valeur (y compris les spéciales)
+// Les effets ×2 ont déjà été appliqués en cours de partie
 // ============================================================
 export function computeScoreFromPile(pile: ScoreCard[]): number {
-  return pile.reduce((total, card) => {
-    if (card.specialEffect !== null) return total; // spéciales = 0 pts
-    return total + card.value;
-  }, 0);
+  return pile.reduce((total, card) => total + card.value, 0);
 }
 
 // ============================================================
@@ -69,75 +67,76 @@ export function applySwap(
 }
 
 // ============================================================
-// Bonus étoile de fin de manche
+// Bonus étoile de fin de manche (mode classic)
 // Retourne les IDs des joueurs ayant une valeur unique
 // ============================================================
 export function computeBonusStars(
   lastCards: Record<string, number>
 ): string[] {
-  // Compter les occurrences de chaque valeur
   const valueCounts = new Map<number, number>();
   for (const value of Object.values(lastCards)) {
     valueCounts.set(value, (valueCounts.get(value) ?? 0) + 1);
   }
-
-  // Joueurs avec une valeur unique
   return Object.entries(lastCards)
     .filter(([, value]) => valueCounts.get(value) === 1)
     .map(([playerId]) => playerId);
 }
 
-const STAR_BONUS = 5; // Bonus pour le joueur majoritaire en étoiles
+// ============================================================
+// Applique la TAXE : vole jusqu'à 2 points bonus à une cible
+// Retourne le nombre réellement volé
+// ============================================================
+export function applyTaxe(
+  thief: Player,
+  victim: Player,
+  amount: number = 2
+): number {
+  const stolen = Math.min(amount, victim.bonusPoints);
+  victim.bonusPoints -= stolen;
+  thief.bonusPoints += stolen;
+  return stolen;
+}
 
 // ============================================================
 // Calcul du classement final
 //
-// Règles étoiles :
-//   stars         = étoiles cartes Score (-1⭐, -2⭐⭐, VOL)
-//                   → comptent pour la majorité uniquement (pas de +1 pt)
-//   rechargeStars = étoiles Recharge
-//                   → comptent pour la majorité ET +1 pt chacune
-//   totalStars    = stars + rechargeStars → détermine le majoritaire
-//   starBonus     = +5 pts pour le joueur avec le plus de totalStars
-//   totalScore    = scoreFromCards + rechargeStars + starBonus
+// Score total = scoreFromCards + bonusPoints + starBonus
+//   scoreFromCards = somme des valeurs de la pile Score
+//   bonusPoints    = jetons bonus cumulés en cours de partie
+//   starBonus      = +5 pts pour le joueur avec le plus d'étoiles
+//                    (en cas d'égalité d'étoiles, tous les ex-aequo reçoivent le bonus)
 // ============================================================
 export function computeFinalScores(players: Player[]): FinalScore[] {
-  // 1. Calculer le total d'étoiles de chaque joueur (les deux sources)
-  const totals = players.map(p => p.stars + p.rechargeStars);
-  const maxTotalStars = Math.max(...totals);
+  // 1. Trouver le maximum d'étoiles
+  const maxStars = Math.max(...players.map(p => p.stars));
 
-  // 2. Joueurs majoritaires (peuvent être plusieurs en cas d'égalité)
+  // 2. Joueurs majoritaires (tous ceux à égalité au maximum)
   const starBonusWinners = new Set(
-    players
-      .filter(p => (p.stars + p.rechargeStars) === maxTotalStars)
-      .map(p => p.id)
+    players.filter(p => p.stars === maxStars).map(p => p.id)
   );
 
   // 3. Calculer les scores
   const scores: FinalScore[] = players.map(player => {
     const scoreFromCards = computeScoreFromPile(player.scorePile);
-    const totalStars = player.stars + player.rechargeStars;
-    const starBonus = starBonusWinners.has(player.id) ? STAR_BONUS : 0;
-    // rechargeStars valent +1 pt chacune ; stars cartes ne valent rien
-    const totalScore = scoreFromCards + player.rechargeStars + starBonus;
+    const starBonus = starBonusWinners.has(player.id) ? STAR_MAJORITY_BONUS : 0;
+    const totalScore = scoreFromCards + player.bonusPoints + starBonus;
     return {
       playerId: player.id,
       pseudo: player.pseudo,
       color: player.color,
       scoreFromCards,
+      bonusPoints: player.bonusPoints,
       stars: player.stars,
-      rechargeStars: player.rechargeStars,
-      totalStars,
       starBonus,
       totalScore,
       rank: 0,
     };
   });
 
-  // 4. Trier par score total décroissant, puis par totalStars en cas d'égalité
+  // 4. Trier par score total décroissant, puis par étoiles en cas d'égalité
   scores.sort((a, b) => {
     if (b.totalScore !== a.totalScore) return b.totalScore - a.totalScore;
-    return b.totalStars - a.totalStars;
+    return b.stars - a.stars;
   });
 
   // 5. Attribuer les rangs (ex-aequo possible)
@@ -146,7 +145,7 @@ export function computeFinalScores(players: Player[]): FinalScore[] {
     if (i > 0) {
       const prev = scores[i - 1];
       const curr = scores[i];
-      if (curr.totalScore === prev.totalScore && curr.totalStars === prev.totalStars) {
+      if (curr.totalScore === prev.totalScore && curr.stars === prev.stars) {
         scores[i].rank = prev.rank;
       } else {
         rank = i + 1;
