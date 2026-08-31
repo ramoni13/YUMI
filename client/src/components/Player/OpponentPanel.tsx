@@ -16,20 +16,50 @@ function isBot(playerId: string): boolean {
 
 interface OpponentPanelProps {
   player: PublicPlayer;
+  /** Si true, masque la dernière carte jouée (mène en cours, avant révélation) */
+  hideCurrentCard?: boolean;
   isSwapTarget?: boolean;
   onSwapSelect?: (id: string) => void;
   isStealTarget?: boolean;
   onStealSelect?: (id: string) => void;
+  isEclipseTarget?: boolean;
+  onEclipseSelect?: (id: string) => void;
+  isPiocheTarget?: boolean;
+  onPiocheSelect?: (id: string) => void;
+  isVerrouTarget?: boolean;
+  onVerrouSelect?: (id: string) => void;
+  isRevelationTarget?: boolean;
+  onRevelationSelect?: (id: string) => void;
+  isTaxeTarget?: boolean;
+  onTaxeSelect?: (id: string) => void;
 }
 
-export function OpponentPanel({ player, isSwapTarget, onSwapSelect, isStealTarget, onStealSelect }: OpponentPanelProps) {
+export function OpponentPanel({
+  player, hideCurrentCard = false, isSwapTarget, onSwapSelect, isStealTarget, onStealSelect,
+  isEclipseTarget, onEclipseSelect, isPiocheTarget, onPiocheSelect,
+  isVerrouTarget, onVerrouSelect, isRevelationTarget, onRevelationSelect,
+  isTaxeTarget, onTaxeSelect,
+}: OpponentPanelProps) {
+  // Historique visible : toutes les cartes sauf la dernière si elle correspond
+  // à la mène en cours (le joueur a déjà joué mais la révélation n'a pas encore eu lieu)
+  const visibleHistory = hideCurrentCard && player.hasPlayedCard && player.playedHistory.length > 0
+    ? player.playedHistory.slice(0, -1)  // masquer uniquement la dernière carte
+    : player.playedHistory;
   const t = useT();
   const bot = isBot(player.id);
-  const isClickable = (isSwapTarget && !!onSwapSelect) || (isStealTarget && !!onStealSelect);
+  const isClickable = (isSwapTarget && !!onSwapSelect) || (isStealTarget && !!onStealSelect)
+    || (isEclipseTarget && !!onEclipseSelect) || (isPiocheTarget && !!onPiocheSelect)
+    || (isVerrouTarget && !!onVerrouSelect) || (isRevelationTarget && !!onRevelationSelect)
+    || (isTaxeTarget && !!onTaxeSelect);
 
   const handleClick = () => {
     if (isSwapTarget && onSwapSelect) onSwapSelect(player.id);
     else if (isStealTarget && onStealSelect) onStealSelect(player.id);
+    else if (isEclipseTarget && onEclipseSelect) onEclipseSelect(player.id);
+    else if (isPiocheTarget && onPiocheSelect) onPiocheSelect(player.id);
+    else if (isVerrouTarget && onVerrouSelect) onVerrouSelect(player.id);
+    else if (isRevelationTarget && onRevelationSelect) onRevelationSelect(player.id);
+    else if (isTaxeTarget && onTaxeSelect) onTaxeSelect(player.id);
   };
 
   return (
@@ -38,6 +68,7 @@ export function OpponentPanel({ player, isSwapTarget, onSwapSelect, isStealTarge
         ${styles.opponent}
         ${isSwapTarget ? styles.swapTarget : ''}
         ${isStealTarget ? styles.stealTarget : ''}
+        ${isEclipseTarget || isPiocheTarget || isVerrouTarget || isRevelationTarget || isTaxeTarget ? styles.specialTarget : ''}
         ${bot ? styles.botOpponent : ''}
       `}
       style={{ borderColor: COLOR_HEX[player.color] }}
@@ -51,7 +82,8 @@ export function OpponentPanel({ player, isSwapTarget, onSwapSelect, isStealTarge
       </div>
 
       <div className={styles.opponentStats}>
-        <span className={styles.stars} title="Étoiles totales (cartes + Recharge)">⭐ {player.stars + player.rechargeStars}</span>
+        <span className={styles.stars} title="Étoiles totales">⭐ {player.stars}</span>
+        {player.bonusPoints > 0 && <span className={styles.bonus} title="Points bonus">🪙 {player.bonusPoints}</span>}
         <span className={styles.handCount}>🃏 {player.handCount}</span>
         {player.hasPlayedCard && <span className={styles.played}>✓</span>}
       </div>
@@ -67,12 +99,26 @@ export function OpponentPanel({ player, isSwapTarget, onSwapSelect, isStealTarge
         )}
       </div>
 
-      {isSwapTarget && (
-        <div className={styles.swapOverlay}>{t.opponent.swapOverlay}</div>
+      {/* Cartes jouées lors des mènes précédentes (utiles pour la déduction).
+          La carte de la mène en cours est masquée jusqu'à la révélation. */}
+      {visibleHistory && visibleHistory.length > 0 && (
+        <div className={styles.playedHistory}>
+          <span className={styles.playedHistoryLabel}>Jouées :</span>
+          <div className={styles.playedHistoryCards}>
+            {visibleHistory.map((v, i) => (
+              <span key={i} className={styles.playedHistoryCard}>{v}</span>
+            ))}
+          </div>
+        </div>
       )}
-      {isStealTarget && (
-        <div className={styles.stealOverlay}>{t.opponent.stealOverlay}</div>
-      )}
+
+      {isSwapTarget && <div className={styles.swapOverlay}>{t.opponent.swapOverlay}</div>}
+      {isStealTarget && <div className={styles.stealOverlay}>{t.opponent.stealOverlay}</div>}
+      {isEclipseTarget && <div className={styles.specialOverlay}>☄️ Donner ECLIPSE</div>}
+      {isPiocheTarget && <div className={styles.specialOverlay}>🎰 Piocher une carte</div>}
+      {isVerrouTarget && <div className={styles.specialOverlay}>🔒 Verrouiller</div>}
+      {isRevelationTarget && <div className={styles.specialOverlay}>🕵️ Révéler</div>}
+      {isTaxeTarget && <div className={styles.specialOverlay}>🧹 Taxer</div>}
     </div>
   );
 }
