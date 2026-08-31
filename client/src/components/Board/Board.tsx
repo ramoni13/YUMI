@@ -215,10 +215,10 @@ export function Board() {
             <span>{t.board.myStars(myPlayer.stars)}</span>
             <span>{t.board.myScorePile(myPlayer.scorePileCount)}</span>
             {myPlayer.topScoreCard && (
-              <span>{t.board.myLastCard(myPlayer.topScoreCard.displayValue)}</span>
+              <span>{t.board.myLastCard(myPlayer.topScoreCard.displayName)}</span>
             )}
           </div>
-          <MyHand hand={privateInfo.hand} color={myPlayer.color} />
+          <MyHand hand={privateInfo.hand} color={myPlayer.color} playedHistory={myPlayer.playedHistory} />
         </div>
       )}
     </div>
