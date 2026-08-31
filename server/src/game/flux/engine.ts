@@ -11,6 +11,8 @@ import {
   PLAYER_COLORS,
   PlayerColor,
   RECHARGE_CARD_VALUE,
+  DeferredEffects,
+  emptyDeferredEffects,
 } from '../../types';
 
 import {
@@ -25,45 +27,69 @@ import {
   applySwap,
   canApplyDouble,
   computeFinalScores,
+  applyTaxe,
 } from '../scoring';
 
 // ============================================================
 // Constantes mode flux
 // ============================================================
-
-// Toutes les cartes valeur de 1 à 8 (identique pour tous les joueurs)
 const FLUX_MAX_CARD = 8;
 
 // ============================================================
-// État interne complet du jeu flux (côté serveur)
+// État interne complet du jeu flux
 // ============================================================
 export interface FluxGameState {
   phase: GamePhase;
-  currentTrick: number;         // Numéro de la mène en cours (total depuis le début)
-  scoreDeck: ScoreCard[];       // Pioche Score (flux continu)
+  currentTrick: number;
+  scoreDeck: ScoreCard[];
   currentScoreCard: ScoreCard | null;
   players: Player[];
-  playedCards: Record<string, number | null>; // 0 = Recharge
-  // Carte mystère : rattachée à chaque Recharge individuelle
-  mysteryCards: Record<string, number>;       // joueur_id (voisin de droite) → valeur vue
-  mysteryCardOwners: Record<string, string>;  // joueur_id (voisin de droite) → pseudo du joueur pioché
-  missingCards: Record<string, number>;       // joueur_id (pioché) → valeur manquante
+  playedCards: Record<string, number | null>;
+  mysteryCards: Record<string, number>;       // voisin_id → valeur vue
+  mysteryCardOwners: Record<string, string>;  // voisin_id → pseudo du joueur pioché
+  missingCards: Record<string, number>;       // joueur_id → valeur manquante
   trickWinnerId: string | null;
   cancelledValues: number[];
   scoreCardDiscarded: boolean;
-  // Recharge
-  rechargedPlayerIds: string[];   // Joueurs ayant joué Recharge cette mène
-  rechargeStarWinners: string[];  // Joueurs ayant gagné une étoile (carte non annulée)
-  // Effets spéciaux
+  // Effets différés globaux
+  nextTrickInverted: boolean;      // INVERSION active pour la prochaine mène
+  mysteryTrickActive: boolean;     // MYSTÈRE actif pour la prochaine mène
+  revealedUpcoming: ScoreCard[];   // Cartes révélées par DÉVOILEMENT
+  // Effets spéciaux en attente (SWAP, STEAL existants)
   swapRequestPlayerId: string | null;
   swapEligibleTargets: string[];
   swapChosenA: string | null;
   stealRequestPlayerId: string | null;
   stealEligibleTargets: string[];
+  // Nouveaux effets spéciaux en attente
+  eclipseRequestPlayerId: string | null;
+  eclipseEligibleTargets: string[];
+  piocheRequestPlayerId: string | null;
+  piocheEligibleTargets: string[];
+  surchargeRequestPlayerId: string | null;  // séparé de pioche
+  surchargeEligibleTargets: string[];
+  verrouRequestPlayerId: string | null;
+  verrouEligibleTargets: string[];
+  revelationRequestPlayerId: string | null;
+  revelationEligibleTargets: string[];
+  taxeRequestPlayerId: string | null;
+  taxeEligibleTargets: string[];
+  // Résumés
   lastTrickSummary: TrickSummary | null;
   finalScores: FinalScore[] | null;
+  rechargedPlayerIds: string[];
+  bonusPointWinners: string[];
   swapTimeout: ReturnType<typeof setTimeout> | null;
   gameOptions: GameOptions;
+}
+
+// ============================================================
+// Génère une main complète 1 à 8 (mode flux)
+// ============================================================
+export function buildFluxHand(): number[] {
+  const hand: number[] = [];
+  for (let i = 1; i <= FLUX_MAX_CARD; i++) hand.push(i);
+  return hand;
 }
 
 // ============================================================
@@ -80,26 +106,25 @@ export function initFluxGame(
 
   const colors = shuffle([...PLAYER_COLORS]).slice(0, playerCount) as PlayerColor[];
 
-  // Construire les mains initiales avec carte mystère dès le début
-  // Chaque joueur repart avec 1–8 amputé d'une carte (voisin de droite la voit)
   const mysteryCards: Record<string, number> = {};
   const mysteryCardOwners: Record<string, string> = {};
   const missingCards: Record<string, number> = {};
 
-  // Créer d'abord les joueurs avec leur pseudo/couleur
   const gamePlayers: Player[] = players.map((p, i) => ({
     id: p.id,
     pseudo: p.pseudo,
     color: colors[i],
-    hand: [],   // rempli juste après
+    hand: [],
+    playedHistory: [],
     scorePile: [],
-    stars: 0,          // Étoiles cartes Score (majorité uniquement)
-    rechargeStars: 0,  // Étoiles Recharge (majorité + +1 pt chacune)
+    stars: 0,
+    bonusPoints: 0,
+    deferred: emptyDeferredEffects(),
     isReady: true,
     isConnected: true,
   }));
 
-  // Appliquer la carte mystère initiale pour chaque joueur
+  // Carte mystère initiale pour chaque joueur
   for (let i = 0; i < gamePlayers.length; i++) {
     const player = gamePlayers[i];
     const rightNeighborIndex = (i + 1) % gamePlayers.length;
@@ -113,10 +138,9 @@ export function initFluxGame(
     missingCards[player.id] = mysteryCard;
   }
 
-  // Paquet Score complet mélangé (30 cartes, aucune écartée en mode flux)
   const scoreDeck = shuffle(buildFullScoreDeck());
 
-  const state: FluxGameState = {
+  return {
     phase: 'SETUP',
     currentTrick: 0,
     scoreDeck,
@@ -129,31 +153,33 @@ export function initFluxGame(
     trickWinnerId: null,
     cancelledValues: [],
     scoreCardDiscarded: false,
-    rechargedPlayerIds: [],
-    rechargeStarWinners: [],
+    nextTrickInverted: false,
+    mysteryTrickActive: false,
+    revealedUpcoming: [],
     swapRequestPlayerId: null,
     swapEligibleTargets: [],
     swapChosenA: null,
     stealRequestPlayerId: null,
     stealEligibleTargets: [],
+    eclipseRequestPlayerId: null,
+    eclipseEligibleTargets: [],
+    piocheRequestPlayerId: null,
+    piocheEligibleTargets: [],
+    surchargeRequestPlayerId: null,
+    surchargeEligibleTargets: [],
+    verrouRequestPlayerId: null,
+    verrouEligibleTargets: [],
+    revelationRequestPlayerId: null,
+    revelationEligibleTargets: [],
+    taxeRequestPlayerId: null,
+    taxeEligibleTargets: [],
     lastTrickSummary: null,
     finalScores: null,
+    rechargedPlayerIds: [],
+    bonusPointWinners: [],
     swapTimeout: null,
     gameOptions,
   };
-
-  return state;
-}
-
-// ============================================================
-// Génère une main complète 1 à 8 (mode flux)
-// ============================================================
-export function buildFluxHand(): number[] {
-  const hand: number[] = [];
-  for (let i = 1; i <= FLUX_MAX_CARD; i++) {
-    hand.push(i);
-  }
-  return hand;
 }
 
 // ============================================================
@@ -161,9 +187,8 @@ export function buildFluxHand(): number[] {
 // ============================================================
 export function startFluxTrick(state: FluxGameState): FluxGameState {
   if (state.scoreDeck.length === 0) {
-    // Plus de cartes → fin de partie
-    state.phase = 'GAME_OVER';
     state.finalScores = computeFinalScores(state.players);
+    state.phase = 'GAME_OVER';
     return state;
   }
 
@@ -173,23 +198,44 @@ export function startFluxTrick(state: FluxGameState): FluxGameState {
   state.cancelledValues = [];
   state.scoreCardDiscarded = false;
   state.rechargedPlayerIds = [];
-  state.rechargeStarWinners = [];
+  state.bonusPointWinners = [];
   state.lastTrickSummary = null;
+  // NE PAS effacer revealedUpcoming ici : les cartes DEVOILEMENT restent visibles
+  // jusqu'à ce qu'elles soient toutes jouées (retirées au fur et à mesure dans startFluxTrick).
+  // Réinitialiser les effets spéciaux en attente
   state.swapRequestPlayerId = null;
   state.swapEligibleTargets = [];
   state.swapChosenA = null;
   state.stealRequestPlayerId = null;
   state.stealEligibleTargets = [];
+  state.eclipseRequestPlayerId = null;
+  state.eclipseEligibleTargets = [];
+  state.piocheRequestPlayerId = null;
+  state.piocheEligibleTargets = [];
+  state.surchargeRequestPlayerId = null;
+  state.surchargeEligibleTargets = [];
+  state.verrouRequestPlayerId = null;
+  state.verrouEligibleTargets = [];
+  state.revelationRequestPlayerId = null;
+  state.revelationEligibleTargets = [];
+  state.taxeRequestPlayerId = null;
+  state.taxeEligibleTargets = [];
 
   // Piocher la carte Score active
   state.currentScoreCard = state.scoreDeck.splice(0, 1)[0];
+  // Si cette carte faisait partie des cartes révélées par DEVOILEMENT, la retirer de la liste
+  if (state.revealedUpcoming.length > 0) {
+    state.revealedUpcoming = state.revealedUpcoming.filter(
+      c => c.id !== state.currentScoreCard!.id
+    );
+  }
   state.phase = 'CARD_SELECTION';
-
   return state;
 }
 
 // ============================================================
 // Jouer une carte (valeur 1-8) ou Recharge (valeur 0)
+// Gère les effets différés : forcedCard, forcedRecharge, mustPlayMysteryCard
 // ============================================================
 export function playFluxCard(
   state: FluxGameState,
@@ -199,33 +245,95 @@ export function playFluxCard(
   if (state.phase !== 'CARD_SELECTION') {
     return { ok: false, error: 'Phase incorrecte', state };
   }
-
   const player = state.players.find(p => p.id === playerId);
   if (!player) return { ok: false, error: 'Joueur introuvable', state };
-
   if (state.playedCards[playerId] !== undefined) {
     return { ok: false, error: 'Carte déjà jouée', state };
   }
 
-  if (cardValue === RECHARGE_CARD_VALUE) {
-    // Jouer la carte Recharge — toujours autorisé
+  const deferred = player.deferred;
+
+  // --- Effets différés prioritaires ---
+
+  // MYSTÈRE : doit jouer sa carte mystère
+  if (deferred.mustPlayMysteryCard) {
+    const mysteryVal = state.missingCards[playerId];
+    if (mysteryVal === undefined) return { ok: false, error: 'Carte mystère introuvable', state };
+    state.playedCards[playerId] = mysteryVal;
+    // La carte mystère n'est pas retirée de la main (elle n'y est pas)
+    player.deferred = { ...deferred, mustPlayMysteryCard: false };
+    return checkAllPlayed(state);
+  }
+
+  // SURCHARGE : doit jouer Recharge
+  if (deferred.forcedRecharge) {
+    if (cardValue !== RECHARGE_CARD_VALUE) {
+      return { ok: false, error: 'Vous devez jouer Recharge (effet SURCHARGE)', state };
+    }
     state.playedCards[playerId] = RECHARGE_CARD_VALUE;
-  } else {
-    // Jouer une carte valeur — doit être en main
+    player.deferred = { ...deferred, forcedRecharge: false };
+    return checkAllPlayed(state);
+  }
+
+  // PIOCHE : doit jouer la carte piochée par l'adversaire
+  if (deferred.forcedCard !== null) {
+    if (cardValue !== deferred.forcedCard) {
+      return { ok: false, error: `Vous devez jouer la carte ${deferred.forcedCard} (effet PIOCHE)`, state };
+    }
     if (!player.hand.includes(cardValue)) {
       return { ok: false, error: 'Carte non disponible', state };
     }
-    // Retirer la carte de la main
     player.hand = player.hand.filter(c => c !== cardValue);
+    player.playedHistory.push(cardValue);
+    state.playedCards[playerId] = cardValue;
+    player.deferred = { ...deferred, forcedCard: null };
+    return checkAllPlayed(state);
+  }
+
+  // VERROU haute : doit jouer sa carte la plus haute
+  if (deferred.lockedHighCard) {
+    const maxCard = Math.max(...player.hand);
+    if (cardValue !== maxCard) {
+      return { ok: false, error: `Vous devez jouer votre carte la plus haute : ${maxCard} (effet VERROU)`, state };
+    }
+    player.hand = player.hand.filter(c => c !== cardValue);
+    player.playedHistory.push(cardValue);
+    state.playedCards[playerId] = cardValue;
+    player.deferred = { ...deferred, lockedHighCard: false };
+    return checkAllPlayed(state);
+  }
+
+  // VERROU basse : doit jouer sa carte la plus basse
+  if (deferred.lockedLowCard) {
+    const minCard = Math.min(...player.hand);
+    if (cardValue !== minCard) {
+      return { ok: false, error: `Vous devez jouer votre carte la plus basse : ${minCard} (effet VERROU)`, state };
+    }
+    player.hand = player.hand.filter(c => c !== cardValue);
+    player.playedHistory.push(cardValue);
+    state.playedCards[playerId] = cardValue;
+    player.deferred = { ...deferred, lockedLowCard: false };
+    return checkAllPlayed(state);
+  }
+
+  // --- Jeu normal ---
+  if (cardValue === RECHARGE_CARD_VALUE) {
+    state.playedCards[playerId] = RECHARGE_CARD_VALUE;
+  } else {
+    if (!player.hand.includes(cardValue)) {
+      return { ok: false, error: 'Carte non disponible', state };
+    }
+    player.hand = player.hand.filter(c => c !== cardValue);
+    player.playedHistory.push(cardValue);
     state.playedCards[playerId] = cardValue;
   }
 
-  // Vérifier si tous les joueurs ont joué
-  const allPlayed = state.players.every(p => state.playedCards[p.id] !== undefined);
-  if (allPlayed) {
-    state.phase = 'REVEAL';
-  }
+  return checkAllPlayed(state);
+}
 
+function checkAllPlayed(state: FluxGameState): { ok: boolean; state: FluxGameState } {
+  const allPlayed = state.players.every(p => state.playedCards[p.id] !== undefined);
+  if (allPlayed) state.phase = 'REVEAL';
   return { ok: true, state };
 }
 
@@ -234,228 +342,341 @@ export function playFluxCard(
 // ============================================================
 export function resolveFluxTrick(state: FluxGameState): FluxGameState {
   const allPlayed = state.playedCards as Record<string, number>;
+  const scoreCard = state.currentScoreCard!;
 
-  // Séparer les joueurs qui rechargent de ceux qui jouent une carte valeur
   const rechargedIds: string[] = [];
   const valuePlays: Record<string, number> = {};
-
   for (const [pid, val] of Object.entries(allPlayed)) {
-    if (val === RECHARGE_CARD_VALUE) {
-      rechargedIds.push(pid);
-    } else {
-      valuePlays[pid] = val;
-    }
+    if (val === RECHARGE_CARD_VALUE) rechargedIds.push(pid);
+    else valuePlays[pid] = val;
   }
-
   state.rechargedPlayerIds = rechargedIds;
 
-  // --- Cas : tout le monde recharge ---
+  for (const pid of rechargedIds) applyRecharge(state, pid);
+
   if (rechargedIds.length === state.players.length) {
     state.scoreCardDiscarded = true;
     state.trickWinnerId = null;
     state.cancelledValues = [];
-    state.rechargeStarWinners = [];
-
-    // Tout le monde recharge quand même
-    for (const pid of rechargedIds) {
-      applyRecharge(state, pid);
-    }
-
+    state.bonusPointWinners = [];
     state.lastTrickSummary = buildTrickSummary(state, allPlayed, [], null, true);
     state.phase = 'TRICK_END';
     return state;
   }
 
-  // --- Cas normal : au moins un joueur joue une carte valeur ---
-
-  // 1. Résoudre le pli entre les cartes valeur uniquement
-  const result = resolveTrick(valuePlays, state.gameOptions, state.currentScoreCard?.type);
+  const result = resolveTrick(valuePlays, state.gameOptions, scoreCard.gain, state.nextTrickInverted);
   state.trickWinnerId = result.winnerId;
   state.cancelledValues = result.cancelledValues;
   state.scoreCardDiscarded = result.discarded;
+  state.nextTrickInverted = false;
 
-  // 2. Étoiles Recharge :
-  //    Les joueurs ayant joué une carte VALEUR UNIQUE (non annulée) gagnent
-  //    autant d'étoiles Recharge qu'il y a de joueurs ayant joué Recharge ce tour.
-  //    Ex : 2 joueurs rechargent + Alice joue un 7 unique → Alice gagne 2 étoiles.
-  //    Ces étoiles vont dans rechargeStars (majorité + +1 pt chacune au score final)
-  const starWinners: string[] = [];
-  const rechargeStarCount = rechargedIds.length; // nb d'étoiles à distribuer par gagnant (= nb rechargeurs)
+  // Points bonus Recharge : valeur unique parmi les joueurs non-rechargeurs
+  const bonusWinners: string[] = [];
   if (rechargedIds.length > 0) {
-    // Compter les occurrences de chaque valeur jouée
     const valueCounts = new Map<number, number>();
-    for (const val of Object.values(valuePlays)) {
-      valueCounts.set(val, (valueCounts.get(val) ?? 0) + 1);
-    }
+    for (const val of Object.values(valuePlays)) valueCounts.set(val, (valueCounts.get(val) ?? 0) + 1);
     for (const [pid, val] of Object.entries(valuePlays)) {
-      // Étoile(s) uniquement si la valeur est unique (pas en doublon)
       if ((valueCounts.get(val) ?? 0) === 1) {
-        const player = state.players.find(p => p.id === pid);
-        if (player) {
-          player.rechargeStars += rechargeStarCount; // autant d'étoiles que de rechargeurs
-          starWinners.push(pid);
-        }
+        const p = state.players.find(pl => pl.id === pid);
+        if (p) { p.bonusPoints += rechargedIds.length; bonusWinners.push(pid); }
       }
     }
   }
-  state.rechargeStarWinners = starWinners;
+  state.bonusPointWinners = bonusWinners;
+  state.lastTrickSummary = buildTrickSummary(state, allPlayed, result.cancelledValues, result.winnerId, result.discarded);
 
-  // 3. Appliquer les Recharges
-  for (const pid of rechargedIds) {
-    applyRecharge(state, pid);
-  }
-
-  // 4. Résumé de base
-  state.lastTrickSummary = buildTrickSummary(
-    state, allPlayed, result.cancelledValues, result.winnerId, result.discarded, rechargeStarCount
-  );
-
-  const scoreCard = state.currentScoreCard!;
-
-  // 5. Attribution de la carte Score au gagnant
   if (result.winnerId && !result.discarded) {
-    const winner = state.players.find(p => p.id === result.winnerId)!;
-
-    // Étoiles bonus immédiates (cartes -1⭐ et -2⭐⭐)
-    // → vont dans stars (majorité uniquement, pas de +1 pt)
-    if (scoreCard.bonusStars > 0) {
-      winner.stars += scoreCard.bonusStars; // ← stars, pas rechargeStars
-      state.lastTrickSummary.bonusStarsAwarded = scoreCard.bonusStars;
-    }
-
-    if (scoreCard.specialEffect === 'DOUBLE') {
-      if (canApplyDouble(winner.scorePile)) {
-        winner.scorePile = applyDouble(winner.scorePile);
-      }
-      state.phase = 'TRICK_END';
-
-    } else if (scoreCard.specialEffect === 'STEAL') {
-      const eligible = state.players.filter(
-        p => p.id !== result.winnerId && p.scorePile.length > 0
-      );
-      if (eligible.length > 0) {
-        state.stealRequestPlayerId = result.winnerId;
-        state.stealEligibleTargets = eligible.map(p => p.id);
-        state.phase = 'SPECIAL_EFFECT';
-      } else {
-        state.phase = 'TRICK_END';
-      }
-
-    } else if (scoreCard.specialEffect === 'SWAP') {
-      const eligible = state.players.filter(p => p.scorePile.length > 0);
-      if (eligible.length >= 2) {
-        state.swapRequestPlayerId = result.winnerId;
-        state.swapEligibleTargets = eligible.map(p => p.id);
-        state.swapChosenA = null;
-        state.phase = 'SPECIAL_EFFECT';
-      } else {
-        state.phase = 'TRICK_END';
-      }
-
-    } else {
-      // Carte numérique → pile du gagnant
-      winner.scorePile.push({ ...scoreCard });
-      state.phase = 'TRICK_END';
-    }
+    applyScoreCardEffect(state, result.winnerId, scoreCard);
   } else {
     state.phase = 'TRICK_END';
   }
-
   return state;
 }
 
-// ============================================================
-// Résolution du VOL (STEAL) — identique au mode classic
-// ============================================================
-export function resolveFluxSteal(
-  state: FluxGameState,
-  targetPlayerId: string
-): { ok: boolean; error?: string; state: FluxGameState } {
-  if (state.phase !== 'SPECIAL_EFFECT' || !state.stealRequestPlayerId) {
-    return { ok: false, error: 'Phase incorrecte', state };
+function applyScoreCardEffect(state: FluxGameState, winnerId: string, scoreCard: ScoreCard): void {
+  const winner = state.players.find(p => p.id === winnerId)!;
+  if (scoreCard.bonusStars > 0) { winner.stars += scoreCard.bonusStars; if (state.lastTrickSummary) state.lastTrickSummary.bonusStarsAwarded = scoreCard.bonusStars; }
+  if (scoreCard.bonusPoints > 0) { winner.bonusPoints += scoreCard.bonusPoints; if (state.lastTrickSummary) state.lastTrickSummary.bonusPointsAwarded = scoreCard.bonusPoints; }
+
+  switch (scoreCard.specialEffect) {
+    case 'DOUBLE':
+      if (canApplyDouble(winner.scorePile)) winner.scorePile = applyDouble(winner.scorePile);
+      winner.scorePile.push({ ...scoreCard }); // la carte X2 reste dans la pile
+      state.phase = 'TRICK_END'; break;
+    case 'STEAL': {
+      // La carte VOL va TOUJOURS dans la pile du gagnant, effet applicable ou non
+      winner.scorePile.push({ ...scoreCard });
+      const el = state.players.filter(p => p.id !== winnerId && p.scorePile.length > 0);
+      if (el.length > 0) { state.stealRequestPlayerId = winnerId; state.stealEligibleTargets = el.map(p => p.id); state.phase = 'SPECIAL_EFFECT'; }
+      else state.phase = 'TRICK_END'; break; // Personne à voler, carte dans la pile quand même
+    }
+    case 'SWAP': {
+      // La carte SWAP va TOUJOURS dans la pile du gagnant, effet applicable ou non
+      winner.scorePile.push({ ...scoreCard });
+      const el = state.players.filter(p => p.scorePile.length > 0);
+      if (el.length >= 2) { state.swapRequestPlayerId = winnerId; state.swapEligibleTargets = el.map(p => p.id); state.swapChosenA = null; state.phase = 'SPECIAL_EFFECT'; }
+      else state.phase = 'TRICK_END'; break; // Pas assez de joueurs avec des cartes, carte dans la pile quand même
+    }
+    case 'PIOCHE': {
+      winner.scorePile.push({ ...scoreCard }); // toujours dans la pile du gagnant
+      const el = state.players.filter(p => p.id !== winnerId && p.hand.length > 0);
+      if (el.length > 0) { state.piocheRequestPlayerId = winnerId; state.piocheEligibleTargets = el.map(p => p.id); state.phase = 'SPECIAL_PIOCHE'; }
+      else state.phase = 'TRICK_END'; break;
+    }
+    case 'VERROU': {
+      winner.scorePile.push({ ...scoreCard }); // toujours dans la pile du gagnant
+      const el = state.players.filter(p => p.id !== winnerId && p.hand.length >= 2);
+      if (el.length > 0) { state.verrouRequestPlayerId = winnerId; state.verrouEligibleTargets = el.map(p => p.id); state.phase = 'SPECIAL_VERROU'; }
+      else state.phase = 'TRICK_END'; break;
+    }
+    case 'REVELATION': {
+      winner.scorePile.push({ ...scoreCard }); // toujours dans la pile du gagnant
+      const el = state.players.filter(p => p.id !== winnerId);
+      if (el.length > 0) { state.revelationRequestPlayerId = winnerId; state.revelationEligibleTargets = el.map(p => p.id); state.phase = 'SPECIAL_REVELATION'; }
+      else state.phase = 'TRICK_END'; break;
+    }
+    case 'MYSTERE':
+      state.mysteryTrickActive = true;
+      winner.scorePile.push({ ...scoreCard }); state.phase = 'TRICK_END'; break;
+    case 'SURCHARGE': {
+      // La carte SURCHARGE va TOUJOURS dans la pile du gagnant
+      winner.scorePile.push({ ...scoreCard });
+      const el = state.players.filter(p => p.id !== winnerId);
+      if (el.length > 0) {
+        state.surchargeRequestPlayerId = winnerId;
+        state.surchargeEligibleTargets = el.map(p => p.id);
+        state.phase = 'SPECIAL_EFFECT';
+      } else {
+        state.phase = 'TRICK_END'; // Pas d'adversaire à surcharger (impossible en pratique)
+      }
+      break;
+    }
+    case 'INVERSION':
+      state.nextTrickInverted = true;
+      winner.scorePile.push({ ...scoreCard }); state.phase = 'TRICK_END'; break;
+    case 'CONSTELLATION':
+      winner.scorePile.push({ ...scoreCard }); // reste dans la pile
+      state.phase = 'TRICK_END'; break;
+    case 'ECLIPSE': {
+      // ECLIPSE : le gagnant donne la carte à une cible (peut être lui-même).
+      // Tous les joueurs sont éligibles, donc l'effet est toujours applicable.
+      // Si par impossible aucun joueur n'était éligible, la carte va dans la pile du gagnant.
+      const eclipseEl = state.players.map(p => p.id);
+      if (eclipseEl.length > 0) {
+        state.eclipseRequestPlayerId = winnerId;
+        state.eclipseEligibleTargets = eclipseEl;
+        state.phase = 'SPECIAL_ECLIPSE';
+      } else {
+        winner.scorePile.push({ ...scoreCard });
+        state.phase = 'TRICK_END';
+      }
+      break;
+    }
+    case 'JACKPOT':
+      winner.scorePile.push({ ...scoreCard }); // reste dans la pile
+      state.phase = 'TRICK_END'; break;
+    case 'TAXE': {
+      // La carte TAXE va TOUJOURS dans la pile du gagnant, effet applicable ou non
+      winner.scorePile.push({ ...scoreCard });
+      const el = state.players.filter(p => p.id !== winnerId && p.bonusPoints > 0);
+      if (el.length > 0) { state.taxeRequestPlayerId = winnerId; state.taxeEligibleTargets = el.map(p => p.id); state.phase = 'SPECIAL_TAXE'; }
+      else state.phase = 'TRICK_END'; break; // Personne à taxer, carte dans la pile quand même
+    }
+    case 'ORACLE':
+      winner.scorePile.push({ ...scoreCard }); state.phase = 'SPECIAL_ORACLE'; break;
+    case 'DEVOILEMENT':
+      state.revealedUpcoming = state.scoreDeck.slice(0, 3);
+      winner.scorePile.push({ ...scoreCard }); state.phase = 'SPECIAL_DEVOILEMENT'; break;
+    default:
+      winner.scorePile.push({ ...scoreCard }); state.phase = 'TRICK_END'; break;
   }
-  if (!state.stealEligibleTargets.includes(targetPlayerId)) {
-    return { ok: false, error: 'Cible non éligible', state };
-  }
-
-  const thief = state.players.find(p => p.id === state.stealRequestPlayerId)!;
-  const victim = state.players.find(p => p.id === targetPlayerId)!;
-
-  if (victim.scorePile.length === 0) {
-    return { ok: false, error: "Cet adversaire n'a pas de carte Score", state };
-  }
-
-  const stolenCard = victim.scorePile[victim.scorePile.length - 1];
-  victim.scorePile = victim.scorePile.slice(0, -1);
-  thief.scorePile.push({ ...stolenCard });
-
-  if (state.lastTrickSummary) {
-    state.lastTrickSummary.stolenFrom = victim.id;
-  }
-
-  state.stealRequestPlayerId = null;
-  state.stealEligibleTargets = [];
-  state.phase = 'TRICK_END';
-
-  return { ok: true, state };
 }
 
 // ============================================================
-// Résolution du SWAP — étape A puis étape B
+// Résolveurs d'effets spéciaux
 // ============================================================
-export function resolveFluxSwapChooseA(
-  state: FluxGameState,
-  playerAId: string
+
+export function resolveFluxSteal(
+  state: FluxGameState, targetId: string
 ): { ok: boolean; error?: string; state: FluxGameState } {
-  if (state.phase !== 'SPECIAL_EFFECT' || !state.swapRequestPlayerId) {
-    return { ok: false, error: 'Phase incorrecte', state };
-  }
-  if (!state.swapEligibleTargets.includes(playerAId)) {
+  if (!state.stealRequestPlayerId || !state.stealEligibleTargets.includes(targetId))
+    return { ok: false, error: 'Cible non éligible', state };
+  const thief = state.players.find(p => p.id === state.stealRequestPlayerId)!;
+  const victim = state.players.find(p => p.id === targetId)!;
+  if (victim.scorePile.length === 0) return { ok: false, error: 'Pas de carte Score', state };
+  const stolen = victim.scorePile.pop()!;
+  thief.scorePile.push({ ...stolen });
+  if (state.lastTrickSummary) state.lastTrickSummary.stolenFrom = victim.id;
+  state.stealRequestPlayerId = null; state.stealEligibleTargets = [];
+  state.phase = 'TRICK_END';
+  return { ok: true, state };
+}
+
+export function resolveFluxSwapChooseA(
+  state: FluxGameState, playerAId: string
+): { ok: boolean; error?: string; state: FluxGameState } {
+  if (!state.swapRequestPlayerId || !state.swapEligibleTargets.includes(playerAId))
     return { ok: false, error: 'Joueur A non éligible', state };
-  }
   state.swapChosenA = playerAId;
   return { ok: true, state };
 }
 
 export function resolveFluxSwapChooseB(
-  state: FluxGameState,
-  playerBId: string
+  state: FluxGameState, playerBId: string
 ): { ok: boolean; error?: string; state: FluxGameState } {
-  if (state.phase !== 'SPECIAL_EFFECT' || !state.swapRequestPlayerId || !state.swapChosenA) {
+  if (!state.swapRequestPlayerId || !state.swapChosenA || !state.swapEligibleTargets.includes(playerBId))
     return { ok: false, error: 'Phase incorrecte', state };
-  }
-  if (!state.swapEligibleTargets.includes(playerBId)) {
-    return { ok: false, error: 'Joueur B non éligible', state };
-  }
-  if (state.swapChosenA === playerBId) {
-    return { ok: false, error: 'Choisissez deux joueurs différents', state };
-  }
-
-  const playerA = state.players.find(p => p.id === state.swapChosenA)!;
-  const playerB = state.players.find(p => p.id === playerBId)!;
-
-  const { newPileA, newPileB } = applySwap(playerA.scorePile, playerB.scorePile);
-  playerA.scorePile = newPileA;
-  playerB.scorePile = newPileB;
-
-  if (state.lastTrickSummary) {
-    state.lastTrickSummary.swapBetween = [playerA.id, playerB.id];
-  }
-
-  state.swapRequestPlayerId = null;
-  state.swapEligibleTargets = [];
-  state.swapChosenA = null;
+  if (state.swapChosenA === playerBId) return { ok: false, error: 'Choisissez deux joueurs différents', state };
+  const pA = state.players.find(p => p.id === state.swapChosenA)!;
+  const pB = state.players.find(p => p.id === playerBId)!;
+  const { newPileA, newPileB } = applySwap(pA.scorePile, pB.scorePile);
+  pA.scorePile = newPileA; pB.scorePile = newPileB;
+  if (state.lastTrickSummary) state.lastTrickSummary.swapBetween = [pA.id, pB.id];
+  state.swapRequestPlayerId = null; state.swapEligibleTargets = []; state.swapChosenA = null;
   state.phase = 'TRICK_END';
-
   return { ok: true, state };
+}
+
+export function resolveFluxEclipse(
+  state: FluxGameState, targetId: string
+): { ok: boolean; error?: string; state: FluxGameState } {
+  if (!state.eclipseRequestPlayerId || !state.eclipseEligibleTargets.includes(targetId))
+    return { ok: false, error: 'Cible non éligible', state };
+  const scoreCard = state.currentScoreCard!;
+  const target = state.players.find(p => p.id === targetId)!;
+  // La carte ECLIPSE va dans la pile de la cible (score +1, -3 étoiles)
+  target.scorePile.push({ ...scoreCard });
+  target.stars = Math.max(0, target.stars + scoreCard.bonusStars); // bonusStars = -3
+  if (state.lastTrickSummary) state.lastTrickSummary.eclipseGivenTo = targetId;
+  state.eclipseRequestPlayerId = null; state.eclipseEligibleTargets = [];
+  state.phase = 'TRICK_END';
+  return { ok: true, state };
+}
+
+export function resolveFluxPioche(
+  state: FluxGameState, targetId: string
+): { ok: boolean; error?: string; state: FluxGameState } {
+  if (!state.piocheRequestPlayerId || !state.piocheEligibleTargets.includes(targetId))
+    return { ok: false, error: 'Cible non éligible', state };
+  const target = state.players.find(p => p.id === targetId)!;
+  if (target.hand.length === 0) return { ok: false, error: 'Main vide', state };
+  // Piocher une carte au hasard dans la main de la cible
+  const idx = Math.floor(Math.random() * target.hand.length);
+  const pickedCard = target.hand[idx];
+  // Forcer la cible à jouer cette carte à la prochaine mène
+  target.deferred = { ...target.deferred, forcedCard: pickedCard };
+  // Stocker dans le TrickSummary pour le journal
+  if (state.lastTrickSummary) {
+    state.lastTrickSummary.piocheTargetId = targetId;
+    state.lastTrickSummary.piocheCardValue = pickedCard;
+  }
+  // La carte PIOCHE est déjà dans la pile du gagnant (ajoutée dans applyScoreCardEffect)
+  state.piocheRequestPlayerId = null; state.piocheEligibleTargets = [];
+  state.phase = 'TRICK_END';
+  return { ok: true, state };
+}
+
+export function resolveFluxVerrou(
+  state: FluxGameState, targetId: string
+): { ok: boolean; error?: string; state: FluxGameState } {
+  if (!state.verrouRequestPlayerId || !state.verrouEligibleTargets.includes(targetId))
+    return { ok: false, error: 'Cible non éligible', state };
+  const target = state.players.find(p => p.id === targetId)!;
+  const nextCard = state.scoreDeck[0]; // prochaine carte Score
+  // Gain '+' (vert) → doit jouer la plus haute. Gain '-' (rouge) → doit jouer la plus basse.
+  if (nextCard && nextCard.gain === '-') {
+    target.deferred = { ...target.deferred, lockedLowCard: true };
+  } else {
+    target.deferred = { ...target.deferred, lockedHighCard: true };
+  }
+  // Stocker la cible dans le TrickSummary pour le journal
+  if (state.lastTrickSummary) {
+    state.lastTrickSummary.verrouTargetId = targetId;
+  }
+  // La carte VERROU est déjà dans la pile du gagnant (ajoutée dans applyScoreCardEffect)
+  state.verrouRequestPlayerId = null; state.verrouEligibleTargets = [];
+  state.phase = 'TRICK_END';
+  return { ok: true, state, targetPseudo: target.pseudo } as any;
+}
+
+export function resolveFluxRevelation(
+  state: FluxGameState, targetId: string
+): { ok: boolean; error?: string; state: FluxGameState } {
+  if (!state.revelationRequestPlayerId || !state.revelationEligibleTargets.includes(targetId))
+    return { ok: false, error: 'Cible non éligible', state };
+  // Stocker dans le TrickSummary pour le journal
+  const revealedCard = state.missingCards[targetId];
+  if (state.lastTrickSummary) {
+    state.lastTrickSummary.revelationTargetId = targetId;
+    state.lastTrickSummary.revelationCardValue = revealedCard ?? null;
+  }
+  // La carte REVELATION est déjà dans la pile du gagnant (ajoutée dans applyScoreCardEffect)
+  state.revelationRequestPlayerId = null; state.revelationEligibleTargets = [];
+  state.phase = 'TRICK_END';
+  return { ok: true, state };
+}
+
+export function resolveFluxTaxe(
+  state: FluxGameState, targetId: string
+): { ok: boolean; error?: string; state: FluxGameState } {
+  if (!state.taxeRequestPlayerId || !state.taxeEligibleTargets.includes(targetId))
+    return { ok: false, error: 'Cible non éligible', state };
+  const thief = state.players.find(p => p.id === state.taxeRequestPlayerId)!;
+  const victim = state.players.find(p => p.id === targetId)!;
+  applyTaxe(thief, victim, 2);
+  // Stocker la cible dans le TrickSummary pour le journal
+  if (state.lastTrickSummary) {
+    state.lastTrickSummary.taxeTargetId = targetId;
+  }
+  state.taxeRequestPlayerId = null; state.taxeEligibleTargets = [];
+  state.phase = 'TRICK_END';
+  return { ok: true, state };
+}
+
+// ORACLE et DEVOILEMENT sont auto (pas de choix du joueur)
+export function resolveFluxOracle(state: FluxGameState): ScoreCard[] {
+  // Retourne les 3 prochaines cartes (privé — envoyé uniquement au gagnant)
+  const cards = state.scoreDeck.slice(0, 3);
+  state.phase = 'TRICK_END';
+  return cards;
+}
+
+export function resolveFluxDevoilement(state: FluxGameState): void {
+  // revealedUpcoming déjà rempli dans applyScoreCardEffect
+  state.phase = 'TRICK_END';
+}
+
+// SURCHARGE : le gagnant choisit la cible, qui sera forcée à Recharger
+export function resolveFluxSurcharge(
+  state: FluxGameState, targetId: string
+): { ok: boolean; error?: string; state: FluxGameState; targetPseudo?: string } {
+  if (!state.surchargeRequestPlayerId || !state.surchargeEligibleTargets.includes(targetId))
+    return { ok: false, error: 'Cible non éligible', state };
+  const target = state.players.find(p => p.id === targetId)!;
+  target.deferred = { ...target.deferred, forcedRecharge: true };
+  const targetPseudo = target.pseudo;
+  // Stocker la cible dans le TrickSummary pour le journal
+  if (state.lastTrickSummary) {
+    state.lastTrickSummary.surchargeTargetId = targetId;
+  }
+  state.surchargeRequestPlayerId = null; state.surchargeEligibleTargets = [];
+  state.phase = 'TRICK_END';
+  return { ok: true, state, targetPseudo };
 }
 
 // ============================================================
 // Fin de mène flux → mène suivante ou fin de partie
 // ============================================================
 export function endFluxTrick(state: FluxGameState): FluxGameState {
+  // Appliquer MYSTÈRE si actif : tout le monde jouera sa carte mystère
+  if (state.mysteryTrickActive) {
+    for (const player of state.players) {
+      player.deferred = { ...player.deferred, mustPlayMysteryCard: true };
+    }
+    state.mysteryTrickActive = false;
+  }
+
   if (state.scoreDeck.length === 0) {
-    // Plus de cartes Score → fin de partie
     state.finalScores = computeFinalScores(state.players);
     state.phase = 'GAME_OVER';
   } else {
@@ -465,93 +686,33 @@ export function endFluxTrick(state: FluxGameState): FluxGameState {
 }
 
 // ============================================================
-// Sérialisation vers la vue publique (filtrée)
+// Recharge : reconstruit la main d'un joueur + nouvelle carte mystère
 // ============================================================
-export function toFluxPublicState(state: FluxGameState): PublicGameState {
-  const publicPlayers: PublicPlayer[] = state.players.map(p => ({
-    id: p.id,
-    pseudo: p.pseudo,
-    color: p.color,
-    handCount: p.hand.length,
-    topScoreCard: p.scorePile.length > 0 ? p.scorePile[p.scorePile.length - 1] : null,
-    scorePileCount: p.scorePile.length,
-    stars: p.stars,
-    rechargeStars: p.rechargeStars,
-    isReady: p.isReady,
-    isConnected: p.isConnected,
-    hasPlayedCard: state.playedCards[p.id] !== undefined,
-  }));
-
-  return {
-    phase: state.phase,
-    gameMode: 'flux',
-    currentRound: 1,           // Pas de manches en mode flux
-    totalRounds: 1,
-    currentTrick: state.currentTrick,
-    totalTricks: 30,           // 30 cartes Score au total
-    scoreColumn: [],           // Pas de colonne Score en mode flux
-    currentScoreCard: state.currentScoreCard,
-    scoreDeckCount: state.scoreDeck.length,
-    players: publicPlayers,
-    trickWinnerId: state.trickWinnerId,
-    cancelledValues: state.cancelledValues,
-    scoreCardDiscarded: state.scoreCardDiscarded,
-    memorizeTimer: null,
-    swapRequestPlayerId: state.swapRequestPlayerId,
-    swapEligibleTargets: state.swapEligibleTargets,
-    swapChosenA: state.swapChosenA,
-    stealRequestPlayerId: state.stealRequestPlayerId,
-    stealEligibleTargets: state.stealEligibleTargets,
-    lastTrickSummary: state.lastTrickSummary,
-    roundEndSummary: null,     // Pas de fin de manche en mode flux
-    finalScores: state.finalScores,
-    gameOptions: state.gameOptions,
-    rechargedPlayerIds: state.rechargedPlayerIds,
-    rechargeStarWinners: state.rechargeStarWinners,
-  };
-}
-
-// ============================================================
-// Helpers privés
-// ============================================================
-
-/**
- * Applique la Recharge pour un joueur :
- * - Récupère toutes ses cartes valeur défaussées (repart avec 1 à 8)
- * - Le voisin de droite écarte secrètement 1 carte (nouvelle carte mystère)
- */
 function applyRecharge(state: FluxGameState, playerId: string): void {
   const playerIndex = state.players.findIndex(p => p.id === playerId);
   if (playerIndex === -1) return;
-
   const player = state.players[playerIndex];
-
-  // Reconstruire la main complète
-  const fullHand = buildFluxHand();
-
-  // Piocher la carte mystère (voisin de droite)
   const rightNeighborIndex = (playerIndex + 1) % state.players.length;
   const rightNeighbor = state.players[rightNeighborIndex];
 
-  const { newHand, mysteryCard } = drawMysteryCard(fullHand);
+  const { newHand, mysteryCard } = drawMysteryCard(buildFluxHand());
   player.hand = newHand;
+  player.playedHistory = []; // réinitialiser l'historique après recharge
 
-  // Stocker la carte mystère
   state.mysteryCards[rightNeighbor.id] = mysteryCard;
   state.mysteryCardOwners[rightNeighbor.id] = player.pseudo;
   state.missingCards[player.id] = mysteryCard;
 }
 
-/**
- * Construit le TrickSummary pour la mène en cours
- */
+// ============================================================
+// Construction du TrickSummary
+// ============================================================
 function buildTrickSummary(
   state: FluxGameState,
   allPlayed: Record<string, number>,
   cancelledValues: number[],
   winnerId: string | null,
-  discarded: boolean,
-  rechargeStarCount = 0
+  discarded: boolean
 ): TrickSummary {
   return {
     playedCards: allPlayed,
@@ -564,8 +725,82 @@ function buildTrickSummary(
     swapBetween: null,
     stolenFrom: null,
     bonusStarsAwarded: 0,
+    bonusPointsAwarded: 0,
+    eclipseGivenTo: null,
+    piocheTargetId: null,
+    piocheCardValue: null,
+    surchargeTargetId: null,
+    verrouTargetId: null,
+    taxeTargetId: null,
+    revelationTargetId: null,
+    revelationCardValue: null,
+    mysteryCardsPlayed: null,
     rechargedPlayerIds: state.rechargedPlayerIds,
-    rechargeStarWinners: state.rechargeStarWinners,
-    rechargeStarCount,
+    bonusPointWinners: state.bonusPointWinners,
+    bonusPointCount: state.rechargedPlayerIds.length,
+  };
+}
+
+// ============================================================
+// Sérialisation vers la vue publique
+// ============================================================
+export function toFluxPublicState(state: FluxGameState): PublicGameState {
+  const publicPlayers: PublicPlayer[] = state.players.map(p => ({
+    id: p.id,
+    pseudo: p.pseudo,
+    color: p.color,
+    handCount: p.hand.length,
+    playedHistory: p.playedHistory,
+    topScoreCard: p.scorePile.length > 0 ? p.scorePile[p.scorePile.length - 1] : null,
+    scorePileCount: p.scorePile.length,
+    stars: p.stars,
+    bonusPoints: p.bonusPoints,
+    deferred: p.deferred,
+    isReady: p.isReady,
+    isConnected: p.isConnected,
+    hasPlayedCard: state.playedCards[p.id] !== undefined,
+  }));
+
+  return {
+    phase: state.phase,
+    gameMode: 'flux',
+    currentRound: 1,
+    totalRounds: 1,
+    currentTrick: state.currentTrick,
+    totalTricks: 38,
+    scoreColumn: [],
+    currentScoreCard: state.currentScoreCard,
+    scoreDeckCount: state.scoreDeck.length,
+    players: publicPlayers,
+    trickWinnerId: state.trickWinnerId,
+    cancelledValues: state.cancelledValues,
+    scoreCardDiscarded: state.scoreCardDiscarded,
+    memorizeTimer: null,
+    swapRequestPlayerId: state.swapRequestPlayerId,
+    swapEligibleTargets: state.swapEligibleTargets,
+    swapChosenA: state.swapChosenA,
+    stealRequestPlayerId: state.stealRequestPlayerId,
+    stealEligibleTargets: state.stealEligibleTargets,
+    eclipseRequestPlayerId: state.eclipseRequestPlayerId,
+    eclipseEligibleTargets: state.eclipseEligibleTargets,
+    piocheRequestPlayerId: state.piocheRequestPlayerId,
+    piocheEligibleTargets: state.piocheEligibleTargets,
+    surchargeRequestPlayerId: state.surchargeRequestPlayerId,
+    surchargeEligibleTargets: state.surchargeEligibleTargets,
+    verrouRequestPlayerId: state.verrouRequestPlayerId,
+    verrouEligibleTargets: state.verrouEligibleTargets,
+    revelationRequestPlayerId: state.revelationRequestPlayerId,
+    revelationEligibleTargets: state.revelationEligibleTargets,
+    taxeRequestPlayerId: state.taxeRequestPlayerId,
+    taxeEligibleTargets: state.taxeEligibleTargets,
+    nextTrickInverted: state.nextTrickInverted,
+    mysteryTrickActive: state.mysteryTrickActive,
+    revealedUpcoming: state.revealedUpcoming,
+    lastTrickSummary: state.lastTrickSummary,
+    roundEndSummary: null,
+    finalScores: state.finalScores,
+    gameOptions: state.gameOptions,
+    rechargedPlayerIds: state.rechargedPlayerIds,
+    bonusPointWinners: state.bonusPointWinners,
   };
 }
