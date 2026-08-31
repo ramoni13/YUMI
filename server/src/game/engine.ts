@@ -86,9 +86,11 @@ export function initGame(
     pseudo: p.pseudo,
     color: colors[i],
     hand: buildPlayerHand(playerCount),
+    playedHistory: [],
     scorePile: [],
-    stars: 0,          // Étoiles cartes Score (majorité uniquement)
-    rechargeStars: 0,  // Étoiles Recharge (majorité + +1 pt) — toujours 0 en mode classic
+    stars: 0,
+    bonusPoints: 0,
+    deferred: { forcedRecharge: false, forcedCard: null, lockedHighCard: false, lockedLowCard: false, mustPlayMysteryCard: false },
     isReady: true,
     isConnected: true,
   }));
@@ -250,7 +252,7 @@ export function resolveTrickPhase(
   state: InternalGameState
 ): InternalGameState {
   const played = state.playedCards as Record<string, number>;
-  const result = resolveTrick(played, state.gameOptions, state.currentScoreCard?.type);
+  const result = resolveTrick(played, state.gameOptions, state.currentScoreCard?.gain);
 
   state.trickWinnerId = result.winnerId;
   state.cancelledValues = result.cancelledValues;
@@ -270,9 +272,19 @@ export function resolveTrickPhase(
     swapBetween: null,
     stolenFrom: null,
     bonusStarsAwarded: 0,
-    rechargedPlayerIds: [],   // Pas de Recharge en mode classic
-    rechargeStarWinners: [],
-    rechargeStarCount: 0,
+    bonusPointsAwarded: 0,
+    eclipseGivenTo: null,
+    piocheTargetId: null,
+    piocheCardValue: null,
+    surchargeTargetId: null,
+    verrouTargetId: null,
+    taxeTargetId: null,
+    revelationTargetId: null,
+    revelationCardValue: null,
+    mysteryCardsPlayed: null,
+    rechargedPlayerIds: [],
+    bonusPointWinners: [],
+    bonusPointCount: 0,
   };
 
   if (result.winnerId && !result.discarded) {
@@ -292,11 +304,12 @@ export function resolveTrickPhase(
       if (canApplyDouble(winner.scorePile)) {
         winner.scorePile = applyDouble(winner.scorePile);
       }
+      winner.scorePile.push({ ...scoreCard }); // la carte X2 reste dans la pile
       state.phase = 'TRICK_END';
 
     } else if (scoreCard.specialEffect === 'STEAL') {
-      // La carte VOL est défaussée
-      // Le gagnant choisit 1 adversaire ayant au moins 1 carte score
+      // La carte VOL va TOUJOURS dans la pile du gagnant, effet applicable ou non
+      winner.scorePile.push({ ...scoreCard });
       const eligible = state.players.filter(
         p => p.id !== result.winnerId && p.scorePile.length > 0
       );
@@ -305,12 +318,12 @@ export function resolveTrickPhase(
         state.stealEligibleTargets = eligible.map(p => p.id);
         state.phase = 'SPECIAL_EFFECT';
       } else {
-        state.phase = 'TRICK_END'; // Effet perdu
+        state.phase = 'TRICK_END'; // Personne à voler, mais la carte est dans la pile
       }
 
     } else if (scoreCard.specialEffect === 'SWAP') {
-      // La carte ⇄ est défaussée
-      // Le gagnant choisit 2 joueurs (peut être lui-même) ayant des cartes score
+      // La carte SWAP va TOUJOURS dans la pile du gagnant, effet applicable ou non
+      winner.scorePile.push({ ...scoreCard });
       const eligible = state.players.filter(p => p.scorePile.length > 0);
       if (eligible.length >= 2) {
         state.swapRequestPlayerId = result.winnerId;
@@ -318,7 +331,7 @@ export function resolveTrickPhase(
         state.swapChosenA = null;
         state.phase = 'SPECIAL_EFFECT';
       } else {
-        state.phase = 'TRICK_END'; // Effet perdu
+        state.phase = 'TRICK_END'; // Pas assez de joueurs avec des cartes, mais la carte est dans la pile
       }
 
     } else {
@@ -356,10 +369,12 @@ export function resolveSteal(
     return { ok: false, error: 'Cet adversaire n\'a pas de carte Score', state };
   }
 
-  // Voler uniquement la valeur (pas les étoiles bonus déjà attribuées)
+  // Voler la carte du sommet de la pile de la victime
   const stolenCard = victim.scorePile[victim.scorePile.length - 1];
   victim.scorePile = victim.scorePile.slice(0, -1);
   thief.scorePile.push({ ...stolenCard });
+  // Note : la carte VOL elle-même a déjà été ajoutée à la pile du gagnant
+  // dans resolveTrickPhase (avant l'appel à resolveSteal).
 
   if (state.lastTrickSummary) {
     state.lastTrickSummary.stolenFrom = victim.id;
@@ -514,10 +529,12 @@ export function toPublicState(state: InternalGameState): PublicGameState {
     pseudo: p.pseudo,
     color: p.color,
     handCount: p.hand.length,
+    playedHistory: p.playedHistory,
     topScoreCard: p.scorePile.length > 0 ? p.scorePile[p.scorePile.length - 1] : null,
     scorePileCount: p.scorePile.length,
     stars: p.stars,
-    rechargeStars: p.rechargeStars,
+    bonusPoints: p.bonusPoints,
+    deferred: p.deferred,
     isReady: p.isReady,
     isConnected: p.isConnected,
     hasPlayedCard: state.playedCards[p.id] !== undefined,
@@ -552,7 +569,22 @@ export function toPublicState(state: InternalGameState): PublicGameState {
     roundEndSummary: state.roundEndSummary,
     finalScores: state.finalScores,
     gameOptions: state.gameOptions,
-    rechargedPlayerIds: [],   // Pas de Recharge en mode classic
-    rechargeStarWinners: [],
+    rechargedPlayerIds: [],
+    bonusPointWinners: [],
+    eclipseRequestPlayerId: null,
+    eclipseEligibleTargets: [],
+    piocheRequestPlayerId: null,
+    piocheEligibleTargets: [],
+    surchargeRequestPlayerId: null,
+    surchargeEligibleTargets: [],
+    verrouRequestPlayerId: null,
+    verrouEligibleTargets: [],
+    revelationRequestPlayerId: null,
+    revelationEligibleTargets: [],
+    taxeRequestPlayerId: null,
+    taxeEligibleTargets: [],
+    nextTrickInverted: false,
+    mysteryTrickActive: false,
+    revealedUpcoming: [],
   };
 }
