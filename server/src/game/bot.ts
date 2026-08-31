@@ -202,7 +202,7 @@ function isDesirable(scoreCard: ScoreCard, options: GameOptions): boolean {
  * Retourne true si le bot doit jouer BAS pour gagner cette carte.
  */
 function smallestWins(scoreCard: ScoreCard, options: GameOptions): boolean {
-  return options.colorRule && scoreCard.type === 'negative';
+  return options.colorRule && scoreCard.gain === '-';
 }
 
 /**
