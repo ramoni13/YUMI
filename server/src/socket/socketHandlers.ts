@@ -39,6 +39,12 @@ import {
   resolveFluxSteal,
   resolveFluxSwapChooseA,
   resolveFluxSwapChooseB,
+  resolveFluxSurcharge,
+  resolveFluxVerrou,
+  resolveFluxPioche,
+  resolveFluxEclipse,
+  resolveFluxRevelation,
+  resolveFluxTaxe,
   endFluxTrick,
   toFluxPublicState,
   FluxGameState,
@@ -124,7 +130,10 @@ function scheduleBotPlays(
       try {
         const cardValue = decideBotCard(currentRoom.gameState, bot.id, bot.profile);
         const result = playCard(currentRoom.gameState, bot.id, cardValue);
-        if (!result.ok) return;
+        if (!result.ok) {
+          console.error(`[Bot Classic ${bot.id}] playCard rejeté (carte=${cardValue}) :`, result.error);
+          return;
+        }
 
         // Notifier que le bot a joué (face cachée)
         io.to(roomCode).emit('card_played', { playerId: bot.id, isHidden: true });
@@ -166,7 +175,11 @@ function scheduleFluxBotPlays(
       try {
         const cardValue = decideBotFluxCard(currentRoom.fluxGameState, bot.id, bot.profile);
         const result = playFluxCard(currentRoom.fluxGameState, bot.id, cardValue);
-        if (!result.ok) return;
+        if (!result.ok) {
+          // Ne jamais rester bloqué silencieusement : logger l'erreur pour diagnostic
+          console.error(`[Bot Flux ${bot.id}] playFluxCard rejeté (carte=${cardValue}) :`, result.error);
+          return;
+        }
 
         io.to(roomCode).emit('card_played', { playerId: bot.id, isHidden: true });
         broadcastFluxState(io, roomCode, result.state);
@@ -198,24 +211,70 @@ function triggerFluxRevealAndResolve(
     let resolvedState = resolveFluxTrick(state);
     broadcastFluxState(io, roomCode, resolvedState);
 
-    if (resolvedState.phase === 'SPECIAL_EFFECT') {
-      const actorId = resolvedState.stealRequestPlayerId ?? resolvedState.swapRequestPlayerId;
+    // Phases nécessitant une décision du gagnant
+    const specialPhases = ['SPECIAL_EFFECT', 'SPECIAL_ECLIPSE', 'SPECIAL_PIOCHE',
+      'SPECIAL_VERROU', 'SPECIAL_REVELATION', 'SPECIAL_TAXE',
+      'SPECIAL_ORACLE', 'SPECIAL_DEVOILEMENT'];
+
+    if (specialPhases.includes(resolvedState.phase)) {
+      // Déterminer l'acteur
+      const actorId = resolvedState.stealRequestPlayerId
+        ?? resolvedState.swapRequestPlayerId
+        ?? resolvedState.surchargeRequestPlayerId
+        ?? resolvedState.eclipseRequestPlayerId
+        ?? resolvedState.piocheRequestPlayerId
+        ?? resolvedState.verrouRequestPlayerId
+        ?? resolvedState.revelationRequestPlayerId
+        ?? resolvedState.taxeRequestPlayerId
+        ?? resolvedState.trickWinnerId; // ORACLE / DEVOILEMENT : auto
       const botProfile = actorId ? getBotProfile(room, actorId) : null;
 
-      if (botProfile && actorId) {
+      // DEVOILEMENT est automatique (info publique, pas de choix)
+      if (resolvedState.phase === 'SPECIAL_DEVOILEMENT') {
+        const s = endFluxTrick(resolvedState);
+        broadcastFluxState(io, roomCode, s);
+        advanceAfterFluxTrick(io, roomCode, s, room);
+
+        // ORACLE : envoyer les 3 cartes en privé au gagnant, attendre son OK
+      } else if (resolvedState.phase === 'SPECIAL_ORACLE') {
+        const oracleWinnerId = resolvedState.trickWinnerId;
+        if (oracleWinnerId) {
+          const oracleCards = resolvedState.scoreDeck.slice(0, 3);
+          // Envoyer uniquement au gagnant (socket privé)
+          io.to(oracleWinnerId).emit('oracle_info', { cards: oracleCards });
+
+          const botOracleProfile = getBotProfile(room, oracleWinnerId);
+          if (botOracleProfile) {
+            // Bot : pas besoin d'attendre, continuer immédiatement après un court délai
+            setTimeout(() => {
+              const currentRoom = getRoom(roomCode);
+              if (!currentRoom?.fluxGameState) return;
+              const s = endFluxTrick(currentRoom.fluxGameState);
+              broadcastFluxState(io, roomCode, s);
+              advanceAfterFluxTrick(io, roomCode, s, currentRoom);
+            }, BOT_PLAY_DELAY);
+          }
+          // Humain : on attend l'événement 'oracle_ok' du client (voir handler plus bas)
+          // Un timeout de sécurité est géré côté client (bouton OK obligatoire)
+        } else {
+          // Pas de gagnant (ne devrait pas arriver) : continuer
+          const s = endFluxTrick(resolvedState);
+          broadcastFluxState(io, roomCode, s);
+          advanceAfterFluxTrick(io, roomCode, s, room);
+        }
+
+      } else if (botProfile && actorId) {
         setTimeout(() => {
           const currentRoom = getRoom(roomCode);
           if (!currentRoom?.fluxGameState) return;
           const gs = currentRoom.fluxGameState;
 
+          const pickRandom = (arr: string[]) => arr[Math.floor(Math.random() * arr.length)];
+
           if (gs.stealRequestPlayerId) {
             const targetId = decideBotStealTarget(gs as any, actorId, botProfile);
             if (!targetId) { gs.stealRequestPlayerId = null; gs.stealEligibleTargets = []; gs.phase = 'TRICK_END'; }
-            else {
-              const r = resolveFluxSteal(gs, targetId);
-              if (!r.ok) return;
-              broadcastFluxState(io, roomCode, r.state);
-            }
+            else { const r = resolveFluxSteal(gs, targetId); if (r.ok) broadcastFluxState(io, roomCode, r.state); }
           } else if (gs.swapRequestPlayerId) {
             const [idA, idB] = decideBotSwapTargets(gs as any, actorId, botProfile);
             if (!idA || !idB) { gs.swapRequestPlayerId = null; gs.swapEligibleTargets = []; gs.swapChosenA = null; gs.phase = 'TRICK_END'; }
@@ -223,14 +282,55 @@ function triggerFluxRevealAndResolve(
               const rA = resolveFluxSwapChooseA(gs, idA);
               if (!rA.ok) return;
               const rB = resolveFluxSwapChooseB(rA.state, idB);
-              if (!rB.ok) return;
-              broadcastFluxState(io, roomCode, rB.state);
+              if (rB.ok) broadcastFluxState(io, roomCode, rB.state);
             }
+          } else if (gs.surchargeRequestPlayerId) {
+            const targetId = pickRandom(gs.surchargeEligibleTargets);
+            const r = resolveFluxSurcharge(gs, targetId);
+            if (r.ok) broadcastFluxState(io, roomCode, r.state);
+          } else if (gs.verrouRequestPlayerId) {
+            const targetId = pickRandom(gs.verrouEligibleTargets);
+            const r = resolveFluxVerrou(gs, targetId);
+            if (r.ok) broadcastFluxState(io, roomCode, r.state);
+          } else if (gs.piocheRequestPlayerId) {
+            const targetId = pickRandom(gs.piocheEligibleTargets);
+            const r = resolveFluxPioche(gs, targetId);
+            // Broadcaster l'état en TRICK_END avec le summary complet (piocheTargetId rempli)
+            // pour que le client puisse logger le bon message dans le journal (piocheJustResolved)
+            if (r.ok) broadcastFluxState(io, roomCode, r.state);
+          } else if (gs.eclipseRequestPlayerId) {
+            // Bot donne ECLIPSE à l'adversaire avec le plus d'étoiles
+            const eligible = gs.eclipseEligibleTargets.filter(id => id !== actorId);
+            const targetId = eligible.length > 0 ? eligible[Math.floor(Math.random() * eligible.length)] : actorId;
+            const r = resolveFluxEclipse(gs, targetId);
+            if (r.ok) broadcastFluxState(io, roomCode, r.state);
+          } else if (gs.revelationRequestPlayerId) {
+            const targetId = pickRandom(gs.revelationEligibleTargets);
+            const r = resolveFluxRevelation(gs, targetId);
+            if (r.ok) broadcastFluxState(io, roomCode, r.state);
+          } else if (gs.taxeRequestPlayerId) {
+            const targetId = pickRandom(gs.taxeEligibleTargets);
+            const r = resolveFluxTaxe(gs, targetId);
+            if (r.ok) broadcastFluxState(io, roomCode, r.state);
           }
 
-          const s = endFluxTrick(currentRoom.fluxGameState);
-          broadcastFluxState(io, roomCode, s);
-          advanceAfterFluxTrick(io, roomCode, s, currentRoom);
+          // Broadcaster l'état TRICK_END avec le summary complet avant de passer à la mène suivante.
+          // Un délai est ajouté pour que le client ait le temps d'afficher le résumé de mène
+          // (carte gagnante visible dans la pile du gagnant) avant que la mène suivante commence.
+          const stateAfterEffect = currentRoom.fluxGameState;
+          // S'assurer que la phase est bien TRICK_END avant de broadcaster
+          if (stateAfterEffect.phase !== 'TRICK_END') {
+            stateAfterEffect.phase = 'TRICK_END';
+          }
+          broadcastFluxState(io, roomCode, stateAfterEffect);
+
+          setTimeout(() => {
+            const roomAfterDelay = getRoom(roomCode);
+            if (!roomAfterDelay?.fluxGameState) return;
+            const s = endFluxTrick(roomAfterDelay.fluxGameState);
+            broadcastFluxState(io, roomCode, s);
+            advanceAfterFluxTrick(io, roomCode, s, roomAfterDelay);
+          }, NEXT_TRICK_DELAY);
         }, BOT_PLAY_DELAY + 500);
       } else {
         // Humain : timeout automatique
@@ -240,6 +340,12 @@ function triggerFluxRevealAndResolve(
           const gs = currentRoom.fluxGameState;
           gs.swapRequestPlayerId = null; gs.swapEligibleTargets = []; gs.swapChosenA = null;
           gs.stealRequestPlayerId = null; gs.stealEligibleTargets = [];
+          gs.surchargeRequestPlayerId = null; gs.surchargeEligibleTargets = [];
+          gs.verrouRequestPlayerId = null; gs.verrouEligibleTargets = [];
+          gs.piocheRequestPlayerId = null; gs.piocheEligibleTargets = [];
+          gs.eclipseRequestPlayerId = null; gs.eclipseEligibleTargets = [];
+          gs.revelationRequestPlayerId = null; gs.revelationEligibleTargets = [];
+          gs.taxeRequestPlayerId = null; gs.taxeEligibleTargets = [];
           gs.phase = 'TRICK_END';
           const s = endFluxTrick(gs);
           broadcastFluxState(io, roomCode, s);
@@ -736,6 +842,168 @@ export function registerSocketHandlers(io: Server, socket: Socket) {
         advanceAfterTrick(io, roomCode, state, room);
       }
     } catch (e: any) { callback({ error: e.message }); }
+  });
+
+  // ----------------------------------------------------------
+  // VERROU : choisir la cible (humain)
+  // ----------------------------------------------------------
+  socket.on('verrou_target', ({ targetPlayerId }, callback) => {
+    try {
+      const roomCode = socket.data.roomCode;
+      const room = getRoom(roomCode);
+      if (!room?.fluxGameState) return callback({ error: 'Partie introuvable' });
+      const gs = room.fluxGameState;
+      if (gs.verrouRequestPlayerId !== socket.id)
+        return callback({ error: "Ce n'est pas votre tour" });
+      if (gs.swapTimeout) { clearTimeout(gs.swapTimeout); gs.swapTimeout = null; }
+      const result = resolveFluxVerrou(gs, targetPlayerId);
+      if (!result.ok) return callback({ error: result.error });
+      callback({ ok: true });
+      broadcastFluxState(io, roomCode, result.state);
+      const s = endFluxTrick(result.state);
+      broadcastFluxState(io, roomCode, s);
+      advanceAfterFluxTrick(io, roomCode, s, room);
+    } catch (e: any) { callback({ error: e.message }); }
+  });
+
+  // ----------------------------------------------------------
+  // PIOCHE : choisir la cible (humain)
+  // ----------------------------------------------------------
+  socket.on('pioche_target', ({ targetPlayerId }, callback) => {
+    try {
+      const roomCode = socket.data.roomCode;
+      const room = getRoom(roomCode);
+      if (!room?.fluxGameState) return callback({ error: 'Partie introuvable' });
+      const gs = room.fluxGameState;
+      if (gs.piocheRequestPlayerId !== socket.id)
+        return callback({ error: "Ce n'est pas votre tour" });
+      if (gs.swapTimeout) { clearTimeout(gs.swapTimeout); gs.swapTimeout = null; }
+      const result = resolveFluxPioche(gs, targetPlayerId);
+      if (!result.ok) return callback({ error: result.error });
+      callback({ ok: true });
+      broadcastFluxState(io, roomCode, result.state);
+      const s = endFluxTrick(result.state);
+      broadcastFluxState(io, roomCode, s);
+      advanceAfterFluxTrick(io, roomCode, s, room);
+    } catch (e: any) { callback({ error: e.message }); }
+  });
+
+  // ----------------------------------------------------------
+  // ECLIPSE : choisir la cible (humain)
+  // ----------------------------------------------------------
+  socket.on('eclipse_target', ({ targetPlayerId }, callback) => {
+    try {
+      const roomCode = socket.data.roomCode;
+      const room = getRoom(roomCode);
+      if (!room?.fluxGameState) return callback({ error: 'Partie introuvable' });
+      const gs = room.fluxGameState;
+      if (gs.eclipseRequestPlayerId !== socket.id)
+        return callback({ error: "Ce n'est pas votre tour" });
+      if (gs.swapTimeout) { clearTimeout(gs.swapTimeout); gs.swapTimeout = null; }
+      const result = resolveFluxEclipse(gs, targetPlayerId);
+      if (!result.ok) return callback({ error: result.error });
+      callback({ ok: true });
+      broadcastFluxState(io, roomCode, result.state);
+      const s = endFluxTrick(result.state);
+      broadcastFluxState(io, roomCode, s);
+      advanceAfterFluxTrick(io, roomCode, s, room);
+    } catch (e: any) { callback({ error: e.message }); }
+  });
+
+  // ----------------------------------------------------------
+  // REVELATION : choisir la cible (humain)
+  // ----------------------------------------------------------
+  socket.on('revelation_target', ({ targetPlayerId }, callback) => {
+    try {
+      const roomCode = socket.data.roomCode;
+      const room = getRoom(roomCode);
+      if (!room?.fluxGameState) return callback({ error: 'Partie introuvable' });
+      const gs = room.fluxGameState;
+      if (gs.revelationRequestPlayerId !== socket.id)
+        return callback({ error: "Ce n'est pas votre tour" });
+      if (gs.swapTimeout) { clearTimeout(gs.swapTimeout); gs.swapTimeout = null; }
+      const result = resolveFluxRevelation(gs, targetPlayerId);
+      if (!result.ok) return callback({ error: result.error });
+      callback({ ok: true });
+      // Envoyer la carte mystère révélée à tous
+      const target = gs.players.find(p => p.id === targetPlayerId);
+      if (target) {
+        io.to(roomCode).emit('mystery_revealed', {
+          targetId: targetPlayerId,
+          targetPseudo: target.pseudo,
+          mysteryCard: gs.missingCards[targetPlayerId] ?? 0,
+        });
+      }
+      broadcastFluxState(io, roomCode, result.state);
+      const s = endFluxTrick(result.state);
+      broadcastFluxState(io, roomCode, s);
+      advanceAfterFluxTrick(io, roomCode, s, room);
+    } catch (e: any) { callback({ error: e.message }); }
+  });
+
+  // ----------------------------------------------------------
+  // TAXE : choisir la cible (humain)
+  // ----------------------------------------------------------
+  socket.on('taxe_target', ({ targetPlayerId }, callback) => {
+    try {
+      const roomCode = socket.data.roomCode;
+      const room = getRoom(roomCode);
+      if (!room?.fluxGameState) return callback({ error: 'Partie introuvable' });
+      const gs = room.fluxGameState;
+      if (gs.taxeRequestPlayerId !== socket.id)
+        return callback({ error: "Ce n'est pas votre tour" });
+      if (gs.swapTimeout) { clearTimeout(gs.swapTimeout); gs.swapTimeout = null; }
+      const result = resolveFluxTaxe(gs, targetPlayerId);
+      if (!result.ok) return callback({ error: result.error });
+      callback({ ok: true });
+      broadcastFluxState(io, roomCode, result.state);
+      const s = endFluxTrick(result.state);
+      broadcastFluxState(io, roomCode, s);
+      advanceAfterFluxTrick(io, roomCode, s, room);
+    } catch (e: any) { callback({ error: e.message }); }
+  });
+
+  // ----------------------------------------------------------
+  // SURCHARGE : choisir la cible (humain)
+  // ----------------------------------------------------------
+  socket.on('surcharge_target', ({ targetPlayerId }, callback) => {
+    try {
+      const roomCode = socket.data.roomCode;
+      const room = getRoom(roomCode);
+      if (!room?.fluxGameState) return callback({ error: 'Partie introuvable' });
+      const gs = room.fluxGameState;
+      if (gs.surchargeRequestPlayerId !== socket.id)
+        return callback({ error: "Ce n'est pas votre tour" });
+      if (gs.swapTimeout) { clearTimeout(gs.swapTimeout); gs.swapTimeout = null; }
+      const result = resolveFluxSurcharge(gs, targetPlayerId);
+      if (!result.ok) return callback({ error: result.error });
+      callback({ ok: true });
+      broadcastFluxState(io, roomCode, result.state);
+      const s = endFluxTrick(result.state);
+      broadcastFluxState(io, roomCode, s);
+      advanceAfterFluxTrick(io, roomCode, s, room);
+    } catch (e: any) { callback({ error: e.message }); }
+  });
+
+  // ----------------------------------------------------------
+  // ORACLE : le joueur a vu les cartes et clique OK pour continuer
+  // ----------------------------------------------------------
+  socket.on('oracle_ok', (callback?: Function) => {
+    try {
+      const roomCode = socket.data.roomCode;
+      const room = getRoom(roomCode);
+      if (!room?.fluxGameState) return;
+      const gs = room.fluxGameState;
+      // Vérifier que c'est bien le gagnant ORACLE qui confirme
+      if (gs.phase !== 'SPECIAL_ORACLE') return;
+      if (gs.trickWinnerId !== socket.id) return;
+      if (callback) callback({ ok: true });
+      const s = endFluxTrick(gs);
+      broadcastFluxState(io, roomCode, s);
+      advanceAfterFluxTrick(io, roomCode, s, room);
+    } catch (e: any) {
+      if (callback) callback({ error: e.message });
+    }
   });
 
   // ----------------------------------------------------------
