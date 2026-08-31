@@ -96,6 +96,47 @@
   color: rgba(255,255,255,0.5);
 }
 
+/* Cartes déjà jouées */
+.playedHistory {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.playedHistoryLabel {
+  font-size: 0.65rem;
+  color: rgba(255,255,255,0.4);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.playedHistoryCards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem;
+}
+
+.playedHistoryCard {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  background: rgba(255,255,255,0.12);
+  border: 1px solid rgba(255,255,255,0.2);
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: rgba(255,255,255,0.7);
+}
+
+/* Variante pour le joueur local (légèrement plus visible) */
+.playedHistoryCardMine {
+  background: rgba(99, 102, 241, 0.2);
+  border-color: rgba(99, 102, 241, 0.5);
+  color: #c7d2fe;
+}
+
 .swapOverlay {
   position: absolute;
   inset: 0;
@@ -122,6 +163,34 @@
   color: #fca5a5;
   font-size: 0.9rem;
   pointer-events: none;
+}
+
+/* Cible d'un effet spécial (ECLIPSE, PIOCHE, VERROU, REVELATION, TAXE) */
+.specialTarget {
+  cursor: pointer;
+  animation: specialPulse 1s infinite;
+}
+.specialTarget:hover { transform: scale(1.05); }
+
+.specialOverlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(167, 139, 250, 0.2);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  color: #c4b5fd;
+  font-size: 0.85rem;
+  pointer-events: none;
+  text-align: center;
+  padding: 0.25rem;
+}
+
+@keyframes specialPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(167, 139, 250, 0.4); }
+  50% { box-shadow: 0 0 0 8px rgba(167, 139, 250, 0); }
 }
 
 /* My hand */
