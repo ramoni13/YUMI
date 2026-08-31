@@ -1,60 +1,69 @@
-import { ScoreCard, ScoreCardType, SpecialEffect, GAME_CONFIGS } from '../types';
+import { ScoreCard, GainType, SpecialEffect, GAME_CONFIGS } from '../types';
 
 // ============================================================
-// Génération du paquet Score complet (30 cartes)
+// Génération du paquet Score complet (38 cartes)
+// Colonnes : id | value | gain | specialEffect | displayName | bonusPoints | bonusStars
 // ============================================================
 
-function makeScoreCard(
+function card(
   id: number,
   value: number,
+  gain: GainType,
   specialEffect: SpecialEffect,
-  displayValue: string,
-  bonusStars: number = 0,
-  forceType?: ScoreCardType
+  displayName: string,
+  bonusPoints: number = 0,
+  bonusStars: number = 0
 ): ScoreCard {
-  const type: ScoreCardType = forceType ??
-    (specialEffect !== null ? 'special' : value >= 0 ? 'positive' : 'negative');
-  return { id, value, type, specialEffect, displayValue, appliedDouble: false, bonusStars };
+  return { id, value, gain, specialEffect, displayName, appliedDouble: false, bonusPoints, bonusStars };
 }
 
 export function buildFullScoreDeck(): ScoreCard[] {
   return [
-    // --- Cartes positives (+) ---
-    makeScoreCard(1, 5, null, '+5'),
-    makeScoreCard(2, 5, null, '+5'),
-    makeScoreCard(3, 4, null, '+4'),
-    makeScoreCard(4, 4, null, '+4'),
-    makeScoreCard(5, 3, null, '+3'),
-    makeScoreCard(6, 3, null, '+3'),
-    makeScoreCard(7, 3, null, '+3'),
-    makeScoreCard(8, 2, null, '+2'),
-    makeScoreCard(9, 2, null, '+2'),
-    makeScoreCard(10, 2, null, '+2'),
-    makeScoreCard(11, 2, null, '+2'),
-    makeScoreCard(12, 1, null, '+1'),
-    makeScoreCard(13, 1, null, '+1'),
-    makeScoreCard(14, 1, null, '+1'),
-    makeScoreCard(15, 1, null, '+1'),
-    // --- Cartes négatives (-) avec étoiles bonus ---
-    makeScoreCard(16, -1, null, '-1⭐', 1), // -1 pt + 1 étoile immédiate
-    makeScoreCard(17, -1, null, '-1⭐', 1),
-    makeScoreCard(18, -1, null, '-1⭐', 1),
-    makeScoreCard(19, -1, null, '-1⭐', 1),
-    makeScoreCard(20, -2, null, '-2⭐⭐', 2), // -2 pts + 2 étoiles immédiates
-    makeScoreCard(21, -2, null, '-2⭐⭐', 2),
-    makeScoreCard(22, -2, null, '-2⭐⭐', 2),
-    makeScoreCard(23, -3, null, '-3'),
-    makeScoreCard(24, -5, null, '-5'),
-    // --- Cartes spéciales : 1 verte + 1 rouge chacune ---
-    // VOL : défausse la carte, donne 2 étoiles immédiates, vole 1 carte score chez un adversaire
-    makeScoreCard(25, 0, 'STEAL', '🦅', 2, 'positive'), // verte
-    makeScoreCard(26, 0, 'STEAL', '🦅', 2, 'negative'), // rouge
-    // DOUBLE (×2) : multiplie la dernière carte score gagnée
-    makeScoreCard(27, 0, 'DOUBLE', '×2', 0, 'positive'), // verte
-    makeScoreCard(28, 0, 'DOUBLE', '×2', 0, 'negative'), // rouge
-    // SWAP (⇄) : défausse la carte, choisit 2 joueurs et échange leurs cartes du sommet
-    makeScoreCard(29, 0, 'SWAP', '⇄', 0, 'positive'), // verte
-    makeScoreCard(30, 0, 'SWAP', '⇄', 0, 'negative'), // rouge
+    // -------------------------------------------------------
+    // Cartes numériques — 20 cartes
+    // N° | Nom  | Score | Bonus | Étoile | Gain
+    // -------------------------------------------------------
+    card(1, +5, '+', null, '+5'),          // +5  —  —  +
+    card(2, +4, '-', null, '+4'),          // +4  —  —  -
+    card(3, +3, '+', null, '+3'),          // +3  —  —  +
+    card(4, +2, '-', null, '+2', 0, 1),   // +2  —  1⭐ -
+    card(5, +1, '+', null, '+1', 0, 2),   // +1  —  2⭐ +
+    card(6, -1, '-', null, '-1', 0, 2),   // -1  —  2⭐ -
+    card(7, -2, '+', null, '-2', 0, 2),   // -2  —  2⭐ +
+    card(8, -3, '-', null, '-3', 0, 3),   // -3  —  3⭐ -
+    card(9, -4, '+', null, '-4', 0, 3),   // -4  —  3⭐ +
+    card(10, -5, '-', null, '-5', 0, 3),   // -5  —  3⭐ -
+    card(11, +5, '-', null, '+5'),          // +5  —  —  -
+    card(12, +4, '+', null, '+4'),          // +4  —  —  +
+    card(13, +3, '-', null, '+3'),          // +3  —  —  -
+    card(14, +2, '+', null, '+2', 0, 1),   // +2  —  1⭐ +
+    card(15, +1, '-', null, '+1', 0, 2),   // +1  —  2⭐ -
+    card(16, -1, '+', null, '-1', 0, 2),   // -1  —  2⭐ +
+    card(17, -2, '-', null, '-2', 0, 2),   // -2  —  2⭐ -
+    card(18, -3, '+', null, '-3', 0, 2),   // -3  —  2⭐ +
+    card(19, -4, '-', null, '-4', 0, 3),   // -4  —  3⭐ -
+    card(20, -5, '+', null, '-5', 0, 3),   // -5  —  3⭐ +
+    // -------------------------------------------------------
+    // Cartes spéciales — 18 cartes
+    // -------------------------------------------------------
+    card(21, 0, '-', 'DOUBLE', 'X2', 0, 1),  // X2       score 0  1⭐  -
+    card(22, 0, '+', 'DOUBLE', 'X2', 0, 1),  // X2       score 0  1⭐  +
+    card(23, 0, '-', 'STEAL', 'VOL', 0, 1),  // VOL      score 0  1⭐  -
+    card(24, 0, '+', 'STEAL', 'VOL', 0, 1),  // VOL      score 0  1⭐  +
+    card(25, 0, '-', 'SWAP', 'SWAP', 0, 1),  // SWAP     score 0  1⭐  -
+    card(26, 0, '+', 'SWAP', 'SWAP', 0, 1),  // SWAP     score 0  1⭐  +
+    card(27, +1, '-', 'PIOCHE', 'PIOCHE', 0, 3),  // PIOCHE   score+1  3⭐  -
+    card(28, +2, '+', 'VERROU', 'VERROU', 0, 2),  // VERROU   score+2  2⭐  +
+    card(29, +3, '-', 'REVELATION', 'RÉVÉLATION', 0, 1),  // RÉVÉL.   score+3  1⭐  -
+    card(30, -1, '+', 'MYSTERE', 'MYSTÈRE', 0, 0),  // MYSTÈRE  score-1  0⭐  +
+    card(31, -2, '-', 'SURCHARGE', 'SURCHARGE', 0, 2),  // SURCHARG score-2  2⭐  -
+    card(32, -3, '+', 'INVERSION', 'INVERSION', 0, 3),  // INVERS.  score-3  3⭐  +
+    card(33, 0, '-', 'CONSTELLATION', 'CONSTELLATION', 0, 5), // CONSTEL. score 0  5⭐  -
+    card(34, +1, '+', 'ECLIPSE', 'ECLIPSE', 0, -3),  // ECLIPSE  score+1 -3⭐  + (donné à un adversaire)
+    card(35, 0, '-', 'JACKPOT', 'JACKPOT', 3, 0),  // JACKPOT  score 0  +3bonus -
+    card(36, 0, '+', 'TAXE', 'TAXE', 0, 0),  // TAXE     score 0  0⭐  + (vole 2 bonus)
+    card(37, +1, '-', 'ORACLE', 'ORACLE', 0, 0),  // ORACLE   score+1  0⭐  -
+    card(38, -2, '+', 'DEVOILEMENT', 'DÉVOILEMENT', 0, 3),  // DÉVOI.   score-2  3⭐  +
   ];
 }
 
