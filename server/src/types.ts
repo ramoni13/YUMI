@@ -1,5 +1,5 @@
 // ============================================================
-// YUMI — Types partagés client / serveur
+// YUMI — Types partagés client / serveur (serveur)
 // ============================================================
 
 // ----------------------------
@@ -20,44 +20,87 @@ export const PLAYER_COLORS: PlayerColor[] = [
 // ----------------------------
 // Cartes Score
 // ----------------------------
-export type ScoreCardType = 'positive' | 'negative' | 'special';
-export type SpecialEffect = 'STEAL' | 'DOUBLE' | 'SWAP' | null;
+
+/**
+ * GainType : condition de victoire du pli, INDÉPENDANTE de la valeur.
+ * '+' (vert)  → la plus GRANDE valeur sans doublon gagne.
+ * '-' (rouge) → la plus PETITE valeur sans doublon gagne.
+ */
+export type GainType = '+' | '-';
+
+export type SpecialEffect =
+  | 'DOUBLE'
+  | 'STEAL'
+  | 'SWAP'
+  | 'PIOCHE'
+  | 'VERROU'
+  | 'REVELATION'
+  | 'MYSTERE'
+  | 'SURCHARGE'
+  | 'INVERSION'
+  | 'CONSTELLATION'
+  | 'ECLIPSE'
+  | 'JACKPOT'
+  | 'TAXE'
+  | 'ORACLE'
+  | 'DEVOILEMENT'
+  | null;
 
 export interface ScoreCard {
-  id: number;             // 1 à 30
-  value: number;          // Valeur numérique (0 pour les spéciales)
-  type: ScoreCardType;    // 'positive' (verte) | 'negative' (rouge) | 'special'
+  id: number;             // 1 à 38
+  value: number;          // Valeur score cumulée en fin de partie
+  gain: GainType;         // '+' = vert (plus grande gagne) | '-' = rouge (plus petite gagne)
   specialEffect: SpecialEffect;
-  displayValue: string;   // Ex: "+3", "-2", "🦅", "×2", "⇄"
-  appliedDouble: boolean; // Si le ×2 a déjà été appliqué sur cette carte
-  bonusStars: number;     // Étoiles immédiatement gagnées (0 pour la plupart, 1 pour -1, 2 pour -2)
+  displayName: string;    // Nom affiché : "+5", "-3", "VOL", "MYSTÈRE"…
+  appliedDouble: boolean; // Si le ×2 a déjà été appliqué
+  bonusPoints: number;    // Points Bonus remportés immédiatement
+  bonusStars: number;     // Étoiles remportées immédiatement
 }
 
 // ----------------------------
 // Joueur
 // ----------------------------
+// ----------------------------
+// Effets différés (s'appliquent à la mène suivante)
+// ----------------------------
+export interface DeferredEffects {
+  forcedRecharge: boolean;      // SURCHARGE
+  forcedCard: number | null;    // PIOCHE
+  lockedHighCard: boolean;      // VERROU vert
+  lockedLowCard: boolean;       // VERROU rouge
+  mustPlayMysteryCard: boolean; // MYSTÈRE
+}
+
+export function emptyDeferredEffects(): DeferredEffects {
+  return { forcedRecharge: false, forcedCard: null, lockedHighCard: false, lockedLowCard: false, mustPlayMysteryCard: false };
+}
+
 export interface Player {
   id: string;
   pseudo: string;
   color: PlayerColor;
-  hand: number[];           // Cartes en main (valeurs 1 à 8)
-  scorePile: ScoreCard[];   // Pile de cartes Score gagnées
-  stars: number;            // Étoiles cartes Score (majorité uniquement, pas de +1 pt)
-  rechargeStars: number;    // Étoiles Recharge (majorité + +1 pt chacune)
+  hand: number[];
+  playedHistory: number[];    // Cartes déjà jouées (visible par tous)
+  scorePile: ScoreCard[];
+  stars: number;              // Étoiles (majorité = +5 pts)
+  bonusPoints: number;        // Points Bonus cumulés
+  deferred: DeferredEffects;
   isReady: boolean;
   isConnected: boolean;
 }
 
-// Vue publique d'un joueur (sans les cartes en main)
+// Vue publique d'un joueur
 export interface PublicPlayer {
   id: string;
   pseudo: string;
   color: PlayerColor;
-  handCount: number;        // Nombre de cartes en main (sans les valeurs)
-  topScoreCard: ScoreCard | null; // Dernière carte Score visible
+  handCount: number;
+  playedHistory: number[];        // Cartes déjà jouées (visible par tous)
+  topScoreCard: ScoreCard | null;
   scorePileCount: number;
-  stars: number;            // Étoiles cartes Score (majorité uniquement)
-  rechargeStars: number;    // Étoiles Recharge (majorité + +1 pt)
+  stars: number;
+  bonusPoints: number;
+  deferred: DeferredEffects;
   isReady: boolean;
   isConnected: boolean;
   hasPlayedCard: boolean;
@@ -70,6 +113,9 @@ export type GameMode = 'classic' | 'flux';
 
 // Valeur réservée pour la carte Recharge (mode flux)
 export const RECHARGE_CARD_VALUE = 0;
+
+// Bonus de majorité d'étoiles en fin de partie
+export const STAR_MAJORITY_BONUS = 5;
 
 // ----------------------------
 // Phases de jeu
@@ -92,7 +138,14 @@ export type GamePhase =
   | 'BONUS_STAR'
   // Phases mode flux uniquement
   | 'FLUX_TRICK_START'
-  | 'FLUX_RECHARGE';
+  | 'FLUX_RECHARGE'
+  | 'SPECIAL_ECLIPSE'
+  | 'SPECIAL_PIOCHE'
+  | 'SPECIAL_VERROU'
+  | 'SPECIAL_REVELATION'
+  | 'SPECIAL_TAXE'
+  | 'SPECIAL_ORACLE'
+  | 'SPECIAL_DEVOILEMENT';
 
 // ----------------------------
 // État du jeu (version publique envoyée aux clients)
@@ -117,23 +170,41 @@ export interface PublicGameState {
   swapChosenA: string | null;
   stealRequestPlayerId: string | null;
   stealEligibleTargets: string[];
+  // Nouveaux effets spéciaux flux
+  eclipseRequestPlayerId: string | null;
+  eclipseEligibleTargets: string[];
+  piocheRequestPlayerId: string | null;
+  piocheEligibleTargets: string[];
+  surchargeRequestPlayerId: string | null;
+  surchargeEligibleTargets: string[];
+  verrouRequestPlayerId: string | null;
+  verrouEligibleTargets: string[];
+  revelationRequestPlayerId: string | null;
+  revelationEligibleTargets: string[];
+  taxeRequestPlayerId: string | null;
+  taxeEligibleTargets: string[];
+  // État global différé
+  nextTrickInverted: boolean;
+  mysteryTrickActive: boolean;
+  revealedUpcoming: ScoreCard[];
   lastTrickSummary: TrickSummary | null;
   roundEndSummary: RoundEndSummary | null;
   finalScores: FinalScore[] | null;
   gameOptions: GameOptions;
   // Champs spécifiques mode flux
   rechargedPlayerIds: string[];
-  rechargeStarWinners: string[];
+  bonusPointWinners: string[];
 }
 
 // ----------------------------
 // Informations privées (envoyées uniquement au joueur concerné)
 // ----------------------------
 export interface PrivateInfo {
-  hand: number[];               // Cartes en main du joueur
-  mysteryCard?: number;         // Carte mystère vue par le voisin de droite
-  mysteryCardOwner?: string;    // Pseudo du joueur à qui appartient la carte mystère
-  missingCardValue?: number;    // Valeur de la carte manquante (pour le joueur pioché)
+  hand: number[];
+  mysteryCard?: number;
+  mysteryCardOwner?: string;
+  missingCardValue?: number;
+  oracleCards?: ScoreCard[];    // Cartes vues par ORACLE (privé)
 }
 
 // ----------------------------
@@ -148,12 +219,23 @@ export type GameEventKind =
   | 'SCORE_WON'          // Ligne explicite : "X a remporté la carte Score Y"
   | 'SPECIAL_STEAL'      // Effet VOL
   | 'SPECIAL_DOUBLE'     // Effet ×2
-  | 'SPECIAL_SWAP'       // Effet échange
-  | 'BONUS_STAR'         // Étoile bonus fin de manche
-  | 'FLUX_RECHARGE_STARS' // Étoiles gagnées lors d'une Recharge (mode flux)
-  | 'ROUND_END'          // Fin de manche (dernières cartes + bonus étoile)
-  | 'ROUND_WINNER'       // Classement de la manche
-  | 'GAME_OVER';         // Fin de partie
+  | 'SPECIAL_SWAP'
+  | 'SPECIAL_PIOCHE'
+  | 'SPECIAL_VERROU'
+  | 'SPECIAL_REVELATION'
+  | 'SPECIAL_MYSTERE'
+  | 'SPECIAL_SURCHARGE'
+  | 'SPECIAL_INVERSION'
+  | 'SPECIAL_CONSTELLATION'
+  | 'SPECIAL_ECLIPSE'
+  | 'SPECIAL_JACKPOT'
+  | 'SPECIAL_TAXE'
+  | 'SPECIAL_ORACLE'
+  | 'SPECIAL_DEVOILEMENT'
+  | 'FLUX_RECHARGE_BONUS'
+  | 'ROUND_END'
+  | 'ROUND_WINNER'
+  | 'GAME_OVER';
 
 export interface GameEvent {
   id: number;            // Identifiant séquentiel
@@ -178,12 +260,14 @@ export interface GameEvent {
   stolenFromPseudo?: string;  // pseudo de la victime du VOL
   stolenCard?: ScoreCard;     // carte volée
   bonusWinners?: Array<{ pseudo: string; color: PlayerColor; cardValue: number; hasBonus?: boolean }>;
-  roundScores?: Array<{ pseudo: string; color: PlayerColor; scoreFromCards: number; stars: number; total: number }>;
+  roundScores?: Array<{ pseudo: string; color: PlayerColor; scoreFromCards: number; stars: number; bonusPoints: number; total: number }>;
   doubledValue?: number; // valeur après ×2
   previousValue?: number;
-  message?: string;      // Message libre
-  // Champs spécifiques mode flux — étoiles Recharge
-  rechargeStarWinners?: Array<{ pseudo: string; color: PlayerColor; cardValue: number }>;
+  message?: string;
+  targetPseudo?: string;
+  targetColor?: PlayerColor;
+  revealedCards?: ScoreCard[];
+  bonusPointWinners?: Array<{ pseudo: string; color: PlayerColor; cardValue: number }>;
   rechargedPlayers?: Array<{ pseudo: string; color: PlayerColor }>;
 }
 
@@ -191,7 +275,7 @@ export interface GameEvent {
 // Résumés
 // ----------------------------
 export interface TrickSummary {
-  playedCards: Record<string, number>; // joueur_id → valeur jouée (0 = Recharge)
+  playedCards: Record<string, number>;
   cancelledValues: number[];
   winnerId: string | null;
   scoreCard: ScoreCard;
@@ -201,9 +285,19 @@ export interface TrickSummary {
   swapBetween: [string, string] | null;
   stolenFrom: string | null;
   bonusStarsAwarded: number;
+  bonusPointsAwarded: number;
+  eclipseGivenTo: string | null;
+  piocheTargetId: string | null;
+  piocheCardValue: number | null;
+  surchargeTargetId: string | null;   // SURCHARGE : joueur forcé à Recharger
+  verrouTargetId: string | null;       // VERROU : joueur verrouillé
+  taxeTargetId: string | null;         // TAXE : joueur taxé
+  revelationTargetId: string | null;  // REVELATION : joueur dont la carte mystère a été révélée
+  revelationCardValue: number | null; // REVELATION : valeur de la carte mystère révélée
+  mysteryCardsPlayed: Record<string, number> | null;
   rechargedPlayerIds: string[];
-  rechargeStarWinners: string[];  // joueurs ayant gagné des étoiles (carte valeur unique)
-  rechargeStarCount: number;      // nb d'étoiles gagnées par chaque gagnant (= nb de rechargeurs)
+  bonusPointWinners: string[];
+  bonusPointCount: number;
 }
 
 export interface RoundEndSummary {
@@ -218,11 +312,10 @@ export interface FinalScore {
   pseudo: string;
   color: PlayerColor;
   scoreFromCards: number;
-  stars: number;            // Étoiles cartes Score (pour la majorité)
-  rechargeStars: number;    // Étoiles Recharge (+1 pt chacune + pour la majorité)
-  totalStars: number;       // stars + rechargeStars (pour déterminer le majoritaire)
+  bonusPoints: number;
+  stars: number;
   starBonus: number;        // +5 pts pour le joueur majoritaire en étoiles
-  totalScore: number;       // scoreFromCards + rechargeStars + starBonus
+  totalScore: number;       // scoreFromCards + bonusPoints + starBonus
   rank: number;
 }
 
@@ -298,6 +391,12 @@ export interface ClientEvents {
   swap_target: (payload: { targetPlayerId: string }, callback: (res: { ok: boolean } | { error: string }) => void) => void;
   steal_target: (payload: { targetPlayerId: string }, callback: (res: { ok: boolean } | { error: string }) => void) => void;
   swap_choose_players: (payload: { playerAId: string; playerBId: string }, callback: (res: { ok: boolean } | { error: string }) => void) => void;
+  eclipse_target: (payload: { targetPlayerId: string }, callback: (res: { ok: boolean } | { error: string }) => void) => void;
+  pioche_target: (payload: { targetPlayerId: string }, callback: (res: { ok: boolean } | { error: string }) => void) => void;
+  surcharge_target: (payload: { targetPlayerId: string }, callback: (res: { ok: boolean } | { error: string }) => void) => void;
+  verrou_target: (payload: { targetPlayerId: string }, callback: (res: { ok: boolean } | { error: string }) => void) => void;
+  revelation_target: (payload: { targetPlayerId: string }, callback: (res: { ok: boolean } | { error: string }) => void) => void;
+  taxe_target: (payload: { targetPlayerId: string }, callback: (res: { ok: boolean } | { error: string }) => void) => void;
   next_phase: () => void;
   add_bot: (payload: { profile: BotProfile }, callback: (res: { ok: boolean } | { error: string }) => void) => void;
   remove_bot: (payload: { botId: string }, callback: (res: { ok: boolean } | { error: string }) => void) => void;
@@ -317,6 +416,9 @@ export interface ServerEvents {
   swap_request: (payload: { eligibleTargets: PublicPlayer[] }) => void;
   round_end: (summary: RoundEndSummary) => void;
   game_over: (payload: { finalScores: FinalScore[]; winnerId: string }) => void;
+  oracle_info: (payload: { cards: ScoreCard[] }) => void;
+  mystery_revealed: (payload: { targetId: string; targetPseudo: string; mysteryCard: number }) => void;
+  upcoming_revealed: (payload: { cards: ScoreCard[] }) => void;
   error: (payload: { message: string }) => void;
 }
 
