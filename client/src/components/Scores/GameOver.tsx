@@ -52,13 +52,13 @@ export function GameOver({ onReplay }: GameOverProps) {
               <span className={styles.cardScore} title={t.gameover.cardScoreTitle}>
                 🃏 {s.scoreFromCards > 0 ? '+' : ''}{s.scoreFromCards}
               </span>
-              {s.rechargeStars > 0 && (
-                <span className={styles.rechargeStarScore} title={t.gameover.rechargeStarScoreTitle}>
-                  🔄⭐ +{s.rechargeStars}
+              {s.bonusPoints > 0 && (
+                <span className={styles.rechargeStarScore} title="Points bonus">
+                  🪙 +{s.bonusPoints}
                 </span>
               )}
               {s.stars > 0 && (
-                <span className={styles.starScore} title={t.gameover.starScoreTitle}>
+                <span className={styles.starScore} title="Étoiles (majorité)">
                   ⭐ {s.stars}
                 </span>
               )}
