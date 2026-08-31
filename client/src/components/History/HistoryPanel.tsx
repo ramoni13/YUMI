@@ -82,7 +82,7 @@ function EventRow({ event, myId, t }: EventRowProps) {
         <span className={styles.trickSepNum}>{t.history.trickSepLabel(event.trick)}</span>
         {event.scoreCard && (
           <span className={`${styles.scoreBadge} ${scoreClass(event.scoreCard.value, event.scoreCard.specialEffect)}`}>
-            {event.scoreCard.displayValue}
+            {event.scoreCard.displayName}
           </span>
         )}
       </div>
@@ -152,7 +152,7 @@ function EventRow({ event, myId, t }: EventRowProps) {
               {' '}{t.history.theCard}{' '}
               {event.scoreCard && (
                 <span className={`${styles.scoreBadge} ${scoreClass(event.scoreCard.value, event.scoreCard.specialEffect)}`}>
-                  {event.scoreCard.displayValue}
+                  {event.scoreCard.displayName}
                 </span>
               )}
               {winnerCard && (
@@ -238,7 +238,7 @@ function EventRow({ event, myId, t }: EventRowProps) {
         <span className={styles.scoreWonText}>
           {event.scoreCard && (
             <span className={`${styles.scoreBadge} ${scoreClass(event.scoreCard.value, event.scoreCard.specialEffect)}`}>
-              {event.scoreCard.displayValue}
+              {event.scoreCard.displayName}
             </span>
           )}
           {' '}{t.history.cardDiscarded}
@@ -257,7 +257,7 @@ function EventRow({ event, myId, t }: EventRowProps) {
         {' '}{t.history.won}{' '}
         {event.scoreCard && (
           <span className={`${styles.scoreBadge} ${scoreClass(event.scoreCard.value, event.scoreCard.specialEffect)}`}>
-            {event.scoreCard.displayValue}
+            {event.scoreCard.displayName}
           </span>
         )}
       </span>
@@ -266,11 +266,11 @@ function EventRow({ event, myId, t }: EventRowProps) {
   }
 
   // Étoiles Recharge (mode flux)
-  if (event.kind === 'FLUX_RECHARGE_STARS') {
-    const hasWinners = (event.rechargeStarWinners?.length ?? 0) > 0;
+  if (event.kind === 'FLUX_RECHARGE_BONUS') {
+    const hasWinners = (event.bonusPointWinners?.length ?? 0) > 0;
     const allRecharge = (event.rechargedPlayers?.length ?? 0) > 0 &&
-      event.rechargeStarWinners !== undefined &&
-      event.rechargeStarWinners.length === 0 &&
+      event.bonusPointWinners !== undefined &&
+      event.bonusPointWinners.length === 0 &&
       event.message?.includes('défaussée');
 
     return (
@@ -295,7 +295,7 @@ function EventRow({ event, myId, t }: EventRowProps) {
             const starCount = event.rechargedPlayers?.length ?? 1;
             return (
               <div className={styles.rechargeStarList}>
-                {event.rechargeStarWinners!.map((w, i) => (
+                {event.bonusPointWinners!.map((w, i) => (
                   <span key={i} className={styles.rechargeStarItem}>
                     <span className={styles.dot} style={{ background: COLOR_HEX[w.color] }} />
                     <strong>{w.pseudo}</strong>
@@ -328,7 +328,11 @@ function EventRow({ event, myId, t }: EventRowProps) {
         {event.color && (
           <span className={styles.dot} style={{ background: COLOR_HEX[event.color] }} />
         )}
+        {event.pseudo && <strong>{event.pseudo} </strong>}
         {event.message}
+        {event.targetPseudo && (
+          <span style={{ opacity: 0.8 }}> → {event.targetPseudo}</span>
+        )}
       </span>
     </div>
   );
@@ -344,12 +348,24 @@ function scoreClass(value: number, effect: string | null): string {
 
 function getEventStyle(kind: GameEvent['kind']): { icon: string; rowClass: string } {
   switch (kind) {
-        case 'CARD_PLAYED':      return { icon: '🂠', rowClass: styles.rowCard };
-      case 'SPECIAL_STEAL':    return { icon: '🦅', rowClass: styles.rowSpecial };
-      case 'SPECIAL_DOUBLE':   return { icon: '×2', rowClass: styles.rowSpecial };
-      case 'SPECIAL_SWAP':     return { icon: '⇄',  rowClass: styles.rowSpecial };
-    case 'BONUS_STAR':       return { icon: '⭐', rowClass: styles.rowBonus };
-    case 'ROUND_WINNER':     return { icon: '🏆', rowClass: styles.rowRoundWinner };
-    default:                 return { icon: '•',  rowClass: styles.rowDefault };
+    case 'CARD_PLAYED':           return { icon: '🂠', rowClass: styles.rowCard };
+    case 'SPECIAL_STEAL':         return { icon: '🦅', rowClass: styles.rowSpecial };
+    case 'SPECIAL_DOUBLE':        return { icon: '×2', rowClass: styles.rowSpecial };
+    case 'SPECIAL_SWAP':          return { icon: '⇄',  rowClass: styles.rowSpecial };
+    case 'SPECIAL_PIOCHE':        return { icon: '🎰', rowClass: styles.rowSpecial };
+    case 'SPECIAL_VERROU':        return { icon: '🔒', rowClass: styles.rowSpecial };
+    case 'SPECIAL_REVELATION':    return { icon: '🕵️', rowClass: styles.rowSpecial };
+    case 'SPECIAL_MYSTERE':       return { icon: '🎭', rowClass: styles.rowSpecial };
+    case 'SPECIAL_SURCHARGE':     return { icon: '⚡', rowClass: styles.rowSpecial };
+    case 'SPECIAL_INVERSION':     return { icon: '🌀', rowClass: styles.rowSpecial };
+    case 'SPECIAL_CONSTELLATION': return { icon: '🌟', rowClass: styles.rowSpecial };
+    case 'SPECIAL_ECLIPSE':       return { icon: '☄️', rowClass: styles.rowSpecial };
+    case 'SPECIAL_JACKPOT':       return { icon: '💰', rowClass: styles.rowSpecial };
+    case 'SPECIAL_TAXE':          return { icon: '🧹', rowClass: styles.rowSpecial };
+    case 'SPECIAL_ORACLE':        return { icon: '👁️', rowClass: styles.rowSpecial };
+    case 'SPECIAL_DEVOILEMENT':   return { icon: '📢', rowClass: styles.rowSpecial };
+    case 'FLUX_RECHARGE_BONUS':   return { icon: '🪙', rowClass: styles.rowBonus };
+    case 'ROUND_WINNER':          return { icon: '🏆', rowClass: styles.rowRoundWinner };
+    default:                      return { icon: '•',  rowClass: styles.rowDefault };
   }
 }
