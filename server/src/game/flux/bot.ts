@@ -1,5 +1,5 @@
 import { FluxGameState } from './engine';
-import { BotProfile, GameOptions, ScoreCard, RECHARGE_CARD_VALUE } from '../../types';
+import { BotProfile, GameOptions, ScoreCard, RECHARGE_CARD_VALUE, emptyDeferredEffects } from '../../types';
 
 // ============================================================
 // Helpers communs (portés depuis bot.ts classic)
@@ -24,7 +24,7 @@ function isDesirable(scoreCard: ScoreCard, options: GameOptions): boolean {
  * Dans ce cas le bot doit jouer bas pour gagner, haut pour éviter.
  */
 function smallestWins(scoreCard: ScoreCard, options: GameOptions): boolean {
-  return options.colorRule && scoreCard.type === 'negative';
+  return options.colorRule && scoreCard.gain === '-';
 }
 
 // ============================================================
@@ -41,6 +41,49 @@ export function decideBotFluxCard(
   const hand = bot.hand;
   const options = state.gameOptions;
   const scoreCard = state.currentScoreCard;
+  const deferred = bot.deferred;
+
+  // ----------------------------------------------------------------
+  // Effets différés PRIORITAIRES — le bot n'a pas le choix, il DOIT
+  // jouer la carte imposée, exactement comme playFluxCard le vérifie.
+  // ----------------------------------------------------------------
+
+  // MYSTÈRE : doit jouer sa carte mystère (valeur manquante)
+  if (deferred.mustPlayMysteryCard) {
+    const mysteryVal = state.missingCards[botId];
+    if (mysteryVal !== undefined) return mysteryVal;
+    // Si introuvable (ne devrait pas arriver), recharger en fallback
+    return RECHARGE_CARD_VALUE;
+  }
+
+  // SURCHARGE : doit jouer Recharge
+  if (deferred.forcedRecharge) {
+    return RECHARGE_CARD_VALUE;
+  }
+
+  // PIOCHE : doit jouer la carte spécifique piochée par l'adversaire
+  if (deferred.forcedCard !== null) {
+    // Vérifier que la carte est bien en main (elle doit l'être)
+    if (hand.includes(deferred.forcedCard)) return deferred.forcedCard;
+    // Si la carte n'est plus en main (cas anormal), jouer n'importe quelle carte
+    return hand.length > 0 ? hand[0] : RECHARGE_CARD_VALUE;
+  }
+
+  // VERROU haute : doit jouer sa carte la plus haute
+  if (deferred.lockedHighCard) {
+    if (hand.length === 0) return RECHARGE_CARD_VALUE;
+    return Math.max(...hand);
+  }
+
+  // VERROU basse : doit jouer sa carte la plus basse
+  if (deferred.lockedLowCard) {
+    if (hand.length === 0) return RECHARGE_CARD_VALUE;
+    return Math.min(...hand);
+  }
+
+  // ----------------------------------------------------------------
+  // Jeu libre : décision selon le profil
+  // ----------------------------------------------------------------
 
   // Main vide → recharger obligatoirement
   if (hand.length === 0) return RECHARGE_CARD_VALUE;
@@ -208,4 +251,3 @@ function shouldRecharge(
     }
   }
 }
-
