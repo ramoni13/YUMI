@@ -89,6 +89,7 @@ export function useSocket() {
     pushEvent,
     clearEventLog,
     mergePrivateInfo,
+    setOracleCards,
   } = useGameStore();
 
   // Référence à l'état courant pour les handlers (sans re-subscribe)
@@ -212,23 +213,78 @@ export function useSocket() {
         const t = getT();
         let ruleHint = '';
         if (colorRule && card) {
-          if (card.type === 'positive') ruleHint = t.history.socket.ruleGreenWins;
-          else if (card.type === 'negative') ruleHint = t.history.socket.ruleRedWins;
+          if (card.gain === '+') ruleHint = t.history.socket.ruleGreenWins;
+          else if (card.gain === '-') ruleHint = t.history.socket.ruleRedWins;
         }
         pushEvent({
           ...base,
           kind: 'TRICK_START',
           scoreCard: card ?? undefined,
-          message: t.history.socket.trickCard(state.currentTrick, (card?.displayValue ?? '?') + ruleHint),
+          message: t.history.socket.trickCard(state.currentTrick, (card?.displayName ?? '?') + ruleHint),
         });
       }
 
       // --- Résultat de mène : gagnant de la carte Score ---
       // Déclenché quand la phase passe à TRICK_END (ou SPECIAL_EFFECT)
       // et qu'un lastTrickSummary est disponible
+      // Toutes les phases qui suivent immédiatement la résolution d'un pli
+      const resolutionPhases = [
+        'TRICK_END', 'SPECIAL_EFFECT',
+        'SPECIAL_ECLIPSE', 'SPECIAL_PIOCHE', 'SPECIAL_VERROU',
+        'SPECIAL_REVELATION', 'SPECIAL_TAXE', 'SPECIAL_ORACLE', 'SPECIAL_DEVOILEMENT',
+      ];
       const trickJustResolved =
-        (state.phase === 'TRICK_END' || state.phase === 'SPECIAL_EFFECT') &&
-        lastPhase !== 'TRICK_END' && lastPhase !== 'SPECIAL_EFFECT' &&
+        resolutionPhases.includes(state.phase) &&
+        !resolutionPhases.includes(lastPhase) &&
+        state.lastTrickSummary !== null;
+
+      // Cas spécial PIOCHE résolue par un bot : la phase passe de SPECIAL_PIOCHE → TRICK_END
+      // avec le summary maintenant complet (piocheTargetId rempli).
+      // On logue le message PIOCHE complet à ce moment-là.
+      const piocheJustResolved =
+        state.phase === 'TRICK_END' &&
+        lastPhase === 'SPECIAL_PIOCHE' &&
+        state.lastTrickSummary?.specialEffect === 'PIOCHE' &&
+        state.lastTrickSummary?.piocheTargetId !== null &&
+        state.lastTrickSummary !== null;
+
+      // Cas SURCHARGE résolue (bot ou humain) : la phase passe de SPECIAL_EFFECT → TRICK_END
+      // avec surchargeTargetId rempli dans le summary.
+      const surchargeJustResolved =
+        state.phase === 'TRICK_END' &&
+        lastPhase === 'SPECIAL_EFFECT' &&
+        state.lastTrickSummary?.specialEffect === 'SURCHARGE' &&
+        (state.lastTrickSummary as any)?.surchargeTargetId !== null &&
+        (state.lastTrickSummary as any)?.surchargeTargetId !== undefined &&
+        state.lastTrickSummary !== null;
+
+      // Cas VERROU résolu (bot ou humain) : la phase passe de SPECIAL_VERROU → TRICK_END
+      // avec verrouTargetId rempli dans le summary.
+      const verrouJustResolved =
+        state.phase === 'TRICK_END' &&
+        lastPhase === 'SPECIAL_VERROU' &&
+        state.lastTrickSummary?.specialEffect === 'VERROU' &&
+        (state.lastTrickSummary as any)?.verrouTargetId !== null &&
+        (state.lastTrickSummary as any)?.verrouTargetId !== undefined &&
+        state.lastTrickSummary !== null;
+
+      // Cas REVELATION résolue (bot ou humain) : la phase passe de SPECIAL_REVELATION → TRICK_END
+      // avec revelationTargetId rempli dans le summary.
+      const revelationJustResolved =
+        state.phase === 'TRICK_END' &&
+        lastPhase === 'SPECIAL_REVELATION' &&
+        state.lastTrickSummary?.specialEffect === 'REVELATION' &&
+        state.lastTrickSummary?.revelationTargetId !== null &&
+        state.lastTrickSummary !== null;
+
+      // Cas TAXE résolue (bot ou humain) : la phase passe de SPECIAL_TAXE → TRICK_END
+      // avec taxeTargetId rempli dans le summary.
+      const taxeJustResolved =
+        state.phase === 'TRICK_END' &&
+        lastPhase === 'SPECIAL_TAXE' &&
+        state.lastTrickSummary?.specialEffect === 'TAXE' &&
+        (state.lastTrickSummary as any)?.taxeTargetId !== null &&
+        (state.lastTrickSummary as any)?.taxeTargetId !== undefined &&
         state.lastTrickSummary !== null;
 
       if (trickJustResolved && state.lastTrickSummary) {
@@ -240,7 +296,7 @@ export function useSocket() {
             kind: 'SCORE_WON',
             discarded: true,
             scoreCard: summary.scoreCard,
-            message: t.history.socket.scoreDiscarded(summary.scoreCard.displayValue),
+            message: t.history.socket.scoreDiscarded(summary.scoreCard.displayName),
           });
         } else {
           const winner = state.players.find(p => p.id === summary.winnerId);
@@ -252,7 +308,7 @@ export function useSocket() {
             winnerId: summary.winnerId ?? undefined,
             winnerPseudo: winner?.pseudo,
             winnerColor: winner?.color,
-            message: t.history.socket.scoreWon(winner?.pseudo ?? '?', summary.scoreCard.displayValue),
+            message: t.history.socket.scoreWon(winner?.pseudo ?? '?', summary.scoreCard.displayName),
           });
         }
 
@@ -267,18 +323,17 @@ export function useSocket() {
             // Tout le monde a rechargé → carte défaussée
             pushEvent({
               ...base,
-              kind: 'FLUX_RECHARGE_STARS',
+              kind: 'FLUX_RECHARGE_BONUS',
               message: t.history.socket.rechargeAllDiscard,
               rechargedPlayers: summary.rechargedPlayerIds.map(id => {
                 const p = state.players.find(pl => pl.id === id);
                 return { pseudo: p?.pseudo ?? '?', color: p?.color ?? 'red' };
               }),
-              rechargeStarWinners: [],
+              bonusPointWinners: [],
             });
-          } else if (summary.rechargeStarWinners.length > 0) {
-            // Au moins un gagnant d'étoile
-            const starCount = summary.rechargeStarCount ?? 1;
-            const winners = summary.rechargeStarWinners
+          } else if (summary.bonusPointWinners.length > 0) {
+            const bonusCount = summary.bonusPointCount ?? 1;
+            const winners = summary.bonusPointWinners
               .map(id => {
                 const p = state.players.find(pl => pl.id === id);
                 const cardValue = summary.playedCards[id] ?? 0;
@@ -287,26 +342,24 @@ export function useSocket() {
             const winnerNames = winners.map(w => w.pseudo).join(', ');
             pushEvent({
               ...base,
-              kind: 'FLUX_RECHARGE_STARS',
-              message: t.history.socket.rechargeStars(rechargers, winnerNames, starCount),
+              kind: 'FLUX_RECHARGE_BONUS',
+              message: t.history.socket.rechargeStars(rechargers, winnerNames, bonusCount),
               rechargedPlayers: summary.rechargedPlayerIds.map(id => {
                 const p = state.players.find(pl => pl.id === id);
                 return { pseudo: p?.pseudo ?? '?', color: p?.color ?? 'red' };
               }),
-              rechargeStarWinners: winners,
+              bonusPointWinners: winners,
             });
           } else {
-            // Recharge mais aucun gagnant (tous en doublon)
-            const winnerNames = '';
             pushEvent({
               ...base,
-              kind: 'FLUX_RECHARGE_STARS',
+              kind: 'FLUX_RECHARGE_BONUS',
               message: t.history.socket.rechargeStarsNoWinner(rechargers),
               rechargedPlayers: summary.rechargedPlayerIds.map(id => {
                 const p = state.players.find(pl => pl.id === id);
                 return { pseudo: p?.pseudo ?? '?', color: p?.color ?? 'red' };
               }),
-              rechargeStarWinners: [],
+              bonusPointWinners: [],
             });
           }
         }
@@ -324,18 +377,31 @@ export function useSocket() {
           });
         }
         // Effet VOL
-        if (summary.specialEffect === 'STEAL' && summary.stolenFrom && summary.winnerId) {
+        if (summary.specialEffect === 'STEAL' && summary.winnerId) {
           const thief = state.players.find(p => p.id === summary.winnerId);
-          const victim = state.players.find(p => p.id === summary.stolenFrom);
-          pushEvent({
-            ...base,
-            kind: 'SPECIAL_STEAL',
-            playerId: summary.winnerId,
-            pseudo: thief?.pseudo,
-            color: thief?.color,
-            stolenFromPseudo: victim?.pseudo,
-            message: t.history.socket.steal(thief?.pseudo ?? '?', victim?.pseudo ?? '?'),
-          });
+          if (summary.stolenFrom) {
+            // Vol effectif : quelqu'un a été volé
+            const victim = state.players.find(p => p.id === summary.stolenFrom);
+            pushEvent({
+              ...base,
+              kind: 'SPECIAL_STEAL',
+              playerId: summary.winnerId,
+              pseudo: thief?.pseudo,
+              color: thief?.color,
+              stolenFromPseudo: victim?.pseudo,
+              message: t.history.socket.steal(thief?.pseudo ?? '?', victim?.pseudo ?? '?'),
+            });
+          } else {
+            // Personne à voler : effet inapplicable, mais la carte VOL est quand même dans la pile
+            pushEvent({
+              ...base,
+              kind: 'SPECIAL_STEAL',
+              playerId: summary.winnerId,
+              pseudo: thief?.pseudo,
+              color: thief?.color,
+              message: `🦥 ${thief?.pseudo ?? '?'} remporte VOL — aucun adversaire à voler (effet sans cible)`,
+            });
+          }
         }
         // Effet DOUBLE
         if (summary.specialEffect === 'DOUBLE' && summary.winnerId) {
@@ -362,30 +428,267 @@ export function useSocket() {
             message: t.history.socket.swap(pA?.pseudo ?? '?', pB?.pseudo ?? '?'),
           });
         }
+        // Effet ECLIPSE
+        if (summary.specialEffect === 'ECLIPSE' && summary.eclipseGivenTo && summary.winnerId) {
+          const winner = state.players.find(p => p.id === summary.winnerId);
+          const target = state.players.find(p => p.id === summary.eclipseGivenTo);
+          pushEvent({
+            ...base,
+            kind: 'SPECIAL_ECLIPSE',
+            playerId: summary.winnerId,
+            pseudo: winner?.pseudo,
+            color: winner?.color,
+            targetPseudo: target?.pseudo,
+            message: `☄️ ${winner?.pseudo ?? '?'} donne ECLIPSE à ${target?.pseudo ?? '?'} (-3⭐, +1 pt)`,
+          });
+        }
+        // Effet INVERSION
+        if (summary.specialEffect === 'INVERSION' && summary.winnerId) {
+          const winner = state.players.find(p => p.id === summary.winnerId);
+          pushEvent({
+            ...base,
+            kind: 'SPECIAL_INVERSION',
+            playerId: summary.winnerId,
+            pseudo: winner?.pseudo,
+            color: winner?.color,
+            message: `🌀 INVERSION active — la prochaine carte Score a sa condition inversée !`,
+          });
+        }
+        // Effet MYSTERE
+        if (summary.specialEffect === 'MYSTERE' && summary.winnerId) {
+          const winner = state.players.find(p => p.id === summary.winnerId);
+          pushEvent({
+            ...base,
+            kind: 'SPECIAL_MYSTERE',
+            playerId: summary.winnerId,
+            pseudo: winner?.pseudo,
+            color: winner?.color,
+            message: `🎭 MYSTÈRE — à la prochaine mène, tout le monde joue sa carte mystère !`,
+          });
+        }
+        // Effet PIOCHE — afficher qui a été ciblé et quelle carte a été piochée
+        // Si piocheTargetId est déjà rempli (humain qui vient de choisir), on logue le message complet.
+        // Si piocheTargetId est null (bot pas encore résolu), on logue un message partiel ;
+        // le message complet sera loggé via piocheJustResolved quand le bot aura choisi.
+        if (summary.specialEffect === 'PIOCHE' && summary.winnerId) {
+          const winner = state.players.find(p => p.id === summary.winnerId);
+          if (summary.piocheTargetId) {
+            // Cible déjà connue (humain) : message complet immédiat
+            const target = state.players.find(p => p.id === summary.piocheTargetId);
+            pushEvent({
+              ...base,
+              kind: 'SPECIAL_PIOCHE',
+              playerId: summary.winnerId,
+              pseudo: winner?.pseudo,
+              color: winner?.color,
+              targetPseudo: target?.pseudo,
+              message: `🎰 ${winner?.pseudo ?? '?'} pioche le ${summary.piocheCardValue} dans la main de ${target?.pseudo ?? '?'} — ${target?.pseudo ?? '?'} devra jouer cette carte !`,
+            });
+          }
+          // Si piocheTargetId est null (bot), on n'affiche rien ici :
+          // le message complet sera loggé par piocheJustResolved ci-dessous.
+        }
+        // Effet REVELATION — logé via revelationJustResolved ci-dessous (même pattern que VERROU)
+        // Effet SURCHARGE — le message sera logé via la phase SPECIAL_EFFECT (avec la cible)
+        // Effet JACKPOT
+        if (summary.specialEffect === 'JACKPOT' && summary.bonusPointsAwarded > 0 && summary.winnerId) {
+          const winner = state.players.find(p => p.id === summary.winnerId);
+          pushEvent({
+            ...base,
+            kind: 'SPECIAL_JACKPOT',
+            playerId: summary.winnerId,
+            pseudo: winner?.pseudo,
+            color: winner?.color,
+            message: `💰 JACKPOT ! ${winner?.pseudo ?? '?'} gagne +${summary.bonusPointsAwarded} points bonus`,
+          });
+        }
+        // Effet CONSTELLATION
+        if (summary.specialEffect === 'CONSTELLATION' && summary.bonusStarsAwarded > 0 && summary.winnerId) {
+          const winner = state.players.find(p => p.id === summary.winnerId);
+          pushEvent({
+            ...base,
+            kind: 'SPECIAL_CONSTELLATION',
+            playerId: summary.winnerId,
+            pseudo: winner?.pseudo,
+            color: winner?.color,
+            message: `🌟 CONSTELLATION ! ${winner?.pseudo ?? '?'} gagne +${summary.bonusStarsAwarded}⭐`,
+          });
+        }
+        // Effet DEVOILEMENT (auto)
+        if (summary.specialEffect === 'DEVOILEMENT' && summary.winnerId) {
+          const winner = state.players.find(p => p.id === summary.winnerId);
+          pushEvent({
+            ...base,
+            kind: 'SPECIAL_DEVOILEMENT',
+            playerId: summary.winnerId,
+            pseudo: winner?.pseudo,
+            color: winner?.color,
+            message: `📢 DÉVOILEMENT — les 3 prochaines cartes Score sont révélées à tous !`,
+          });
+        }
+        // Effet ORACLE (auto)
+        if (summary.specialEffect === 'ORACLE' && summary.winnerId) {
+          const winner = state.players.find(p => p.id === summary.winnerId);
+          pushEvent({
+            ...base,
+            kind: 'SPECIAL_ORACLE',
+            playerId: summary.winnerId,
+            pseudo: winner?.pseudo,
+            color: winner?.color,
+            message: `👁️ ${winner?.pseudo ?? '?'} consulte secrètement les 3 prochaines cartes Score`,
+          });
+        }
       }
 
-      // --- Demande SWAP / VOL (annonce dans le journal) ---
-      if (state.phase === 'SPECIAL_EFFECT' && lastPhase !== 'SPECIAL_EFFECT') {
+      // --- PIOCHE résolue par un bot : logger le message complet avec la cible ---
+      // Déclenché quand la phase passe de SPECIAL_PIOCHE → TRICK_END avec piocheTargetId rempli.
+      if (piocheJustResolved && state.lastTrickSummary) {
+        const summary = state.lastTrickSummary;
+        const winner = state.players.find(p => p.id === summary.winnerId);
+        const target = state.players.find(p => p.id === summary.piocheTargetId);
+        pushEvent({
+          ...base,
+          kind: 'SPECIAL_PIOCHE',
+          playerId: summary.winnerId ?? undefined,
+          pseudo: winner?.pseudo,
+          color: winner?.color,
+          targetPseudo: target?.pseudo,
+          message: `🎰 ${winner?.pseudo ?? '?'} pioche le ${summary.piocheCardValue} dans la main de ${target?.pseudo ?? '?'} — ${target?.pseudo ?? '?'} devra jouer cette carte !`,
+        });
+      }
+
+      // --- SURCHARGE résolue (bot ou humain) : logger le message complet avec la cible ---
+      // Déclenché quand la phase passe de SPECIAL_EFFECT → TRICK_END avec surchargeTargetId rempli.
+      if (surchargeJustResolved && state.lastTrickSummary) {
+        const summary = state.lastTrickSummary as any;
+        const winner = state.players.find(p => p.id === summary.winnerId);
+        const target = state.players.find(p => p.id === summary.surchargeTargetId);
+        pushEvent({
+          ...base,
+          kind: 'SPECIAL_SURCHARGE',
+          playerId: summary.winnerId ?? undefined,
+          pseudo: winner?.pseudo,
+          color: winner?.color,
+          targetPseudo: target?.pseudo,
+          message: `⚡ ${winner?.pseudo ?? '?'} force ${target?.pseudo ?? '?'} à Recharger à la prochaine mène !`,
+        });
+      }
+
+      // --- VERROU résolu (bot ou humain) : logger le message complet avec la cible ---
+      // Déclenché quand la phase passe de SPECIAL_VERROU → TRICK_END avec verrouTargetId rempli.
+      if (verrouJustResolved && state.lastTrickSummary) {
+        const summary = state.lastTrickSummary as any;
+        const winner = state.players.find(p => p.id === summary.winnerId);
+        const target = state.players.find(p => p.id === summary.verrouTargetId);
+        // Déterminer le type de verrou selon la prochaine carte Score
+        const lockType = summary.scoreCard?.gain === '-' ? 'sa carte la plus basse' : 'sa carte la plus haute';
+        pushEvent({
+          ...base,
+          kind: 'SPECIAL_VERROU',
+          playerId: summary.winnerId ?? undefined,
+          pseudo: winner?.pseudo,
+          color: winner?.color,
+          targetPseudo: target?.pseudo,
+          message: `🔒 ${winner?.pseudo ?? '?'} verrouille ${target?.pseudo ?? '?'} — devra jouer ${lockType} à la prochaine mène !`,
+        });
+      }
+
+      // --- TAXE résolue (bot ou humain) : logger le message complet avec la cible ---
+      if (taxeJustResolved && state.lastTrickSummary) {
+        const summary = state.lastTrickSummary as any;
+        const winner = state.players.find(p => p.id === summary.winnerId);
+        const target = state.players.find(p => p.id === summary.taxeTargetId);
+        pushEvent({
+          ...base,
+          kind: 'SPECIAL_TAXE',
+          playerId: summary.winnerId ?? undefined,
+          pseudo: winner?.pseudo,
+          color: winner?.color,
+          targetPseudo: target?.pseudo,
+          message: `🧹 ${winner?.pseudo ?? '?'} taxe ${target?.pseudo ?? '?'} — lui vole 2 points bonus !`,
+        });
+      }
+
+      // --- REVELATION résolue (bot ou humain) : logger le message complet avec la cible ---
+      // Déclenché quand la phase passe de SPECIAL_REVELATION → TRICK_END avec revelationTargetId rempli.
+      if (revelationJustResolved && state.lastTrickSummary) {
+        const summary = state.lastTrickSummary;
+        const winner = state.players.find(p => p.id === summary.winnerId);
+        const target = state.players.find(p => p.id === summary.revelationTargetId);
+        pushEvent({
+          ...base,
+          kind: 'SPECIAL_REVELATION',
+          playerId: summary.winnerId ?? undefined,
+          pseudo: winner?.pseudo,
+          color: winner?.color,
+          targetPseudo: target?.pseudo,
+          message: `🕵️ ${winner?.pseudo ?? '?'} révèle la carte mystère de ${target?.pseudo ?? '?'} : c’est le ${summary.revelationCardValue ?? '?'} !`,
+        });
+      }
+
+      // --- Demande d'effets spéciaux (annonce dans le journal quand une phase d'attente commence) ---
+      const specialWaitPhases = ['SPECIAL_EFFECT', 'SPECIAL_ECLIPSE', 'SPECIAL_PIOCHE', 'SPECIAL_VERROU', 'SPECIAL_REVELATION', 'SPECIAL_TAXE'];
+      if (specialWaitPhases.includes(state.phase) && !specialWaitPhases.includes(lastPhase)) {
         const t2 = getT();
         if (state.stealRequestPlayerId) {
           const actor = state.players.find(p => p.id === state.stealRequestPlayerId);
           pushEvent({
-            ...base,
-            kind: 'SPECIAL_STEAL',
-            playerId: state.stealRequestPlayerId,
-            pseudo: actor?.pseudo,
-            color: actor?.color,
-            message: t2.history.socket.stealChoosing(actor?.pseudo ?? '?'),
+            ...base, kind: 'SPECIAL_STEAL', playerId: state.stealRequestPlayerId, pseudo: actor?.pseudo, color: actor?.color,
+            message: t2.history.socket.stealChoosing(actor?.pseudo ?? '?')
           });
         } else if (state.swapRequestPlayerId) {
           const actor = state.players.find(p => p.id === state.swapRequestPlayerId);
           pushEvent({
-            ...base,
-            kind: 'SPECIAL_SWAP',
-            playerId: state.swapRequestPlayerId,
-            pseudo: actor?.pseudo,
-            color: actor?.color,
-            message: t2.history.socket.swapChoosing(actor?.pseudo ?? '?'),
+            ...base, kind: 'SPECIAL_SWAP', playerId: state.swapRequestPlayerId, pseudo: actor?.pseudo, color: actor?.color,
+            message: t2.history.socket.swapChoosing(actor?.pseudo ?? '?')
+          });
+        } else if (state.eclipseRequestPlayerId) {
+          const actor = state.players.find(p => p.id === state.eclipseRequestPlayerId);
+          pushEvent({
+            ...base, kind: 'SPECIAL_ECLIPSE', playerId: state.eclipseRequestPlayerId, pseudo: actor?.pseudo, color: actor?.color,
+            message: `☄️ ${actor?.pseudo ?? '?'} choisit à qui donner ECLIPSE...`
+          });
+        } else if (state.piocheRequestPlayerId) {
+          // Ce message n'est affiché que pour un joueur humain en attente de choix.
+          // Pour un bot, la résolution est immédiate : le message complet sera loggé
+          // via piocheJustResolved quand SPECIAL_PIOCHE → TRICK_END avec la cible remplie.
+          // On vérifie donc que l'acteur n'est PAS un bot (piocheEligibleTargets non vide = humain en attente).
+          const actor = state.players.find(p => p.id === state.piocheRequestPlayerId);
+          // Afficher uniquement si la phase vient de changer (transition vers SPECIAL_PIOCHE)
+          pushEvent({
+            ...base, kind: 'SPECIAL_PIOCHE', playerId: state.piocheRequestPlayerId, pseudo: actor?.pseudo, color: actor?.color,
+            message: `🎰 ${actor?.pseudo ?? '?'} choisit une carte à piocher dans la main d'un adversaire…`
+          });
+        } else if (state.verrouRequestPlayerId) {
+          // Message d'attente pour l'humain pendant qu'il choisit sa cible.
+          // Le message complet (avec la cible) sera loggé via verrouJustResolved.
+          // Pour un bot : la résolution est immédiate, verrouJustResolved gère tout.
+          const actor = state.players.find(p => p.id === state.verrouRequestPlayerId);
+          pushEvent({
+            ...base, kind: 'SPECIAL_VERROU', playerId: state.verrouRequestPlayerId, pseudo: actor?.pseudo, color: actor?.color,
+            message: `🔒 ${actor?.pseudo ?? '?'} désigne un adversaire à verrouiller…`
+          });
+        } else if (state.revelationRequestPlayerId) {
+          const actor = state.players.find(p => p.id === state.revelationRequestPlayerId);
+          pushEvent({
+            ...base, kind: 'SPECIAL_REVELATION', playerId: state.revelationRequestPlayerId, pseudo: actor?.pseudo, color: actor?.color,
+            message: `🕵️ ${actor?.pseudo ?? '?'} choisit une carte mystère à révéler...`
+          });
+        } else if ((state as any).surchargeRequestPlayerId) {
+          // Pour un humain : afficher un message d'attente pendant qu'il choisit sa cible.
+          // Le message complet (avec la cible) sera loggé via surchargeJustResolved.
+          // Pour un bot : la résolution est immédiate, surchargeJustResolved gère tout.
+          const actor = state.players.find(p => p.id === (state as any).surchargeRequestPlayerId);
+          pushEvent({
+            ...base, kind: 'SPECIAL_SURCHARGE', playerId: (state as any).surchargeRequestPlayerId, pseudo: actor?.pseudo, color: actor?.color,
+            message: `⚡ ${actor?.pseudo ?? '?'} choisit qui forcer à Recharger…`
+          });
+        } else if (state.taxeRequestPlayerId) {
+          // Message d'attente pour l'humain. Le message complet (avec la cible) sera loggé via taxeJustResolved.
+          const actor = state.players.find(p => p.id === state.taxeRequestPlayerId);
+          pushEvent({
+            ...base, kind: 'SPECIAL_TAXE', playerId: state.taxeRequestPlayerId, pseudo: actor?.pseudo, color: actor?.color,
+            message: `🧹 ${actor?.pseudo ?? '?'} choisit qui taxer…`
           });
         }
       }
@@ -416,6 +719,7 @@ export function useSocket() {
             color: p.color,
             scoreFromCards: state.roundEndSummary!.scores[p.id] ?? 0,
             stars: state.roundEndSummary!.stars[p.id] ?? 0,
+            bonusPoints: p.bonusPoints ?? 0,
             total: (state.roundEndSummary!.scores[p.id] ?? 0) + (state.roundEndSummary!.stars[p.id] ?? 0),
           }))
           .sort((a, b) => b.total - a.total);
@@ -491,6 +795,11 @@ export function useSocket() {
         allCards,
         message: lines,
       });
+    });
+
+    // Cartes ORACLE : reçues uniquement par le gagnant
+    s.on('oracle_info', ({ cards }) => {
+      setOracleCards(cards);
     });
 
     s.on('error', ({ message }) => {
