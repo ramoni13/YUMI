@@ -6,6 +6,7 @@ import type {
   FinalScore,
   GameEvent,
   GameMode,
+  ScoreCard,
 } from '../types';
 
 interface GameStore {
@@ -29,6 +30,9 @@ interface GameStore {
   // Notifications
   lastReveal: Record<string, number> | null;
 
+  // Cartes ORACLE reçues (privé, uniquement pour le gagnant)
+  oracleCards: ScoreCard[] | null;
+
   // Historique des événements
   eventLog: GameEvent[];
   _eventCounter: number;
@@ -43,6 +47,7 @@ interface GameStore {
   mergePrivateInfo: (info: PrivateInfo) => void;
   setLastReveal: (cards: Record<string, number> | null) => void;
   clearLastReveal: () => void;
+  setOracleCards: (cards: ScoreCard[] | null) => void;
   pushEvent: (event: Omit<GameEvent, 'id'>) => void;
   clearEventLog: () => void;
   reset: () => void;
@@ -57,6 +62,7 @@ export const useGameStore = create<GameStore>((set) => ({
   gameState: null,
   privateInfo: null,
   lastReveal: null,
+  oracleCards: null,
   eventLog: [],
   _eventCounter: 0,
 
@@ -66,6 +72,7 @@ export const useGameStore = create<GameStore>((set) => ({
   setRoom: (room) => set({ room }),
   setSelectedGameMode: (mode) => set({ selectedGameMode: mode }),
   setGameState: (gameState) => set({ gameState }),
+  setOracleCards: (oracleCards) => set({ oracleCards }),
   mergePrivateInfo: (info) =>
     set((state) => ({
       privateInfo: {
@@ -99,6 +106,7 @@ export const useGameStore = create<GameStore>((set) => ({
       gameState: null,
       privateInfo: null,
       lastReveal: null,
+      oracleCards: null,
       eventLog: [],
       _eventCounter: 0,
     }),
