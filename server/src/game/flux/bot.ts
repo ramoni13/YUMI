@@ -1,5 +1,5 @@
 import { FluxGameState } from './engine';
-import { BotProfile, GameOptions, ScoreCard, RECHARGE_CARD_VALUE, emptyDeferredEffects } from '../../types';
+import { BotProfile, GameOptions, ScoreCard, RECHARGE_CARD_VALUE, YUMI_CARD_VALUE, emptyDeferredEffects } from '../../types';
 
 // ============================================================
 // Helpers communs (portés depuis bot.ts classic)
@@ -85,7 +85,13 @@ export function decideBotFluxCard(
   // Jeu libre : décision selon le profil
   // ----------------------------------------------------------------
 
-  // Main vide → recharger obligatoirement
+  // Main vide ou seulement la YUMI (ne peut pas recharger avec YUMI) → jouer YUMI ou recharger
+  const nonYumiHand = hand.filter(c => c !== YUMI_CARD_VALUE);
+  if (nonYumiHand.length === 0) {
+    // Seulement la YUMI en main : la jouer si la carte Score est favorable, sinon recharger
+    if (hand.includes(YUMI_CARD_VALUE) && scoreCard) return YUMI_CARD_VALUE;
+    return RECHARGE_CARD_VALUE;
+  }
   if (hand.length === 0) return RECHARGE_CARD_VALUE;
 
   // Décision de recharger selon le profil et l'état de la main
@@ -97,7 +103,7 @@ export function decideBotFluxCard(
   const alreadyPlayed = Object.values(state.playedCards)
     .filter(v => v !== undefined && v !== RECHARGE_CARD_VALUE) as number[];
 
-  return pickCard(hand, alreadyPlayed, scoreCard, options, profile);
+  return pickCard(hand, alreadyPlayed, scoreCard, options, profile, state);
 }
 
 // ============================================================
@@ -108,12 +114,45 @@ function pickCard(
   alreadyPlayed: number[],
   scoreCard: ScoreCard | null,
   options: GameOptions,
-  profile: BotProfile
+  profile: BotProfile,
+  state: FluxGameState
 ): number {
-  const sorted = [...hand].sort((a, b) => a - b);
+  const hasYumi = hand.includes(YUMI_CARD_VALUE);
+
+  // --- Décision d'utiliser la YUMI ---
+  // La YUMI est une carte à usage unique, à jouer au bon moment.
+  // Elle vaut 9 (gain+) ou 0 (gain-) et s'annule si 2 YUMI sont jouées.
+  if (hasYumi && scoreCard) {
+    const otherYumiPlayers = Object.values(state.playedCards)
+      .filter(v => v === YUMI_CARD_VALUE).length;
+    const anotherYumiPlayed = otherYumiPlayers > 0;
+
+    const wantToWin = isDesirable(scoreCard, options);
+    const needSmall = smallestWins(scoreCard, options);
+
+    // KAMIKAZE : joue toujours la YUMI si elle est avantageuse et pas déjà annulée
+    if (profile === 'KAMIKAZE' && !anotherYumiPlayed) {
+      if ((wantToWin && !needSmall) || (wantToWin && needSmall)) return YUMI_CARD_VALUE;
+    }
+
+    // LOGIQUE / PRUDENT : joue la YUMI uniquement si elle est décisive et pas annulée
+    if ((profile === 'LOGIQUE' || profile === 'PRUDENT') && !anotherYumiPlayed) {
+      // Carte très positive (gain+) et on veut gagner : YUMI = 9 = meilleure carte
+      if (wantToWin && !needSmall && scoreCard.value >= 3) return YUMI_CARD_VALUE;
+      // Carte très négative (gain-) et on veut gagner : YUMI = 0 = meilleure carte
+      if (wantToWin && needSmall && scoreCard.value <= -3) return YUMI_CARD_VALUE;
+    }
+  }
+
+  // Exclure la YUMI du pool normal (elle est gérée ci-dessus)
+  const handWithoutYumi = hand.filter(c => c !== YUMI_CARD_VALUE);
+  const sorted = [...handWithoutYumi].sort((a, b) => a - b);
   // Cartes "sûres" = pas encore jouées par un autre (pas de risque de doublon)
   const safe = sorted.filter(c => !alreadyPlayed.includes(c));
   const pool = safe.length > 0 ? safe : sorted;
+
+  // Si le pool est vide (seulement YUMI en main), la jouer en dernier recours
+  if (pool.length === 0) return hasYumi ? YUMI_CARD_VALUE : RECHARGE_CARD_VALUE;
 
   switch (profile) {
 
@@ -190,9 +229,11 @@ function shouldRecharge(
   scoreCard: ScoreCard | null,
   options: GameOptions
 ): boolean {
-  const handSize = hand.length;
+  // La YUMI ne compte pas dans la taille effective de la main pour décider de recharger
+  const effectiveHand = hand.filter(c => c !== YUMI_CARD_VALUE);
+  const handSize = effectiveHand.length;
   const alreadyPlayed = Object.values(state.playedCards)
-    .filter(v => v !== undefined && v !== RECHARGE_CARD_VALUE) as number[];
+    .filter(v => v !== undefined && v !== RECHARGE_CARD_VALUE && v !== YUMI_CARD_VALUE) as number[];
 
   switch (profile) {
 
