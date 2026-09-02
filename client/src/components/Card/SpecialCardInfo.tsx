@@ -157,7 +157,9 @@ export function SpecialCardInfo({ card }: SpecialCardInfoProps) {
             </span>
           )}
           {card.bonusPoints > 0 && (
-            <span className={styles.badge}>+{card.bonusPoints}🪙</span>
+            <span className={styles.badge}>
+              {card.specialEffect === 'TAXE' ? `×${card.bonusPoints}🪙 volés` : `+${card.bonusPoints}🪙`}
+            </span>
           )}
           <span className={`${styles.gainBadge} ${isGreen ? styles.gainGreen : styles.gainRed}`}>
             {isGreen ? '🟢 + grande gagne' : '🔴 + petite gagne'}
