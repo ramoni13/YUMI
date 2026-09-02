@@ -172,6 +172,13 @@
 
 .miniCard.cancelled { opacity: 0.4; filter: grayscale(0.5); }
 .miniCard.mine { border-color: #fbbf24; box-shadow: 0 0 6px rgba(251,191,36,0.5); }
+.miniCardYumi {
+  background: linear-gradient(135deg, #78350f, #f59e0b, #fef08a) !important;
+  border-color: #fbbf24 !important;
+  color: #1c1917 !important;
+  font-size: 0.6rem !important;
+  font-weight: 900 !important;
+}
 
 .cancelX {
   position: absolute;
