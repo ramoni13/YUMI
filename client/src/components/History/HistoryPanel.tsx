@@ -2,8 +2,17 @@ import React from 'react';
 import { useGameStore } from '../../store/gameStore';
 import { useT } from '../../hooks/useT';
 import type { GameEvent } from '../../types';
+import { YUMI_CARD_VALUE } from '../../types';
 import type { Translations } from '../../i18n';
 import styles from './HistoryPanel.module.css';
+
+// Convertit une valeur brute en label affichable dans le journal
+// La YUMI (9) affiche sa valeur effective selon le gain de la carte Score
+function cardLabel(value: number, scoreGain?: string): string {
+  if (value !== YUMI_CARD_VALUE) return String(value);
+  const effective = scoreGain === '-' ? 0 : YUMI_CARD_VALUE;
+  return `YUMI(=${effective})`;
+}
 
 const COLOR_HEX: Record<string, string> = {
   red: '#ef4444', blue: '#3b82f6', green: '#22c55e',
@@ -101,6 +110,7 @@ function EventRow({ event, myId, t }: EventRowProps) {
 
   // Révélation : affichage spécial avec mini-cartes
   if (event.kind === 'REVEAL' && event.allCards) {
+    const scoreGain = event.scoreCard?.gain;
     return (
       <div className={`${styles.row} ${styles.rowReveal}`}>
         <span className={styles.icon}>🂠</span>
@@ -110,11 +120,11 @@ function EventRow({ event, myId, t }: EventRowProps) {
             {event.allCards.map(c => (
               <div key={c.playerId} className={styles.miniCardSlot}>
                 <div
-                  className={`${styles.miniCard} ${c.cancelled ? styles.cancelled : ''} ${c.playerId === myId ? styles.mine : ''}`}
-                  style={{ background: getColorGradient(c.color) }}
+                  className={`${styles.miniCard} ${c.cancelled ? styles.cancelled : ''} ${c.playerId === myId ? styles.mine : ''} ${c.value === YUMI_CARD_VALUE ? styles.miniCardYumi : ''}`}
+                  style={c.value === YUMI_CARD_VALUE ? {} : { background: getColorGradient(c.color) }}
                   title={c.pseudo}
                 >
-                  {c.value}
+                  {c.value === YUMI_CARD_VALUE ? 'Y' : c.value}
                   {c.cancelled && <span className={styles.cancelX}>✕</span>}
                 </div>
                 <span
