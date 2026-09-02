@@ -33,21 +33,24 @@ export function resolveTrick(
   inverted: boolean = false
 ): TrickResult {
   // --- Résolution de la valeur effective de la carte YUMI ---
-  // La carte YUMI (valeur 9 en main) prend la valeur la plus haute possible
-  // si gain '+' (grande gagne) ou la plus basse possible si gain '-' (petite gagne).
-  // Concrètement : elle vaut 9 si gain '+' (ou inversé '-'), 0 si gain '-' (ou inversé '+').
+  // La YUMI (valeur brute 9 en main) prend la valeur la plus avantageuse :
+  //   gain '+' (grande gagne) → vaut 9 (la plus haute possible)
+  //   gain '-' (petite gagne) → vaut -1 (sentinelle interne, plus basse que toute carte normale)
+  // On utilise -1 et non 0 pour éviter toute collision avec RECHARGE_CARD_VALUE=0
+  // (les Recharges sont déjà filtrées avant d'appeler resolveTrick, mais par sécurité).
   // Deux YUMI s'annulent naturellement (même valeur effective → doublon).
   let smallestWinsForYumi = gain === '-';
   if (inverted) smallestWinsForYumi = !smallestWinsForYumi;
-  const yumiEffectiveValue = smallestWinsForYumi ? RECHARGE_CARD_VALUE : YUMI_CARD_VALUE;
+  // Sentinelle interne : -1 pour gain '-', 9 pour gain '+'
+  const YUMI_SENTINEL = smallestWinsForYumi ? -1 : YUMI_CARD_VALUE;
 
-  // Remplacer la valeur YUMI par sa valeur effective dans une copie
+  // Remplacer la valeur YUMI par sa sentinelle dans une copie pour le tri
   const resolvedCards: Record<string, number> = {};
   for (const [pid, val] of Object.entries(playedCards)) {
-    resolvedCards[pid] = val === YUMI_CARD_VALUE ? yumiEffectiveValue : val;
+    resolvedCards[pid] = val === YUMI_CARD_VALUE ? YUMI_SENTINEL : val;
   }
 
-  // Regrouper par valeur : valeur → [joueur_id, ...]
+  // Regrouper par valeur résolue : valeur → [joueur_id, ...]
   const byValue = new Map<number, string[]>();
   for (const [playerId, value] of Object.entries(resolvedCards)) {
     if (!byValue.has(value)) byValue.set(value, []);
@@ -72,7 +75,11 @@ export function resolveTrick(
     if (players.length === 1) {
       return { winnerId: players[0], cancelledValues, discarded: false };
     } else {
-      cancelledValues.push(value);
+      // Restituer la valeur brute dans cancelledValues :
+      // si la sentinelle YUMI (-1 ou 9) est annulée, on remet YUMI_CARD_VALUE (9)
+      // pour que le client puisse identifier la carte correctement.
+      const rawValue = value === YUMI_SENTINEL ? YUMI_CARD_VALUE : value;
+      cancelledValues.push(rawValue);
     }
   }
 
