@@ -2,7 +2,7 @@
 // YUMI — Résolution du pli
 // ============================================================
 
-import { GameOptions, GainType } from '../types';
+import { GameOptions, GainType, YUMI_CARD_VALUE, RECHARGE_CARD_VALUE } from '../types';
 
 export interface TrickResult {
   winnerId: string | null;   // null = carte Score défaussée
@@ -32,9 +32,24 @@ export function resolveTrick(
   gain?: GainType,
   inverted: boolean = false
 ): TrickResult {
+  // --- Résolution de la valeur effective de la carte YUMI ---
+  // La carte YUMI (valeur 9 en main) prend la valeur la plus haute possible
+  // si gain '+' (grande gagne) ou la plus basse possible si gain '-' (petite gagne).
+  // Concrètement : elle vaut 9 si gain '+' (ou inversé '-'), 0 si gain '-' (ou inversé '+').
+  // Deux YUMI s'annulent naturellement (même valeur effective → doublon).
+  let smallestWinsForYumi = gain === '-';
+  if (inverted) smallestWinsForYumi = !smallestWinsForYumi;
+  const yumiEffectiveValue = smallestWinsForYumi ? RECHARGE_CARD_VALUE : YUMI_CARD_VALUE;
+
+  // Remplacer la valeur YUMI par sa valeur effective dans une copie
+  const resolvedCards: Record<string, number> = {};
+  for (const [pid, val] of Object.entries(playedCards)) {
+    resolvedCards[pid] = val === YUMI_CARD_VALUE ? yumiEffectiveValue : val;
+  }
+
   // Regrouper par valeur : valeur → [joueur_id, ...]
   const byValue = new Map<number, string[]>();
-  for (const [playerId, value] of Object.entries(playedCards)) {
+  for (const [playerId, value] of Object.entries(resolvedCards)) {
     if (!byValue.has(value)) byValue.set(value, []);
     byValue.get(value)!.push(playerId);
   }
