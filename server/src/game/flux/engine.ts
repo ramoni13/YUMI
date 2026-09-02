@@ -11,6 +11,7 @@ import {
   PLAYER_COLORS,
   PlayerColor,
   RECHARGE_CARD_VALUE,
+  YUMI_CARD_VALUE,
   DeferredEffects,
   emptyDeferredEffects,
 } from '../../types';
@@ -84,11 +85,14 @@ export interface FluxGameState {
 }
 
 // ============================================================
-// Génère une main complète 1 à 8 (mode flux)
+// Génère une main complète 1 à 8 + carte YUMI (mode flux)
+// La carte YUMI (valeur 9) est incluse dans la main initiale
+// mais n'est PAS restituée lors d'une Recharge.
 // ============================================================
 export function buildFluxHand(): number[] {
   const hand: number[] = [];
   for (let i = 1; i <= FLUX_MAX_CARD; i++) hand.push(i);
+  hand.push(YUMI_CARD_VALUE); // carte YUMI
   return hand;
 }
 
@@ -291,26 +295,30 @@ export function playFluxCard(
   }
 
   // VERROU haute : doit jouer sa carte la plus haute
+  // La YUMI compte comme la plus haute (valeur effective 9 en gain+)
   if (deferred.lockedHighCard) {
-    const maxCard = Math.max(...player.hand);
+    const maxCard = Math.max(...player.hand); // YUMI_CARD_VALUE=9 sera naturellement le max
     if (cardValue !== maxCard) {
-      return { ok: false, error: `Vous devez jouer votre carte la plus haute : ${maxCard} (effet VERROU)`, state };
+      return { ok: false, error: `Vous devez jouer votre carte la plus haute : ${maxCard === YUMI_CARD_VALUE ? 'YUMI' : maxCard} (effet VERROU)`, state };
     }
     player.hand = player.hand.filter(c => c !== cardValue);
-    player.playedHistory.push(cardValue);
+    if (cardValue !== YUMI_CARD_VALUE) player.playedHistory.push(cardValue);
     state.playedCards[playerId] = cardValue;
     player.deferred = { ...deferred, lockedHighCard: false };
     return checkAllPlayed(state);
   }
 
   // VERROU basse : doit jouer sa carte la plus basse
+  // La YUMI ne compte PAS comme la plus basse (elle vaut 0 en gain- mais c'est une valeur spéciale)
+  // On exclut YUMI du calcul du minimum pour le VERROU bas
   if (deferred.lockedLowCard) {
-    const minCard = Math.min(...player.hand);
+    const nonYumiCards = player.hand.filter(c => c !== YUMI_CARD_VALUE);
+    const minCard = nonYumiCards.length > 0 ? Math.min(...nonYumiCards) : YUMI_CARD_VALUE;
     if (cardValue !== minCard) {
       return { ok: false, error: `Vous devez jouer votre carte la plus basse : ${minCard} (effet VERROU)`, state };
     }
     player.hand = player.hand.filter(c => c !== cardValue);
-    player.playedHistory.push(cardValue);
+    if (cardValue !== YUMI_CARD_VALUE) player.playedHistory.push(cardValue);
     state.playedCards[playerId] = cardValue;
     player.deferred = { ...deferred, lockedLowCard: false };
     return checkAllPlayed(state);
@@ -324,7 +332,9 @@ export function playFluxCard(
       return { ok: false, error: 'Carte non disponible', state };
     }
     player.hand = player.hand.filter(c => c !== cardValue);
-    player.playedHistory.push(cardValue);
+    // La carte YUMI est écartée définitivement : elle n'est PAS ajoutée à playedHistory
+    // (pas récupérable à la Recharge, jouée une seule fois)
+    if (cardValue !== YUMI_CARD_VALUE) player.playedHistory.push(cardValue);
     state.playedCards[playerId] = cardValue;
   }
 
@@ -419,12 +429,14 @@ function applyScoreCardEffect(state: FluxGameState, winnerId: string, scoreCard:
     }
     case 'PIOCHE': {
       winner.scorePile.push({ ...scoreCard }); // toujours dans la pile du gagnant
-      const el = state.players.filter(p => p.id !== winnerId && p.hand.length > 0);
+      // Cible éligible : a au moins une carte piochaôble (hors YUMI)
+      const el = state.players.filter(p => p.id !== winnerId && p.hand.some(c => c !== YUMI_CARD_VALUE));
       if (el.length > 0) { state.piocheRequestPlayerId = winnerId; state.piocheEligibleTargets = el.map(p => p.id); state.phase = 'SPECIAL_PIOCHE'; }
       else state.phase = 'TRICK_END'; break;
     }
     case 'VERROU': {
       winner.scorePile.push({ ...scoreCard }); // toujours dans la pile du gagnant
+      // Cible éligible : a au moins 2 cartes (dont au moins une non-YUMI pour le verrou bas)
       const el = state.players.filter(p => p.id !== winnerId && p.hand.length >= 2);
       if (el.length > 0) { state.verrouRequestPlayerId = winnerId; state.verrouEligibleTargets = el.map(p => p.id); state.phase = 'SPECIAL_VERROU'; }
       else state.phase = 'TRICK_END'; break;
@@ -559,10 +571,12 @@ export function resolveFluxPioche(
   if (!state.piocheRequestPlayerId || !state.piocheEligibleTargets.includes(targetId))
     return { ok: false, error: 'Cible non éligible', state };
   const target = state.players.find(p => p.id === targetId)!;
-  if (target.hand.length === 0) return { ok: false, error: 'Main vide', state };
-  // Piocher une carte au hasard dans la main de la cible
-  const idx = Math.floor(Math.random() * target.hand.length);
-  const pickedCard = target.hand[idx];
+  // Exclure la carte YUMI de la pioche (elle ne peut pas être forcée)
+  const piochableCards = target.hand.filter(c => c !== YUMI_CARD_VALUE);
+  if (piochableCards.length === 0) return { ok: false, error: 'Aucune carte piochaôble', state };
+  // Piocher une carte au hasard dans la main de la cible (hors YUMI)
+  const idx = Math.floor(Math.random() * piochableCards.length);
+  const pickedCard = piochableCards[idx];
   // Forcer la cible à jouer cette carte à la prochaine mène
   target.deferred = { ...target.deferred, forcedCard: pickedCard };
   // Stocker dans le TrickSummary pour le journal
@@ -695,7 +709,11 @@ function applyRecharge(state: FluxGameState, playerId: string): void {
   const rightNeighborIndex = (playerIndex + 1) % state.players.length;
   const rightNeighbor = state.players[rightNeighborIndex];
 
-  const { newHand, mysteryCard } = drawMysteryCard(buildFluxHand());
+  // La Recharge donne les cartes 1-8 uniquement — la YUMI n'est PAS restituée
+  const baseHand: number[] = [];
+  for (let i = 1; i <= FLUX_MAX_CARD; i++) baseHand.push(i);
+
+  const { newHand, mysteryCard } = drawMysteryCard(baseHand);
   player.hand = newHand;
   player.playedHistory = []; // réinitialiser l'historique après recharge
 
