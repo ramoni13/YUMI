@@ -40,7 +40,7 @@ export function buildFullScoreDeck(): ScoreCard[] {
     card(15, +1, '-', null, '+1', 0, 2),   // +1  —  2⭐ -
     card(16, -1, '+', null, '-1', 0, 2),   // -1  —  2⭐ +
     card(17, -2, '-', null, '-2', 0, 2),   // -2  —  2⭐ -
-    card(18, -3, '+', null, '-3', 0, 2),   // -3  —  2⭐ +
+    card(18, -3, '-', null, '-3', 0, 2),   // -3  —  2⭐ -
     card(19, -4, '-', null, '-4', 0, 3),   // -4  —  3⭐ -
     card(20, -5, '+', null, '-5', 0, 3),   // -5  —  3⭐ +
     // -------------------------------------------------------
@@ -61,7 +61,7 @@ export function buildFullScoreDeck(): ScoreCard[] {
     card(33, 0, '-', 'CONSTELLATION', 'CONSTELLATION', 0, 5), // CONSTEL. score 0  5⭐  -
     card(34, +1, '+', 'ECLIPSE', 'ECLIPSE', 0, -3),  // ECLIPSE  score+1 -3⭐  + (donné à un adversaire)
     card(35, 0, '-', 'JACKPOT', 'JACKPOT', 3, 0),  // JACKPOT  score 0  +3bonus -
-    card(36, 0, '+', 'TAXE', 'TAXE', 0, 0),  // TAXE     score 0  0⭐  + (vole 2 bonus)
+    card(36, 0, '+', 'TAXE', 'TAXE', 2, 0),  // TAXE     score 0  0⭐  + (vole 2 bonus)
     card(37, +1, '-', 'ORACLE', 'ORACLE', 0, 0),  // ORACLE   score+1  0⭐  -
     card(38, -2, '+', 'DEVOILEMENT', 'DÉVOILEMENT', 0, 3),  // DÉVOI.   score-2  3⭐  +
   ];
