@@ -7,7 +7,7 @@ import { PlayerCard } from '../Card/PlayerCard';
 import { OpponentPanel } from '../Player/OpponentPanel';
 import { HistoryPanel } from '../History/HistoryPanel';
 import { getSocket } from '../../hooks/useSocket';
-import { RECHARGE_CARD_VALUE } from '../../types';
+import { RECHARGE_CARD_VALUE, YUMI_CARD_VALUE } from '../../types';
 import styles from './FluxBoard.module.css';
 
 export function FluxBoard() {
@@ -230,7 +230,10 @@ export function FluxBoard() {
               {gameState.players.map(p => {
                 const value = lastReveal[p.id];
                 const isRecharge = value === RECHARGE_CARD_VALUE;
-                const cancelled = !isRecharge && (gameState.cancelledValues ?? []).includes(value);
+                const isYumi = value === YUMI_CARD_VALUE;
+                const cancelled = !isRecharge && !isYumi && (gameState.cancelledValues ?? []).includes(value);
+                // Les YUMI s'annulent entre elles (doublon de valeur effective)
+                const yumiCancelled = isYumi && Object.values(lastReveal).filter(v => v === YUMI_CARD_VALUE).length >= 2;
                 const isWinner = p.id === gameState.trickWinnerId;
                 const gotStar = (gameState.bonusPointWinners ?? []).includes(p.id);
                 const didRecharge = (gameState.rechargedPlayerIds ?? []).includes(p.id);
@@ -243,7 +246,7 @@ export function FluxBoard() {
                       <PlayerCard
                         value={value}
                         color={p.color}
-                        cancelled={cancelled}
+                        cancelled={cancelled || yumiCancelled}
                         winner={isWinner}
                       />
                     ) : (
@@ -333,6 +336,13 @@ export function FluxBoard() {
             )}
             </div>
 
+            {/* Info carte YUMI si présente en main */}
+            {hand.includes(YUMI_CARD_VALUE) && (
+              <div className={styles.yumiHint}>
+                ✨ <strong>YUMI</strong> — vaut la + grande ou + petite valeur selon la carte Score. Usage unique, non récupérable.
+              </div>
+            )}
+
             {/* Cartes valeur */}
             <div className={styles.handLabel}>Ma main</div>
             <div className={styles.cards}>
@@ -352,7 +362,7 @@ export function FluxBoard() {
             <div className={styles.actionRow}>
               {selectedCard !== null && !hasPlayed && canPlay && (
                 <button className={styles.playBtn} onClick={handlePlay}>
-                  Jouer le {selectedCard}
+                  {selectedCard === YUMI_CARD_VALUE ? 'Jouer YUMI ✨' : `Jouer le ${selectedCard}`}
                 </button>
               )}
               {canPlay && !hasPlayed && (
