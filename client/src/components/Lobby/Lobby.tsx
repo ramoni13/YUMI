@@ -286,7 +286,7 @@ export function Lobby({ onGameStart }: LobbyProps) {
         {lang === 'fr' ? '🇬🇧 EN' : '🇫🇷 FR'}
       </button>
 
-      {/* Boutons Règles — classique et flux côte à côte */}
+      {/* Bouton Règles du jeu (mode Flux uniquement) */}
       <div style={{
         position: 'absolute',
         top: '1.25rem',
@@ -297,20 +297,10 @@ export function Lobby({ onGameStart }: LobbyProps) {
       }}>
         <button
           className={styles.tutorialBtn}
-          style={gameMode === 'classic' ? { borderColor: '#fbbf24', color: '#fbbf24' } : {}}
-          onClick={() => setShowTutorial(true)}
-        >
-          {t.tutorial.btnOpen}
-        </button>
-        <button
-          className={styles.tutorialBtn}
-          style={gameMode === 'flux'
-            ? { borderColor: '#38bdf8', color: '#38bdf8' }
-            : { opacity: 0.65 }
-          }
+          style={{ borderColor: '#38bdf8', color: '#38bdf8' }}
           onClick={() => setShowFluxTutorial(true)}
         >
-          {t.fluxTutorial.btnOpen}
+          Règles du jeu
         </button>
       </div>
 
@@ -332,8 +322,8 @@ export function Lobby({ onGameStart }: LobbyProps) {
           onKeyDown={e => e.key === 'Enter' && handleCreate()}
         />
 
-        {/* Sélecteur de mode */}
-        <div className={styles.modeSelector}>
+        {/* Sélecteur de mode — masqué, Flux par défaut */}
+        <div style={{ display: 'none' }} className={styles.modeSelector}>
           <button
             className={`${styles.modeBtn} ${gameMode === 'classic' ? styles.modeBtnActive : ''}`}
             onClick={() => setGameMode('classic')}
