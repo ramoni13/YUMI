@@ -138,7 +138,11 @@ export function FluxBoard() {
             <div className={styles.headerStats}>
               {privateInfo?.mysteryCard !== undefined && (
                 <span className={styles.headerMystery}>
-                  🔍 {privateInfo.mysteryCardOwner} : <strong>{privateInfo.mysteryCard}</strong>
+                  🔍 {privateInfo.mysteryCardOwner} :
+                  {privateInfo.mysteryCard === YUMI_CARD_VALUE
+                    ? <strong className={styles.yumiMysteryVal}>Y</strong>
+                    : <strong>{privateInfo.mysteryCard}</strong>
+                  }
                 </span>
               )}
               <span className={styles.headerStat}>⭐ {myPlayer.stars}</span>
@@ -166,7 +170,10 @@ export function FluxBoard() {
                   title={mustPlayMystery ? 'Cliquer pour jouer votre carte mystère' : 'Votre carte mystère'}
                 >
                   <span className={styles.headerMysteryLabel}>🔒</span>
-                  <span className={styles.headerMysteryVal}>{myMysteryCard}</span>
+                  {myMysteryCard === YUMI_CARD_VALUE
+                    ? <span className={`${styles.headerMysteryVal} ${styles.yumiMysteryVal}`}>Y</span>
+                    : <span className={styles.headerMysteryVal}>{myMysteryCard}</span>
+                  }
                   {mustPlayMystery && !hasPlayed && <span className={styles.headerMysteryHint}>jouer</span>}
                 </div>
               )}
@@ -255,7 +262,11 @@ export function FluxBoard() {
                     {gotStar && <span className={styles.starBadge}>⭐</span>}
                     {didRecharge && privateInfo?.mysteryCard !== undefined && p.id === playerId && (
                       <span className={styles.mysteryBadge}>
-                        Carte mystère : {privateInfo.mysteryCard}
+                        Carte mystère :
+                        {privateInfo.mysteryCard === YUMI_CARD_VALUE
+                          ? <span className={styles.yumiMysteryVal}> Y</span>
+                          : ` ${privateInfo.mysteryCard}`
+                        }
                       </span>
                     )}
                   </div>
