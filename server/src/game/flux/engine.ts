@@ -709,12 +709,16 @@ function applyRecharge(state: FluxGameState, playerId: string): void {
   const rightNeighborIndex = (playerIndex + 1) % state.players.length;
   const rightNeighbor = state.players[rightNeighborIndex];
 
-  // La Recharge donne les cartes 1-8 uniquement — la YUMI n'est PAS restituée
+  // Mémoriser si le joueur avait encore sa YUMI avant la recharge
+  const hadYumi = player.hand.includes(YUMI_CARD_VALUE);
+
+  // La Recharge donne les cartes 1-8 uniquement — la YUMI n'est PAS restituée automatiquement
   const baseHand: number[] = [];
   for (let i = 1; i <= FLUX_MAX_CARD; i++) baseHand.push(i);
 
   const { newHand, mysteryCard } = drawMysteryCard(baseHand);
-  player.hand = newHand;
+  // Si le joueur avait encore sa YUMI, elle reste dans sa nouvelle main
+  player.hand = hadYumi ? [...newHand, YUMI_CARD_VALUE] : newHand;
   player.playedHistory = []; // réinitialiser l'historique après recharge
 
   state.mysteryCards[rightNeighbor.id] = mysteryCard;
