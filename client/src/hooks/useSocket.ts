@@ -5,6 +5,7 @@ import { useLangStore } from '../store/langStore';
 import { fr, en } from '../i18n';
 import type { Translations } from '../i18n';
 import type { GameEvent, PublicGameState } from '../types';
+import { YUMI_CARD_VALUE } from '../types';
 
 function getT(): Translations {
   const lang = useLangStore.getState().lang;
@@ -774,6 +775,17 @@ export function useSocket() {
       setLastReveal(playedCards);
       const state = stateRef.current;
       if (!state) return;
+
+      // Helper : convertit la valeur brute en label affichable
+      // La YUMI (valeur 9) affiche sa valeur effective selon le gain de la carte Score active
+      const scoreGain = state.currentScoreCard?.gain;
+      const yumiLabel = (val: number): string => {
+        if (val !== YUMI_CARD_VALUE) return String(val);
+        // gain '+' (grande gagne) → YUMI vaut 9 | gain '-' (petite gagne) → YUMI vaut 0
+        const effective = scoreGain === '-' ? 0 : YUMI_CARD_VALUE;
+        return `YUMI(=${effective})`;
+      };
+
       const allCards = Object.entries(playedCards as Record<string, number>).map(([pid, value]) => {
         const p = state.players.find(pl => pl.id === pid)!;
         return {
@@ -785,7 +797,7 @@ export function useSocket() {
         };
       });
       const lines = allCards
-        .map(c => `${c.pseudo} : ${c.value}${c.cancelled ? ' (annulé)' : ''}`)
+        .map(c => `${c.pseudo} : ${yumiLabel(c.value)}${c.cancelled ? ' (annulé)' : ''}`)
         .join(' • ');
       pushEvent({
         timestamp: Date.now(),
