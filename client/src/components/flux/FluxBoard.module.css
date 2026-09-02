@@ -630,6 +630,14 @@
   to   { transform: scale(1); opacity: 1; }
 }
 
+/* Valeur YUMI affichée en jaune dans les zones carte mystère */
+.yumiMysteryVal {
+  color: #fbbf24;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  text-shadow: 0 0 6px rgba(251, 191, 36, 0.6);
+}
+
 /* Encart d'info carte YUMI dans la main */
 .yumiHint {
   background: linear-gradient(135deg, rgba(120, 53, 15, 0.4), rgba(245, 158, 11, 0.2));
