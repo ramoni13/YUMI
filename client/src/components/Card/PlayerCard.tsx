@@ -1,5 +1,6 @@
 import React from 'react';
 import type { PlayerColor } from '../../types';
+import { YUMI_CARD_VALUE } from '../../types';
 import styles from './Card.module.css';
 
 interface PlayerCardProps {
@@ -27,7 +28,7 @@ export function PlayerCard({
     <div
       className={`
         ${styles.playerCard}
-        ${styles[color]}
+        ${value === YUMI_CARD_VALUE ? styles.yumiCard : styles[color]}
         ${selected ? styles.selected : ''}
         ${disabled ? styles.disabled : ''}
         ${faceDown ? styles.faceDown : ''}
@@ -39,6 +40,8 @@ export function PlayerCard({
     >
       {faceDown ? (
         <span className={styles.cardBack}>?</span>
+      ) : value === YUMI_CARD_VALUE ? (
+        <span className={styles.yumiLabel}>YUMI</span>
       ) : (
         <span className={styles.cardValue}>{value}</span>
       )}
