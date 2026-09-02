@@ -47,7 +47,7 @@ export type SpecialEffect =
   | null;
 
 export interface ScoreCard {
-  id: number;             // 1 à 38
+  id: number;             // 1 à 48
   value: number;          // Valeur score cumulée en fin de partie
   gain: GainType;         // '+' = vert (plus grande gagne) | '-' = rouge (plus petite gagne)
   specialEffect: SpecialEffect;
@@ -112,6 +112,10 @@ export type GameMode = 'classic' | 'flux';
 
 // Valeur réservée pour la carte Recharge (mode flux)
 export const RECHARGE_CARD_VALUE = 0;
+
+// Valeur réservée pour la carte YUMI (mode flux)
+// En jeu elle vaut 9 (gain+) ou 0 (gain-) — résolue dans le resolver
+export const YUMI_CARD_VALUE = 9;
 
 // Bonus de majorité d'étoiles en fin de partie
 export const STAR_MAJORITY_BONUS = 5;
@@ -429,8 +433,8 @@ export interface GameConfig {
 }
 
 export const GAME_CONFIGS: Record<number, GameConfig> = {
-  3: { playerCount: 3, maxCardValue: 5, scoreCardsPerRound: 3, totalRounds: 9, scoreCardsUsed: 27, scoreCardsDiscarded: 3 },
-  4: { playerCount: 4, maxCardValue: 6, scoreCardsPerRound: 4, totalRounds: 7, scoreCardsUsed: 28, scoreCardsDiscarded: 2 },
-  5: { playerCount: 5, maxCardValue: 7, scoreCardsPerRound: 5, totalRounds: 6, scoreCardsUsed: 30, scoreCardsDiscarded: 0 },
-  6: { playerCount: 6, maxCardValue: 8, scoreCardsPerRound: 6, totalRounds: 5, scoreCardsUsed: 30, scoreCardsDiscarded: 0 },
+  3: { playerCount: 3, maxCardValue: 5, scoreCardsPerRound: 3, totalRounds: 9, scoreCardsUsed: 27, scoreCardsDiscarded: 21 },
+  4: { playerCount: 4, maxCardValue: 6, scoreCardsPerRound: 4, totalRounds: 7, scoreCardsUsed: 28, scoreCardsDiscarded: 20 },
+  5: { playerCount: 5, maxCardValue: 7, scoreCardsPerRound: 5, totalRounds: 6, scoreCardsUsed: 30, scoreCardsDiscarded: 18 },
+  6: { playerCount: 6, maxCardValue: 8, scoreCardsPerRound: 6, totalRounds: 5, scoreCardsUsed: 30, scoreCardsDiscarded: 18 },
 };
