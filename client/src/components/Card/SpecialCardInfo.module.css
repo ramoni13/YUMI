@@ -1,0 +1,147 @@
+/* ============================================================
+   SpecialCardInfo — Pavé d'info carte spéciale
+   ============================================================ */
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  padding: 0.75rem 1rem;
+  border-radius: 12px;
+  border: 2px solid;
+  min-width: 200px;
+  max-width: 240px;
+  font-size: 0.82rem;
+  line-height: 1.4;
+  /* Apparition animée */
+  animation: slideIn 0.25s ease;
+}
+
+/* Couleurs selon le gain de la carte */
+.green {
+  background: linear-gradient(135deg, rgba(20, 83, 45, 0.85), rgba(22, 163, 74, 0.25));
+  border-color: rgba(34, 197, 94, 0.6);
+  color: #d1fae5;
+}
+
+.red {
+  background: linear-gradient(135deg, rgba(127, 29, 29, 0.85), rgba(185, 28, 28, 0.25));
+  border-color: rgba(239, 68, 68, 0.6);
+  color: #fee2e2;
+}
+
+/* En-tête */
+.header {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+}
+
+.icon {
+  font-size: 1.5rem;
+  line-height: 1;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.titleBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.title {
+  font-size: 0.95rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.role {
+  font-size: 0.72rem;
+  font-weight: 500;
+  opacity: 0.8;
+  font-style: italic;
+}
+
+/* Badges score / étoiles / gain */
+.badges {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.2rem;
+  flex-shrink: 0;
+}
+
+.badge {
+  font-size: 0.7rem;
+  font-weight: 700;
+  background: rgba(0, 0, 0, 0.3);
+  padding: 1px 5px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.gainBadge {
+  font-size: 0.62rem;
+  font-weight: 600;
+  padding: 1px 5px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.gainGreen {
+  background: rgba(34, 197, 94, 0.2);
+  border: 1px solid rgba(34, 197, 94, 0.4);
+  color: #86efac;
+}
+
+.gainRed {
+  background: rgba(239, 68, 68, 0.2);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  color: #fca5a5;
+}
+
+/* Séparateur */
+.divider {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.15);
+  margin: 0 -0.25rem;
+}
+
+/* Sections Effet / Conseil */
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.sectionLabel {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  opacity: 0.7;
+}
+
+.sectionText {
+  margin: 0;
+  font-size: 0.8rem;
+  line-height: 1.45;
+  opacity: 0.92;
+}
+
+/* Animation d'apparition */
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
