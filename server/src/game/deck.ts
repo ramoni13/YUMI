@@ -1,7 +1,7 @@
 import { ScoreCard, GainType, SpecialEffect, GAME_CONFIGS } from '../types';
 
 // ============================================================
-// Génération du paquet Score complet (38 cartes)
+// Génération du paquet Score complet (48 cartes)
 // Colonnes : id | value | gain | specialEffect | displayName | bonusPoints | bonusStars
 // ============================================================
 
@@ -43,6 +43,20 @@ export function buildFullScoreDeck(): ScoreCard[] {
     card(18, -3, '-', null, '-3', 0, 2),   // -3  —  2⭐ -
     card(19, -4, '-', null, '-4', 0, 3),   // -4  —  3⭐ -
     card(20, -5, '+', null, '-5', 0, 3),   // -5  —  3⭐ +
+    // -------------------------------------------------------
+    // Cartes numériques supplémentaires — 10 cartes (IDs 39-48)
+    // 4× +1 (2 gain+, 2 gain-) | 4× +2 (2 gain+, 2 gain-) | 2× -1 (1 gain+, 1 gain-)
+    // -------------------------------------------------------
+    card(39, +1, '+', null, '+1', 0, 2),   // +1  —  2⭐ +
+    card(40, +1, '+', null, '+1', 0, 2),   // +1  —  2⭐ +
+    card(41, +1, '-', null, '+1', 0, 2),   // +1  —  2⭐ -
+    card(42, +1, '-', null, '+1', 0, 2),   // +1  —  2⭐ -
+    card(43, +2, '+', null, '+2', 0, 1),   // +2  —  1⭐ +
+    card(44, +2, '+', null, '+2', 0, 1),   // +2  —  1⭐ +
+    card(45, +2, '-', null, '+2', 0, 1),   // +2  —  1⭐ -
+    card(46, +2, '-', null, '+2', 0, 1),   // +2  —  1⭐ -
+    card(47, -1, '+', null, '-1', 0, 2),   // -1  —  2⭐ +
+    card(48, -1, '-', null, '-1', 0, 2),   // -1  —  2⭐ -
     // -------------------------------------------------------
     // Cartes spéciales — 18 cartes
     // -------------------------------------------------------
