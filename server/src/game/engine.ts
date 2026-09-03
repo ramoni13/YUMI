@@ -12,6 +12,7 @@ import {
   GAME_CONFIGS,
   PLAYER_COLORS,
   PlayerColor,
+  SCORE_CARDS_PER_ROUND_CLASSIC,
 } from '../types';
 
 import {
@@ -29,6 +30,8 @@ import {
   canApplyDouble,
   computeBonusStars,
   computeFinalScores,
+  computeRoundVictoryPoints,
+  checkGameOver,
 } from './scoring';
 
 // ============================================================
@@ -90,6 +93,7 @@ export function initGame(
     scorePile: [],
     stars: 0,
     bonusPoints: 0,
+    victoryPoints: 0,
     deferred: { forcedRecharge: false, forcedCard: null, lockedHighCard: false, lockedLowCard: false, mustPlayMysteryCard: false },
     isReady: true,
     isConnected: true,
@@ -174,8 +178,8 @@ export function startRound(
     state.missingCards[player.id] = mysteryCard;
   }
 
-  // 2. Piocher les cartes Score de la manche — toutes visibles dès le départ
-  state.scoreColumn = drawScoreCards(state.scoreDeck, config.scoreCardsPerRound);
+  // 2. Piocher 20 cartes Score pour la manche — toutes visibles dès le départ
+  state.scoreColumn = drawScoreCards(state.scoreDeck, SCORE_CARDS_PER_ROUND_CLASSIC);
   state.scoreColumnRevealed = new Array(state.scoreColumn.length).fill(true);
 
   // Pas de phase de mémorisation : on passe directement à TRICK_START
@@ -445,13 +449,11 @@ export function resolveSwapChooseB(
 // Fin de mène → préparer la suivante ou fin de manche
 // ============================================================
 export function endTrick(state: InternalGameState): InternalGameState {
-  const config = GAME_CONFIGS[state.players.length];
-
-  if (state.currentTrick < config.scoreCardsPerRound) {
+  if (state.currentTrick < SCORE_CARDS_PER_ROUND_CLASSIC) {
     // Mène suivante
     state.phase = 'TRICK_START';
   } else {
-    // Fin de manche → bonus étoile
+    // Fin de manche (20 cartes jouées) → attribution des points de victoire
     state.phase = 'ROUND_END';
   }
 
@@ -459,36 +461,51 @@ export function endTrick(state: InternalGameState): InternalGameState {
 }
 
 // ============================================================
-// Fin de manche — bonus étoile
+// Fin de manche — bonus étoile + attribution des points de victoire
 // ============================================================
 export function endRound(state: InternalGameState): InternalGameState {
   // Révéler les dernières cartes
   const lastCards: Record<string, number> = {};
   for (const player of state.players) {
-    // La dernière carte en main (il en reste 1 après la manche)
     if (player.hand.length > 0) {
       lastCards[player.id] = player.hand[0];
     }
   }
 
+  // Bonus étoile : la dernière carte unique gagne 1 étoile
   const bonusWinners = computeBonusStars(lastCards);
   for (const playerId of bonusWinners) {
     const player = state.players.find(p => p.id === playerId);
     if (player) player.stars += 1;
   }
 
-  // Les mains seront reconstruites au début de la prochaine manche (startRound)
-  // Les scorePiles sont conservées d'une manche à l'autre
+  // Attribution des points de victoire (3 catégories)
+  const { starsVPWinner, cardScoreVPWinner, bonusVPWinner } =
+    computeRoundVictoryPoints(state.players);
 
-  // Score intermédiaire (cartes Score uniquement, sans étoiles — pour affichage)
+  if (starsVPWinner) {
+    const p = state.players.find(pl => pl.id === starsVPWinner);
+    if (p) p.victoryPoints += 1;
+  }
+  if (cardScoreVPWinner) {
+    const p = state.players.find(pl => pl.id === cardScoreVPWinner);
+    if (p) p.victoryPoints += 1;
+  }
+  if (bonusVPWinner) {
+    const p = state.players.find(pl => pl.id === bonusVPWinner);
+    if (p) p.victoryPoints += 1;
+  }
+
+  // Snapshot pour l'affichage
   const scores: Record<string, number> = {};
   const stars: Record<string, number> = {};
+  const bonusPointsMap: Record<string, number> = {};
+  const victoryPoints: Record<string, number> = {};
   for (const player of state.players) {
-    scores[player.id] = player.scorePile.reduce(
-      (t, c) => t + (c.specialEffect ? 0 : c.value),
-      0
-    );
+    scores[player.id] = player.scorePile.reduce((t, c) => t + c.value, 0);
     stars[player.id] = player.stars;
+    bonusPointsMap[player.id] = player.bonusPoints;
+    victoryPoints[player.id] = player.victoryPoints;
   }
 
   state.roundEndSummary = {
@@ -496,6 +513,11 @@ export function endRound(state: InternalGameState): InternalGameState {
     bonusStarWinners: bonusWinners,
     scores,
     stars,
+    bonusPointsMap,
+    starsVPWinner,
+    cardScoreVPWinner,
+    bonusVPWinner,
+    victoryPoints,
   };
 
   state.phase = 'BONUS_STAR';
@@ -504,15 +526,26 @@ export function endRound(state: InternalGameState): InternalGameState {
 
 // ============================================================
 // Passer à la manche suivante ou fin de partie
+// Fin de partie : un seul joueur à VICTORY_POINTS_TO_WIN points
+// Si égalité au seuil, on rejoue une manche
 // ============================================================
 export function nextRoundOrGameOver(
   state: InternalGameState
 ): InternalGameState {
-  if (state.currentRound >= state.totalRounds) {
-    // Fin de partie
+  if (checkGameOver(state.players)) {
+    // Un seul joueur a atteint le seuil de points de victoire
     state.finalScores = computeFinalScores(state.players);
     state.phase = 'GAME_OVER';
   } else {
+    // Continuer : nouvelle manche (réinitialiser les piles et étoiles pour la prochaine manche)
+    // Les points de victoire sont conservés
+    for (const player of state.players) {
+      player.scorePile = [];
+      player.stars = 0;
+      player.bonusPoints = 0;
+    }
+    // Régénérer le deck Score pour la nouvelle manche
+    state.scoreDeck = prepareScoreDeck(state.players.length);
     state.phase = 'ROUND_START';
   }
   return state;
@@ -534,6 +567,7 @@ export function toPublicState(state: InternalGameState): PublicGameState {
     scorePileCount: p.scorePile.length,
     stars: p.stars,
     bonusPoints: p.bonusPoints,
+    victoryPoints: p.victoryPoints,
     deferred: p.deferred,
     isReady: p.isReady,
     isConnected: p.isConnected,
@@ -551,10 +585,12 @@ export function toPublicState(state: InternalGameState): PublicGameState {
     currentRound: state.currentRound,
     totalRounds: state.totalRounds,
     currentTrick: state.currentTrick,
-    totalTricks: config?.scoreCardsPerRound ?? 0,
+    totalTricks: SCORE_CARDS_PER_ROUND_CLASSIC,
     scoreColumn,
     currentScoreCard: state.currentScoreCard,
-    scoreDeckCount: state.scoreDeck.length,
+    // Cartes Score en attente dans la manche : celles qui ne sont pas encore actives ni jouées.
+    // currentTrick = index de la carte active (1-based), donc les cartes restantes = total - currentTrick
+    scoreDeckCount: Math.max(0, state.scoreColumn.length - state.currentTrick),
     players: publicPlayers,
     trickWinnerId: state.trickWinnerId,
     cancelledValues: state.cancelledValues,
