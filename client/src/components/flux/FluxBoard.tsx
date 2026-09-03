@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useGameStore } from '../../store/gameStore';
 import { useT } from '../../hooks/useT';
+import { VICTORY_POINTS_TO_WIN } from '../../types';
 import { ScoreCardDisplay } from '../Card/ScoreCardDisplay';
 import { SpecialCardInfo } from '../Card/SpecialCardInfo';
 import { PlayerCard } from '../Card/PlayerCard';
@@ -122,6 +123,86 @@ export function FluxBoard() {
   };
 
   const hand = privateInfo?.hand ?? [];
+
+  // ── Fin de manche : résumé des PV ──────────────────────────
+  if (phase === 'BONUS_STAR' && gameState.roundEndSummary) {
+    const summary = gameState.roundEndSummary;
+    const handleNextRound = () => {
+      getSocket().emit('next_phase');
+    };
+    return (
+      <div className={styles.boardWrapper}>
+        <div className={styles.board}>
+          <div className={styles.roundEndOverlay}>
+            <h2 className={styles.roundEndTitle}>🏁 Fin de manche</h2>
+
+            {/* 3 catégories */}
+            <div className={styles.vpCategories}>
+              <div className={styles.vpCatRow}>
+                <span className={styles.vpCatIcon}>⭐</span>
+                <span className={styles.vpCatName}>Course aux étoiles</span>
+                <span className={styles.vpCatWinner}>
+                  {summary.starsVPWinner
+                    ? gameState.players.find(p => p.id === summary.starsVPWinner)?.pseudo
+                    : <em>Annulé (ex-æquo)</em>}
+                </span>
+                {summary.starsVPWinner && <span className={styles.vpBadge}>+1 PV</span>}
+              </div>
+              <div className={styles.vpCatRow}>
+                <span className={styles.vpCatIcon}>🃏</span>
+                <span className={styles.vpCatName}>Points des cartes</span>
+                <span className={styles.vpCatWinner}>
+                  {summary.cardScoreVPWinner
+                    ? gameState.players.find(p => p.id === summary.cardScoreVPWinner)?.pseudo
+                    : <em>Annulé (ex-æquo)</em>}
+                </span>
+                {summary.cardScoreVPWinner && <span className={styles.vpBadge}>+1 PV</span>}
+              </div>
+              <div className={styles.vpCatRow}>
+                <span className={styles.vpCatIcon}>🪙</span>
+                <span className={styles.vpCatName}>Points bonus</span>
+                <span className={styles.vpCatWinner}>
+                  {summary.bonusVPWinner
+                    ? gameState.players.find(p => p.id === summary.bonusVPWinner)?.pseudo
+                    : <em>Annulé (ex-æquo)</em>}
+                </span>
+                {summary.bonusVPWinner && <span className={styles.vpBadge}>+1 PV</span>}
+              </div>
+            </div>
+
+            {/* Classement PV */}
+            <div className={styles.vpRanking}>
+              <div className={styles.vpRankTitle}>Points de victoire</div>
+              {gameState.players
+                .slice()
+                .sort((a, b) => (summary.victoryPoints[b.id] ?? 0) - (summary.victoryPoints[a.id] ?? 0))
+                .map(p => (
+                  <div key={p.id} className={`${styles.vpRankRow} ${p.id === playerId ? styles.vpRankMe : ''}`}>
+                    <span className={styles.vpRankPseudo}>{p.pseudo}</span>
+                    <span className={styles.vpRankStars}>
+                      {Array.from({ length: VICTORY_POINTS_TO_WIN }, (_, i) => (
+                        <span key={i} className={i < (summary.victoryPoints[p.id] ?? 0) ? styles.vpFilled : styles.vpEmpty}>★</span>
+                      ))}
+                    </span>
+                    <span className={styles.vpRankCount}>{summary.victoryPoints[p.id] ?? 0} PV</span>
+                    <span className={styles.vpRankDetail}>
+                      🃏 {summary.scores[p.id] ?? 0} &nbsp;
+                      🪙 {summary.bonusPointsMap?.[p.id] ?? 0} &nbsp;
+                      ⭐ {summary.stars[p.id] ?? 0}
+                    </span>
+                  </div>
+                ))}
+            </div>
+
+            <button className={styles.nextRoundBtn} onClick={handleNextRound}>
+              Manche suivante →
+            </button>
+          </div>
+        </div>
+        <HistoryPanel />
+      </div>
+    );
+  }
 
   return (
     <div className={styles.boardWrapper}>
