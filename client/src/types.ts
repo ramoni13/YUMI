@@ -99,6 +99,7 @@ export interface PublicPlayer {
   scorePileCount: number;
   stars: number;
   bonusPoints: number;
+  victoryPoints: number;          // Points de victoire accumulés
   deferred: DeferredEffects;
   isReady: boolean;
   isConnected: boolean;
@@ -117,8 +118,14 @@ export const RECHARGE_CARD_VALUE = 0;
 // En jeu elle vaut 9 (gain+) ou 0 (gain-) — résolue dans le resolver
 export const YUMI_CARD_VALUE = 9;
 
-// Bonus de majorité d'étoiles en fin de partie
+// Bonus de majorité d'étoiles en fin de partie (ancien système, conservé pour compatibilité flux)
 export const STAR_MAJORITY_BONUS = 5;
+
+// Points de victoire nécessaires pour gagner la partie (mode classic)
+export const VICTORY_POINTS_TO_WIN = 3;
+
+// Nombre de cartes Score par manche (mode classic, fixe)
+export const SCORE_CARDS_PER_ROUND_CLASSIC = 20;
 
 // ----------------------------
 // Phases de jeu
@@ -306,8 +313,14 @@ export interface TrickSummary {
 export interface RoundEndSummary {
   lastCards: Record<string, number>;   // joueur_id → dernière carte
   bonusStarWinners: string[];          // IDs des joueurs ayant une valeur unique
-  scores: Record<string, number>;      // joueur_id → score total actuel
+  scores: Record<string, number>;      // joueur_id → score cartes actuel
   stars: Record<string, number>;       // joueur_id → étoiles totales
+  bonusPointsMap: Record<string, number>; // joueur_id → points bonus actuels
+  // Résultats des 3 catégories de points de victoire
+  starsVPWinner: string | null;        // ID du gagnant du point de victoire étoiles (null si annulation)
+  cardScoreVPWinner: string | null;    // ID du gagnant du point de victoire cartes
+  bonusVPWinner: string | null;        // ID du gagnant du point de victoire bonus
+  victoryPoints: Record<string, number>; // joueur_id → points de victoire totaux après cette manche
 }
 
 export interface FinalScore {
@@ -317,8 +330,9 @@ export interface FinalScore {
   scoreFromCards: number;
   bonusPoints: number;
   stars: number;
-  starBonus: number;        // +5 pts pour le joueur majoritaire en étoiles
-  totalScore: number;       // scoreFromCards + bonusPoints + starBonus
+  starBonus: number;        // conservé pour compatibilité (0 en mode classic)
+  totalScore: number;       // scoreFromCards + bonusPoints + starBonus (ancien système)
+  victoryPoints: number;    // Points de victoire accumulés (nouveau système)
   rank: number;
 }
 
@@ -433,8 +447,10 @@ export interface GameConfig {
 }
 
 export const GAME_CONFIGS: Record<number, GameConfig> = {
-  3: { playerCount: 3, maxCardValue: 5, scoreCardsPerRound: 3, totalRounds: 9, scoreCardsUsed: 27, scoreCardsDiscarded: 21 },
-  4: { playerCount: 4, maxCardValue: 6, scoreCardsPerRound: 4, totalRounds: 7, scoreCardsUsed: 28, scoreCardsDiscarded: 20 },
-  5: { playerCount: 5, maxCardValue: 7, scoreCardsPerRound: 5, totalRounds: 6, scoreCardsUsed: 30, scoreCardsDiscarded: 18 },
-  6: { playerCount: 6, maxCardValue: 8, scoreCardsPerRound: 6, totalRounds: 5, scoreCardsUsed: 30, scoreCardsDiscarded: 18 },
+  // scoreCardsPerRound = 20 (fixe, nouveau système)
+  // totalRounds = 0 signifie « jusqu'à 3 points de victoire » — géré dynamiquement
+  3: { playerCount: 3, maxCardValue: 5, scoreCardsPerRound: 20, totalRounds: 0, scoreCardsUsed: 0, scoreCardsDiscarded: 0 },
+  4: { playerCount: 4, maxCardValue: 6, scoreCardsPerRound: 20, totalRounds: 0, scoreCardsUsed: 0, scoreCardsDiscarded: 0 },
+  5: { playerCount: 5, maxCardValue: 7, scoreCardsPerRound: 20, totalRounds: 0, scoreCardsUsed: 0, scoreCardsDiscarded: 0 },
+  6: { playerCount: 6, maxCardValue: 8, scoreCardsPerRound: 20, totalRounds: 0, scoreCardsUsed: 0, scoreCardsDiscarded: 0 },
 };
