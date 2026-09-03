@@ -71,6 +71,7 @@
   color: #c7d2fe;
 }
 
+.victoryPoints { display: flex; gap: 0.1rem; align-items: center; }
 .stars { color: #fbbf24; }
 .played { color: #4ade80; font-weight: 700; }
 
