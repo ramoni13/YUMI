@@ -94,16 +94,15 @@ export function shuffle<T>(arr: T[]): T[] {
 }
 
 // ============================================================
-// Prépare le paquet Score pour une partie
-// Mélange + écarte aléatoirement les cartes non utilisées
+// Prépare le paquet Score pour une manche (20 cartes aléatoires)
+// Le deck complet est mélangé et on prend les 20 premières cartes.
+// Si le deck complet a moins de 20 cartes (impossible avec 48),
+// on prend tout ce qui reste.
 // ============================================================
-export function prepareScoreDeck(playerCount: number): ScoreCard[] {
-  const config = GAME_CONFIGS[playerCount];
-  if (!config) throw new Error(`Nombre de joueurs invalide : ${playerCount}`);
-
+export function prepareScoreDeck(_playerCount?: number): ScoreCard[] {
   const full = shuffle(buildFullScoreDeck());
-  // Écarter les N premières cartes (aléatoire car déjà mélangé)
-  return full.slice(config.scoreCardsDiscarded);
+  // On retourne le deck entier mélangé ; drawScoreCards en piochera 20
+  return full;
 }
 
 // ============================================================
