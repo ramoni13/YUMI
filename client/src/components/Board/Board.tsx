@@ -1,6 +1,7 @@
 import React from 'react';
 import { useGameStore } from '../../store/gameStore';
 import { useT } from '../../hooks/useT';
+import { VICTORY_POINTS_TO_WIN } from '../../types';
 import { ScoreCardDisplay } from '../Card/ScoreCardDisplay';
 import { PlayerCard } from '../Card/PlayerCard';
 import { OpponentPanel } from '../Player/OpponentPanel';
@@ -55,13 +56,26 @@ export function Board() {
       {/* Header */}
       <div className={styles.header}>
         <div className={styles.roundInfo}>
-          {t.board.round(gameState.currentRound, gameState.totalRounds)}
+          {t.board.round(gameState.currentRound, VICTORY_POINTS_TO_WIN)}
         </div>
         <div className={styles.trickInfo}>
           {t.board.trick(gameState.currentTrick, gameState.totalTricks)}
         </div>
         <div className={styles.deckCount}>
-          {t.board.deckCount(gameState.scoreDeckCount)}
+          {t.board.deckCount(Math.max(0, gameState.scoreDeckCount))}
+        </div>
+        {/* Points de victoire en cours */}
+        <div className={styles.victoryPointsBar}>
+          {gameState.players.map(p => (
+            <div key={p.id} className={styles.vpPlayer}>
+              <span className={styles.vpPseudo}>{p.pseudo}</span>
+              <span className={styles.vpStars}>
+                {Array.from({ length: VICTORY_POINTS_TO_WIN }, (_, i) => (
+                  <span key={i} className={i < p.victoryPoints ? styles.vpFilled : styles.vpEmpty}>★</span>
+                ))}
+              </span>
+            </div>
+          ))}
         </div>
       </div>
 
@@ -155,6 +169,8 @@ export function Board() {
         {phase === 'BONUS_STAR' && gameState.roundEndSummary && (
           <div className={styles.roundSummary}>
             <h3>{t.board.roundEndTitle}</h3>
+
+            {/* Dernières cartes + bonus étoile */}
             <div className={styles.lastCards}>
               {Object.entries(gameState.roundEndSummary.lastCards).map(([pid, val]) => {
                 const p = gameState.players.find(pl => pl.id === pid);
@@ -167,6 +183,53 @@ export function Board() {
                   </div>
                 );
               })}
+            </div>
+
+            {/* Points de victoire attribués cette manche */}
+            <div className={styles.vpSummary}>
+              <div className={styles.vpCategory}>
+                <span className={styles.vpCatLabel}>⭐ {t.board.vpCatStars}</span>
+                <span className={styles.vpCatWinner}>
+                  {gameState.roundEndSummary.starsVPWinner
+                    ? gameState.players.find(p => p.id === gameState.roundEndSummary!.starsVPWinner)?.pseudo ?? '—'
+                    : t.board.vpCancelled}
+                </span>
+              </div>
+              <div className={styles.vpCategory}>
+                <span className={styles.vpCatLabel}>🃏 {t.board.vpCatCards}</span>
+                <span className={styles.vpCatWinner}>
+                  {gameState.roundEndSummary.cardScoreVPWinner
+                    ? gameState.players.find(p => p.id === gameState.roundEndSummary!.cardScoreVPWinner)?.pseudo ?? '—'
+                    : t.board.vpCancelled}
+                </span>
+              </div>
+              <div className={styles.vpCategory}>
+                <span className={styles.vpCatLabel}>🪙 {t.board.vpCatBonus}</span>
+                <span className={styles.vpCatWinner}>
+                  {gameState.roundEndSummary.bonusVPWinner
+                    ? gameState.players.find(p => p.id === gameState.roundEndSummary!.bonusVPWinner)?.pseudo ?? '—'
+                    : t.board.vpCancelled}
+                </span>
+              </div>
+            </div>
+
+            {/* Classement points de victoire après cette manche */}
+            <div className={styles.vpRanking}>
+              <div className={styles.vpRankTitle}>{t.board.vpRankTitle}</div>
+              {gameState.players
+                .slice()
+                .sort((a, b) => (gameState.roundEndSummary!.victoryPoints[b.id] ?? 0) - (gameState.roundEndSummary!.victoryPoints[a.id] ?? 0))
+                .map(p => (
+                  <div key={p.id} className={styles.vpRankRow}>
+                    <span>{p.pseudo}</span>
+                    <span className={styles.vpRankStars}>
+                      {Array.from({ length: VICTORY_POINTS_TO_WIN }, (_, i) => (
+                        <span key={i} className={i < (gameState.roundEndSummary!.victoryPoints[p.id] ?? 0) ? styles.vpFilled : styles.vpEmpty}>★</span>
+                      ))}
+                      <span className={styles.vpRankCount}>{gameState.roundEndSummary!.victoryPoints[p.id] ?? 0} PV</span>
+                    </span>
+                  </div>
+                ))}
             </div>
           </div>
         )}
@@ -212,6 +275,13 @@ export function Board() {
       {myPlayer && privateInfo && (
         <div className={styles.myZone}>
           <div className={styles.myStats}>
+            {/* Points de victoire */}
+            <span className={styles.myVP}>
+              {Array.from({ length: VICTORY_POINTS_TO_WIN }, (_, i) => (
+                <span key={i} className={i < myPlayer.victoryPoints ? styles.vpFilled : styles.vpEmpty}>★</span>
+              ))}
+              <span style={{ marginLeft: '0.3rem', fontWeight: 700, color: '#fbbf24' }}>{myPlayer.victoryPoints} PV</span>
+            </span>
             <span>{t.board.myStars(myPlayer.stars)}</span>
             <span>{t.board.myScorePile(myPlayer.scorePileCount)}</span>
             {myPlayer.topScoreCard && (
