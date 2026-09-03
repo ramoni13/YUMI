@@ -1,6 +1,7 @@
 import React from 'react';
 import { useGameStore } from '../../store/gameStore';
 import { useT } from '../../hooks/useT';
+import { VICTORY_POINTS_TO_WIN } from '../../types';
 import styles from './GameOver.module.css';
 
 const COLOR_HEX: Record<string, string> = {
@@ -35,12 +36,12 @@ export function GameOver({ onReplay }: GameOverProps) {
           </>
         )}
         <p className={styles.winner}>
-          {winner ? t.gameover.winnerLine(winner.pseudo, winner.totalScore) : ''}
+          {winner ? t.gameover.winnerLine(winner.pseudo, winner.victoryPoints) : ''}
         </p>
       </div>
 
       <div className={styles.scoreboard}>
-        {scores.map((s, i) => (
+        {scores.map((s) => (
           <div
             key={s.playerId}
             className={`${styles.row} ${s.playerId === playerId ? styles.myRow : ''}`}
@@ -49,25 +50,29 @@ export function GameOver({ onReplay }: GameOverProps) {
             <span className={styles.rank}>#{s.rank}</span>
             <span className={styles.pseudo}>{s.pseudo}</span>
             <div className={styles.details}>
+              {/* Points de victoire — affichage principal */}
+              <span className={styles.victoryPoints} title={t.gameover.victoryPointsTitle}>
+                {Array.from({ length: VICTORY_POINTS_TO_WIN }, (_, i) => (
+                  <span key={i} className={i < s.victoryPoints ? styles.vpFilled : styles.vpEmpty}>
+                    ★
+                  </span>
+                ))}
+                <span className={styles.vpCount}>{s.victoryPoints} PV</span>
+              </span>
+              {/* Détails des cumuls */}
               <span className={styles.cardScore} title={t.gameover.cardScoreTitle}>
                 🃏 {s.scoreFromCards > 0 ? '+' : ''}{s.scoreFromCards}
               </span>
               {s.bonusPoints > 0 && (
-                <span className={styles.rechargeStarScore} title="Points bonus">
+                <span className={styles.rechargeStarScore} title={t.gameover.bonusPointsTitle}>
                   🪙 +{s.bonusPoints}
                 </span>
               )}
               {s.stars > 0 && (
-                <span className={styles.starScore} title="Étoiles (majorité)">
+                <span className={styles.starScore} title={t.gameover.starsTitle}>
                   ⭐ {s.stars}
                 </span>
               )}
-              {s.starBonus > 0 && (
-                <span className={styles.starBonus} title={t.gameover.starBonusTitle}>
-                  🏆 +{s.starBonus}
-                </span>
-              )}
-              <span className={styles.total}>{t.gameover.pts(s.totalScore)}</span>
             </div>
           </div>
         ))}
