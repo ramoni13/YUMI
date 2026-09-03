@@ -20,6 +20,7 @@ import {
   buildFullScoreDeck,
   drawMysteryCard,
   shuffle,
+  prepareScoreDeck,
 } from '../deck';
 
 import { resolveTrick } from '../resolver';
@@ -28,6 +29,8 @@ import {
   applySwap,
   canApplyDouble,
   computeFinalScores,
+  computeRoundVictoryPoints,
+  checkGameOver,
   applyTaxe,
 } from '../scoring';
 
@@ -77,6 +80,7 @@ export interface FluxGameState {
   taxeEligibleTargets: string[];
   // Résumés
   lastTrickSummary: TrickSummary | null;
+  roundEndSummary: import('../../types').RoundEndSummary | null;
   finalScores: FinalScore[] | null;
   rechargedPlayerIds: string[];
   bonusPointWinners: string[];
@@ -123,6 +127,7 @@ export function initFluxGame(
     scorePile: [],
     stars: 0,
     bonusPoints: 0,
+    victoryPoints: 0,
     deferred: emptyDeferredEffects(),
     isReady: true,
     isConnected: true,
@@ -142,7 +147,8 @@ export function initFluxGame(
     missingCards[player.id] = mysteryCard;
   }
 
-  const scoreDeck = shuffle(buildFullScoreDeck());
+  // 20 cartes Score aléatoires pour la manche (même règle que le mode classic)
+  const scoreDeck = prepareScoreDeck().slice(0, 20);
 
   return {
     phase: 'SETUP',
@@ -178,6 +184,7 @@ export function initFluxGame(
     taxeRequestPlayerId: null,
     taxeEligibleTargets: [],
     lastTrickSummary: null,
+    roundEndSummary: null,
     finalScores: null,
     rechargedPlayerIds: [],
     bonusPointWinners: [],
@@ -187,13 +194,107 @@ export function initFluxGame(
 }
 
 // ============================================================
+// Fin de manche flux — calcul des PV (appelé quand le deck est vide)
+// ============================================================
+export function endFluxRound(state: FluxGameState): FluxGameState {
+  // Attribution des points de victoire (3 catégories)
+  const { starsVPWinner, cardScoreVPWinner, bonusVPWinner } =
+    computeRoundVictoryPoints(state.players);
+
+  if (starsVPWinner) {
+    const p = state.players.find(pl => pl.id === starsVPWinner);
+    if (p) p.victoryPoints += 1;
+  }
+  if (cardScoreVPWinner) {
+    const p = state.players.find(pl => pl.id === cardScoreVPWinner);
+    if (p) p.victoryPoints += 1;
+  }
+  if (bonusVPWinner) {
+    const p = state.players.find(pl => pl.id === bonusVPWinner);
+    if (p) p.victoryPoints += 1;
+  }
+
+  // Snapshot pour l'affichage
+  const scores: import('../../types').RoundEndSummary['scores'] = {};
+  const stars: import('../../types').RoundEndSummary['stars'] = {};
+  const bonusPointsMap: import('../../types').RoundEndSummary['bonusPointsMap'] = {};
+  const victoryPoints: import('../../types').RoundEndSummary['victoryPoints'] = {};
+  for (const player of state.players) {
+    scores[player.id] = player.scorePile.reduce((t, c) => t + c.value, 0);
+    stars[player.id] = player.stars;
+    bonusPointsMap[player.id] = player.bonusPoints;
+    victoryPoints[player.id] = player.victoryPoints;
+  }
+
+  state.roundEndSummary = {
+    lastCards: {},           // pas de dernière carte en flux
+    bonusStarWinners: [],
+    scores,
+    stars,
+    bonusPointsMap,
+    starsVPWinner,
+    cardScoreVPWinner,
+    bonusVPWinner,
+    victoryPoints,
+  };
+
+  state.phase = 'BONUS_STAR';
+  return state;
+}
+
+// ============================================================
+// Après le résumé de manche flux : continuer ou fin de partie
+// ============================================================
+export function nextFluxRoundOrGameOver(state: FluxGameState): FluxGameState {
+  if (checkGameOver(state.players)) {
+    state.finalScores = computeFinalScores(state.players);
+    state.phase = 'GAME_OVER';
+  } else {
+    // Réinitialiser pour la nouvelle manche
+    for (const player of state.players) {
+      player.scorePile = [];
+      player.stars = 0;
+      player.bonusPoints = 0;
+      // Réinitialiser les effets différés
+      player.deferred = { forcedRecharge: false, forcedCard: null, lockedHighCard: false, lockedLowCard: false, mustPlayMysteryCard: false };
+    }
+    // Nouveau deck de 20 cartes
+    state.scoreDeck = prepareScoreDeck().slice(0, 20);
+    state.roundEndSummary = null;
+    state.currentTrick = 0;
+    state.revealedUpcoming = [];
+    state.nextTrickInverted = false;
+    state.mysteryTrickActive = false;
+    // Redistribuer les mains et cartes mystères
+    const mysteryCards: Record<string, number> = {};
+    const mysteryCardOwners: Record<string, string> = {};
+    const missingCards: Record<string, number> = {};
+    for (let i = 0; i < state.players.length; i++) {
+      const player = state.players[i];
+      const rightNeighborIndex = (i + 1) % state.players.length;
+      const rightNeighbor = state.players[rightNeighborIndex];
+      const { newHand, mysteryCard } = drawMysteryCard(buildFluxHand());
+      player.hand = newHand;
+      player.playedHistory = [];
+      mysteryCards[rightNeighbor.id] = mysteryCard;
+      mysteryCardOwners[rightNeighbor.id] = player.pseudo;
+      missingCards[player.id] = mysteryCard;
+    }
+    state.mysteryCards = mysteryCards;
+    state.mysteryCardOwners = mysteryCardOwners;
+    state.missingCards = missingCards;
+    state.phase = 'FLUX_TRICK_START';
+  }
+  return state;
+}
+
+// ============================================================
 // Début d'une mène flux
 // ============================================================
 export function startFluxTrick(state: FluxGameState): FluxGameState {
   if (state.scoreDeck.length === 0) {
-    state.finalScores = computeFinalScores(state.players);
-    state.phase = 'GAME_OVER';
-    return state;
+    // Fin de manche : calculer les PV et afficher le résumé (même logique que endFluxTrick)
+    return endFluxRound(state);
   }
 
   state.currentTrick += 1;
@@ -691,8 +792,8 @@ export function endFluxTrick(state: FluxGameState): FluxGameState {
   }
 
   if (state.scoreDeck.length === 0) {
-    state.finalScores = computeFinalScores(state.players);
-    state.phase = 'GAME_OVER';
+    // Fin de manche : calculer les PV et afficher le résumé
+    return endFluxRound(state);
   } else {
     state.phase = 'FLUX_TRICK_START';
   }
@@ -777,6 +878,7 @@ export function toFluxPublicState(state: FluxGameState): PublicGameState {
     scorePileCount: p.scorePile.length,
     stars: p.stars,
     bonusPoints: p.bonusPoints,
+    victoryPoints: p.victoryPoints,
     deferred: p.deferred,
     isReady: p.isReady,
     isConnected: p.isConnected,
@@ -792,6 +894,8 @@ export function toFluxPublicState(state: FluxGameState): PublicGameState {
     totalTricks: 38,
     scoreColumn: [],
     currentScoreCard: state.currentScoreCard,
+    // Cartes restantes dans la manche (hors carte active déjà au centre)
+    // La carte active a déjà été retirée du deck par splice dans startFluxTrick
     scoreDeckCount: state.scoreDeck.length,
     players: publicPlayers,
     trickWinnerId: state.trickWinnerId,
@@ -819,7 +923,7 @@ export function toFluxPublicState(state: FluxGameState): PublicGameState {
     mysteryTrickActive: state.mysteryTrickActive,
     revealedUpcoming: state.revealedUpcoming,
     lastTrickSummary: state.lastTrickSummary,
-    roundEndSummary: null,
+    roundEndSummary: state.roundEndSummary,
     finalScores: state.finalScores,
     gameOptions: state.gameOptions,
     rechargedPlayerIds: state.rechargedPlayerIds,
