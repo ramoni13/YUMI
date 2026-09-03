@@ -694,7 +694,7 @@ export function useSocket() {
         }
       }
 
-      // --- Fin de manche (bonus étoile + classement) ---
+      // --- Fin de manche (bonus étoile + points de victoire) ---
       if (state.phase === 'BONUS_STAR' && lastPhase !== 'BONUS_STAR' && state.roundEndSummary) {
         const t3 = getT();
         const bonusIds = new Set(state.roundEndSummary.bonusStarWinners);
@@ -713,25 +713,44 @@ export function useSocket() {
             : t3.history.socket.noBonusStar,
         });
 
-        // Événement 2 : classement de la manche (scores cumulés)
-        const roundScores = state.players
-          .map(p => ({
-            pseudo: p.pseudo,
-            color: p.color,
-            scoreFromCards: state.roundEndSummary!.scores[p.id] ?? 0,
-            stars: state.roundEndSummary!.stars[p.id] ?? 0,
-            bonusPoints: p.bonusPoints ?? 0,
-            total: (state.roundEndSummary!.scores[p.id] ?? 0) + (state.roundEndSummary!.stars[p.id] ?? 0),
-          }))
-          .sort((a, b) => b.total - a.total);
-        const leader = roundScores[0];
+        // Événement 2 : points de victoire attribués cette manche
+        const summary = state.roundEndSummary;
+        const starsWinner = summary.starsVPWinner
+          ? state.players.find(p => p.id === summary.starsVPWinner)?.pseudo ?? '?'
+          : null;
+        const cardsWinner = summary.cardScoreVPWinner
+          ? state.players.find(p => p.id === summary.cardScoreVPWinner)?.pseudo ?? '?'
+          : null;
+        const bonusWinner = summary.bonusVPWinner
+          ? state.players.find(p => p.id === summary.bonusVPWinner)?.pseudo ?? '?'
+          : null;
+
+        const vpLines = [
+          `⭐ Course aux étoiles : ${starsWinner ?? 'Annulé (ex-æquo)'}`,
+          `🃏 Points cartes : ${cardsWinner ?? 'Annulé (ex-æquo)'}`,
+          `🪙 Points bonus : ${bonusWinner ?? 'Annulé (ex-æquo)'}`,
+        ].join(' | ');
+
+        // Classement PV
+        const vpRanking = state.players
+          .slice()
+          .sort((a, b) => (summary.victoryPoints[b.id] ?? 0) - (summary.victoryPoints[a.id] ?? 0));
+        const vpLeader = vpRanking[0];
+
         pushEvent({
           ...base,
           kind: 'ROUND_WINNER',
-          winnerPseudo: leader?.pseudo,
-          winnerColor: leader?.color,
-          roundScores,
-          message: t3.history.socket.roundRank(leader?.pseudo ?? '?', leader?.total ?? 0),
+          winnerPseudo: vpLeader?.pseudo,
+          winnerColor: vpLeader?.color,
+          roundScores: state.players.map(p => ({
+            pseudo: p.pseudo,
+            color: p.color,
+            scoreFromCards: summary.scores[p.id] ?? 0,
+            stars: summary.stars[p.id] ?? 0,
+            bonusPoints: summary.bonusPointsMap?.[p.id] ?? 0,
+            total: summary.victoryPoints[p.id] ?? 0,
+          })),
+          message: `🏆 PV cette manche — ${vpLines}`,
         });
       }
 
