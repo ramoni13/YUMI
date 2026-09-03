@@ -46,6 +46,7 @@ import {
   resolveFluxRevelation,
   resolveFluxTaxe,
   endFluxTrick,
+  nextFluxRoundOrGameOver,
   toFluxPublicState,
   FluxGameState,
 } from '../game/flux/engine';
@@ -380,6 +381,21 @@ function advanceAfterFluxTrick(
         scheduleFluxBotPlays(io, roomCode, newState, currentRoom);
       }
     }, NEXT_TRICK_DELAY);
+  } else if (state.phase === 'BONUS_STAR') {
+    // Fin de manche flux : afficher le résumé des PV, attendre next_phase
+    // (les bots passent automatiquement après un délai)
+    broadcastFluxState(io, roomCode, state);
+    if (room.bots.length > 0 && room.players.every(p => room.bots.some(b => b.id === p.id) || !p.isConnected)) {
+      // Partie 100% bots : passer automatiquement
+      setTimeout(() => {
+        const currentRoom = getRoom(roomCode);
+        if (!currentRoom?.fluxGameState) return;
+        const next = nextFluxRoundOrGameOver(currentRoom.fluxGameState);
+        broadcastFluxState(io, roomCode, next);
+        advanceAfterFluxTrick(io, roomCode, next, currentRoom);
+      }, ROUND_END_DELAY * 2);
+    }
+    // Humain présent : on attend le next_phase du client
   } else if (state.phase === 'GAME_OVER') {
     io.to(roomCode).emit('game_over', {
       finalScores: state.finalScores,
@@ -1007,6 +1023,31 @@ export function registerSocketHandlers(io: Server, socket: Socket) {
   });
 
   // ----------------------------------------------------------
+  // next_phase : bouton "Manche suivante" en fin de manche flux
+  // ----------------------------------------------------------
+  socket.on('next_phase', () => {
+    try {
+      const roomCode = socket.data.roomCode;
+      const room = getRoom(roomCode);
+      if (!room?.fluxGameState) return;
+      const gs = room.fluxGameState;
+      if (gs.phase !== 'BONUS_STAR') return;
+      const next = nextFluxRoundOrGameOver(gs);
+      broadcastFluxState(io, roomCode, next);
+      if (next.phase === 'FLUX_TRICK_START') {
+        advanceAfterFluxTrick(io, roomCode, next, room);
+      } else if (next.phase === 'GAME_OVER') {
+        io.to(roomCode).emit('game_over', {
+          finalScores: next.finalScores,
+          winnerId: next.finalScores?.[0]?.playerId ?? null,
+        });
+      }
+    } catch (e: any) {
+      console.error('[next_phase]', e.message);
+    }
+  });
+
+  // ----------------------------------------------------------
   // Déconnexion
   // ----------------------------------------------------------
   socket.on('disconnect', () => {
@@ -1041,7 +1082,7 @@ function advanceAfterTrick(
       }
     }, NEXT_TRICK_DELAY);
   } else if (state.phase === 'ROUND_END') {
-    // Fin de manche : afficher le résumé puis enchaîner
+    // Fin de manche : calculer les points de victoire, afficher le résumé puis enchaîner
     setTimeout(() => {
       const currentRoom = getRoom(roomCode);
       if (!currentRoom?.gameState) return;
@@ -1066,6 +1107,7 @@ function advanceAfterTrick(
             }
           }, NEXT_ROUND_DELAY);
         } else if (newState.phase === 'GAME_OVER') {
+          // Le vainqueur est le premier joueur du classement (tri par points de victoire)
           io.to(roomCode).emit('game_over', {
             finalScores: newState.finalScores,
             winnerId: newState.finalScores?.[0]?.playerId ?? null,
