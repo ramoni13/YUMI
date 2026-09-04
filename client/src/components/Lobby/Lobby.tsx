@@ -300,7 +300,7 @@ export function Lobby({ onGameStart }: LobbyProps) {
           style={{ borderColor: '#38bdf8', color: '#38bdf8' }}
           onClick={() => setShowFluxTutorial(true)}
         >
-          Règles du jeu
+          {t.fluxTutorial.btnOpen}
         </button>
       </div>
 
