@@ -44,8 +44,8 @@ function FluxIlluGoal({ illu }: { illu: ReturnType<typeof useT>['fluxTutorial'][
           boxShadow: '0 0 24px rgba(56,189,248,0.4)',
           border: '3px solid rgba(56,189,248,0.5)',
         }}>
-          <span style={{ fontSize: '1.5rem', fontWeight: 900, color: '#fff' }}>15</span>
-          <span style={{ fontSize: '0.6rem', fontWeight: 700, color: '#e0f2fe', opacity: 0.8 }}>pts</span>
+          <span style={{ fontSize: '1.5rem', fontWeight: 900, color: '#fff' }}>3</span>
+          <span style={{ fontSize: '0.6rem', fontWeight: 700, color: '#e0f2fe', opacity: 0.8 }}>PV</span>
         </div>
         <span className={styles.illuBoxLabel} style={{ color: '#38bdf8' }}>{illu.finalScore}</span>
       </div>
@@ -262,16 +262,62 @@ function FluxIlluDuplicates({ illu }: { illu: ReturnType<typeof useT>['fluxTutor
   );
 }
 
+// Slide 5 - La carte YUMI
+function FluxIlluYumi({ illu }: { illu: ReturnType<typeof useT>['fluxTutorial']['illu'] }) {
+  return (
+    <div className={styles.illuCol} style={{ gap: '0.85rem', width: '100%', maxWidth: 460 }}>
+      <div className={styles.illuBox} style={{ width: '100%' }}>
+        <div className={styles.illuBoxLabel} style={{ color: '#fbbf24' }}>{illu.rechargePlay}</div>
+        <div style={{
+          width: 56, height: 80, borderRadius: 12,
+          background: 'linear-gradient(135deg, #78350f, #f59e0b)',
+          border: '3px solid #fbbf24',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: '1.1rem', fontWeight: 900, color: '#fff',
+          boxShadow: '0 0 24px rgba(251,191,36,0.6)',
+        }}>YUMI</div>
+      </div>
+      <div className={styles.illuRow} style={{ gap: '0.6rem', width: '100%' }}>
+        <div className={styles.illuBox} style={{ flex: 1, border: '1px solid rgba(74,222,128,0.4)' }}>
+          <div className={`${styles.scoreCard} ${styles.scoreCardPositive}`} style={{ width: 36, height: 50, fontSize: '0.8rem' }}>+5</div>
+          <span style={{ fontSize: '0.65rem', color: '#4ade80', fontWeight: 700, textAlign: 'center' }}>{illu.rechargeGet}</span>
+        </div>
+        <div className={styles.illuBox} style={{ flex: 1, border: '1px solid rgba(248,113,113,0.4)' }}>
+          <div className={`${styles.scoreCard} ${styles.scoreCardNegative}`} style={{ width: 36, height: 50, fontSize: '0.8rem' }}>-3</div>
+          <span style={{ fontSize: '0.65rem', color: '#f87171', fontWeight: 700, textAlign: 'center' }}>{illu.rechargeNewMystery}</span>
+        </div>
+      </div>
+      <div className={styles.illuBox} style={{ width: '100%' }}>
+        <div className={styles.illuBoxLabel}>{illu.rechargeStarBonus}</div>
+        <div className={styles.illuRow} style={{ gap: '0.4rem' }}>
+          {[0, 1].map(i => (
+            <div key={i} className={`${styles.card} ${styles.cancelled}`} style={{
+              width: 40, height: 56, borderRadius: 10,
+              background: 'linear-gradient(135deg, #78350f, #f59e0b)',
+              border: '2px solid rgba(251,191,36,0.4)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: '0.7rem', fontWeight: 900, color: 'rgba(255,255,255,0.4)',
+            }}>YUMI<span className={styles.cancelX}>✕</span></div>
+          ))}
+          <div className={styles.arrow}>→</div>
+          <span style={{ fontSize: '1.8rem' }}>🚫</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // Slide 5 — La carte Recharge
+// Slide 6 - La carte Recharge
 function FluxIlluRecharge({ illu }: { illu: ReturnType<typeof useT>['fluxTutorial']['illu'] }) {
   return (
     <div className={styles.illuCol} style={{ gap: '0.75rem', width: '100%', maxWidth: 480 }}>
 
-      {/* Scénario : 2 joueurs rechargent, Alice joue un 7 unique */}
+      {/* Scenario : 1 recharge, Alice joue 5, Bob joue 5 (annules), Cara joue 7 unique */}
       <div className={styles.illuBox} style={{ width: '100%' }}>
-        <div className={styles.illuBoxLabel} style={{ color: '#38bdf8' }}>Ce tour : 2 joueurs rechargent</div>
-        <div className={styles.illuRow} style={{ gap: '0.6rem', flexWrap: 'wrap' }}>
-          {/* Bob : Recharge */}
+        <div className={styles.illuBoxLabel} style={{ color: '#38bdf8' }}>Ce tour : 1 joueur recharge</div>
+        <div className={styles.illuRow} style={{ gap: '0.5rem', flexWrap: 'wrap', justifyContent: 'center' }}>
+          {/* David : Recharge */}
           <div className={styles.illuCol} style={{ gap: '0.25rem' }}>
             <div style={{
               width: 40, height: 56, borderRadius: 9,
@@ -280,75 +326,83 @@ function FluxIlluRecharge({ illu }: { illu: ReturnType<typeof useT>['fluxTutoria
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               fontSize: '1.2rem', boxShadow: '0 0 12px rgba(56,189,248,0.4)',
             }}>🔄</div>
-            <span style={{ fontSize: '0.65rem', color: '#38bdf8', fontWeight: 700 }}>Bob</span>
+            <span style={{ fontSize: '0.65rem', color: '#38bdf8', fontWeight: 700 }}>David</span>
           </div>
-          {/* Cara : Recharge */}
+          {/* Alice : 5 annule */}
           <div className={styles.illuCol} style={{ gap: '0.25rem' }}>
-            <div style={{
-              width: 40, height: 56, borderRadius: 9,
-              background: 'linear-gradient(135deg, #0c4a6e, #0ea5e9)',
-              border: '2px solid #38bdf8',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: '1.2rem', boxShadow: '0 0 12px rgba(56,189,248,0.4)',
-            }}>🔄</div>
-            <span style={{ fontSize: '0.65rem', color: '#38bdf8', fontWeight: 700 }}>Cara</span>
+            <div className={`${styles.card} ${styles.cancelled}`} style={{
+              width: 40, height: 56, fontSize: '1.1rem',
+              background: 'linear-gradient(135deg, #991b1b, #ef4444)',
+            }}>5<span className={styles.cancelX}>✕</span></div>
+            <span style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.4)', fontWeight: 700 }}>Alice</span>
           </div>
-          {/* Séparateur */}
-          <div style={{ fontSize: '1.1rem', color: 'rgba(255,255,255,0.25)', alignSelf: 'center' }}>vs</div>
-          {/* Alice : valeur unique */}
+          {/* Bob : 5 annule */}
+          <div className={styles.illuCol} style={{ gap: '0.25rem' }}>
+            <div className={`${styles.card} ${styles.cancelled}`} style={{
+              width: 40, height: 56, fontSize: '1.1rem',
+              background: 'linear-gradient(135deg, #1e3a8a, #3b82f6)',
+            }}>5<span className={styles.cancelX}>✕</span></div>
+            <span style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.4)', fontWeight: 700 }}>Bob</span>
+          </div>
+          {/* Cara : 7 unique */}
           <div className={styles.illuCol} style={{ gap: '0.25rem' }}>
             <div className={styles.card} style={{
               width: 40, height: 56, fontSize: '1.2rem',
-              background: 'linear-gradient(135deg, #991b1b, #ef4444)',
+              background: 'linear-gradient(135deg, #14532d, #22c55e)',
               border: '2px solid #4ade80',
               boxShadow: '0 0 14px rgba(74,222,128,0.5)',
             }}>7</div>
-            <span style={{ fontSize: '0.65rem', color: '#4ade80', fontWeight: 700 }}>Alice 🏅</span>
+            <span style={{ fontSize: '0.65rem', color: '#4ade80', fontWeight: 700 }}>Cara 🏅</span>
           </div>
         </div>
       </div>
 
-      {/* Résultat : Alice gagne 2 étoiles (= nb de rechargeurs) */}
-      <div className={styles.illuBox} style={{ width: '100%', border: '1px solid rgba(251,191,36,0.35)' }}>
-        <div className={styles.illuBoxLabel} style={{ color: '#fbbf24' }}>Alice joue une valeur unique → gagne 2 étoiles</div>
-        <div className={styles.illuRow} style={{ gap: '0.75rem' }}>
-          <div className={styles.card} style={{
-            width: 36, height: 50, fontSize: '1rem',
-            background: 'linear-gradient(135deg, #991b1b, #ef4444)',
-            border: '2px solid #4ade80',
-          }}>7</div>
-          <div className={styles.arrow} style={{ color: '#fbbf24' }}>→</div>
-          <div style={{ display: 'flex', gap: '0.3rem', alignItems: 'center' }}>
-            <span style={{ fontSize: '1.6rem', filter: 'drop-shadow(0 0 8px rgba(251,191,36,0.7))' }}>⭐</span>
-            <span style={{ fontSize: '1.6rem', filter: 'drop-shadow(0 0 8px rgba(251,191,36,0.7))' }}>⭐</span>
+      {/* Resultat : Cara gagne 1 point bonus (= 1 rechargeur). Alice et Bob : 0 (annules) */}
+      <div className={styles.illuRow} style={{ gap: '0.6rem', width: '100%' }}>
+        {/* Cara : valeur unique -> 1 point bonus */}
+        <div className={styles.illuBox} style={{ flex: 1, border: '1px solid rgba(56,189,248,0.35)' }}>
+          <div className={styles.illuBoxLabel} style={{ color: '#4ade80' }}>Cara — valeur unique</div>
+          <div className={styles.illuRow} style={{ gap: '0.4rem' }}>
+            <div className={styles.card} style={{
+              width: 32, height: 44, fontSize: '0.9rem',
+              background: 'linear-gradient(135deg, #14532d, #22c55e)',
+              border: '2px solid #4ade80',
+            }}>7</div>
+            <div className={styles.arrow} style={{ color: '#38bdf8' }}>→</div>
+            <span style={{ fontSize: '1.4rem' }}>🎯</span>
+            <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#38bdf8' }}>+1</span>
           </div>
-          <div className={styles.illuCol} style={{ gap: '0.15rem', alignItems: 'flex-start' }}>
-            <span style={{ fontSize: '0.7rem', color: '#fbbf24', fontWeight: 800 }}>majorité</span>
-            <span style={{ fontSize: '0.7rem', color: '#4ade80', fontWeight: 800 }}>+2 pts immédiats</span>
-          </div>
+          <span style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.4)' }}>1 rechargeur × valeur unique</span>
         </div>
-        <span style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.4)', textAlign: 'center' }}>
-          2 rechargeurs × 1 valeur unique = 2 étoiles Recharge
-        </span>
+        {/* Alice & Bob : annules -> 0 */}
+        <div className={styles.illuBox} style={{ flex: 1, border: '1px solid rgba(255,255,255,0.1)' }}>
+          <div className={styles.illuBoxLabel} style={{ color: 'rgba(255,255,255,0.4)' }}>Alice & Bob — annulés</div>
+          <div className={styles.illuRow} style={{ gap: '0.3rem' }}>
+            <div className={`${styles.card} ${styles.cancelled}`} style={{ width: 28, height: 40, fontSize: '0.8rem', background: 'linear-gradient(135deg,#991b1b,#ef4444)' }}>5</div>
+            <div className={`${styles.card} ${styles.cancelled}`} style={{ width: 28, height: 40, fontSize: '0.8rem', background: 'linear-gradient(135deg,#1e3a8a,#3b82f6)' }}>5</div>
+            <div className={styles.arrow}>→</div>
+            <span style={{ fontSize: '0.85rem', fontWeight: 800, color: 'rgba(255,255,255,0.3)' }}>0 🎯</span>
+          </div>
+          <span style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.4)' }}>doublon → pas de point bonus</span>
+        </div>
       </div>
 
-      {/* Nouvelle mystère + récupération main */}
+      {/* Recuperation main */}
       <div className={styles.illuRow} style={{ gap: '0.75rem', width: '100%' }}>
         <div className={styles.illuBox} style={{ flex: 1 }}>
-          <div className={styles.illuBoxLabel} style={{ color: '#4ade80' }}>{illu.rechargeGet}</div>
+          <div className={styles.illuBoxLabel} style={{ color: '#4ade80' }}>{illu.starsOnCards}</div>
           <div style={{ display: 'flex', gap: '0.15rem' }}>
             {[1,2,3,4,5].map(n => (
               <div key={n} className={styles.card} style={{
                 width: 20, height: 30, fontSize: '0.55rem', fontWeight: 800,
                 background: 'linear-gradient(135deg, #1e3a8a, #3b82f6)',
                 border: '1px solid rgba(96,165,250,0.5)', borderRadius: 4,
-                boxShadow: '0 0 6px rgba(96,165,250,0.3)',
               }}>{n}</div>
             ))}
           </div>
         </div>
         <div className={styles.illuBox} style={{ flex: 1 }}>
-          <div className={styles.illuBoxLabel} style={{ color: '#fbbf24' }}>{illu.rechargeNewMystery}</div>
+          <div className={styles.illuBoxLabel} style={{ color: '#fbbf24' }}>{illu.starsMajority}</div>
           <div className={`${styles.card} ${styles.cardFaceDown}`} style={{
             width: 36, height: 50, fontSize: '1.1rem',
             border: '2px solid #fbbf24',
@@ -359,147 +413,160 @@ function FluxIlluRecharge({ illu }: { illu: ReturnType<typeof useT>['fluxTutoria
     </div>
   );
 }
-
-// Slide 6 — Les étoiles en mode Flux
-function FluxIlluStars({ illu }: { illu: ReturnType<typeof useT>['fluxTutorial']['illu'] }) {
+// Slide 7 - Les 3 compteurs (points de victoire)
+function FluxIlluCounters({ illu }: { illu: ReturnType<typeof useT>['fluxTutorial']['illu'] }) {
   return (
-    <div className={styles.illuCol} style={{ gap: '0.75rem', width: '100%', maxWidth: 460 }}>
+    <div className={styles.illuCol} style={{ gap: '0.6rem', width: '100%', maxWidth: 460 }}>
 
-      {/* Tableau comparatif : 2 sources d'étoiles */}
-      <div className={styles.illuRow} style={{ gap: '0.6rem', width: '100%' }}>
-
-        {/* Source 1 : cartes Score */}
-        <div className={styles.illuBox} style={{ flex: 1 }}>
-          <div className={styles.illuBoxLabel} style={{ color: '#fbbf24' }}>{illu.starsOnCards}</div>
-          <div className={`${styles.scoreCard} ${styles.scoreCardNegative}`}
-            style={{ width: 40, height: 56, fontSize: '0.72rem', textAlign: 'center' }}>
-            -2⭐
-          </div>
-          <div className={styles.arrow} style={{ fontSize: '1rem' }}>↓</div>
-          <div style={{ display: 'flex', gap: '0.2rem' }}>
-            <span style={{ fontSize: '1.1rem' }}>⭐</span>
-            <span style={{ fontSize: '1.1rem' }}>⭐</span>
-          </div>
+      {/* Compteur 1 : Etoiles */}
+      <div className={styles.illuBox} style={{ width: '100%', border: '1px solid #fbbf2444', padding: '0.5rem 0.75rem' }}>
+        <div className={styles.illuBoxLabel} style={{ color: '#fbbf24' }}>{illu.formulaCards} — ⭐</div>
+        <div className={styles.illuRow} style={{ gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap' }}>
+          {/* Cartes avec etoiles */}
+          {[
+            { val: '-1', stars: 1, bg: 'linear-gradient(135deg,#7f1d1d,#ef4444)' },
+            { val: '-2', stars: 2, bg: 'linear-gradient(135deg,#7f1d1d,#ef4444)' },
+            { val: '-1', stars: 1, bg: 'linear-gradient(135deg,#7f1d1d,#ef4444)' },
+          ].map((c, i) => (
+            <div key={i} className={styles.illuCol} style={{ gap: '0.15rem', alignItems: 'center' }}>
+              <div className={`${styles.scoreCard} ${styles.scoreCardNegative}`}
+                style={{ width: 34, height: 48, fontSize: '0.7rem', textAlign: 'center' }}>
+                {c.val}<br/>{'⭐'.repeat(c.stars)}
+              </div>
+            </div>
+          ))}
+          <div className={styles.arrow} style={{ color: '#fbbf24' }}>→</div>
           <div style={{
-            fontSize: '0.62rem', fontWeight: 700, textAlign: 'center',
-            color: '#fbbf24', background: 'rgba(251,191,36,0.1)',
-            border: '1px solid rgba(251,191,36,0.3)', borderRadius: 6,
-            padding: '0.2rem 0.4rem',
-          }}>{illu.starsMajority}</div>
-        </div>
-
-        {/* Source 2 : Recharge */}
-        <div className={styles.illuBox} style={{ flex: 1, border: '1px solid rgba(56,189,248,0.35)' }}>
-          <div className={styles.illuBoxLabel} style={{ color: '#38bdf8' }}>{illu.starsRecharge}</div>
+            fontSize: '0.8rem', fontWeight: 900, color: '#fbbf24',
+            background: 'rgba(251,191,36,0.15)', border: '1px solid #fbbf24',
+            borderRadius: 8, padding: '0.25rem 0.6rem',
+          }}>4 ⭐ total</div>
+          <div className={styles.arrow} style={{ color: '#fbbf24' }}>→</div>
           <div style={{
-            width: 40, height: 56, borderRadius: 9,
-            background: 'linear-gradient(135deg, #0c4a6e, #0ea5e9)',
-            border: '2px solid #38bdf8',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: '1.2rem',
-          }}>🔄</div>
-          <div className={styles.arrow} style={{ fontSize: '1rem' }}>↓</div>
-          <div style={{ display: 'flex', gap: '0.2rem' }}>
-            <span style={{ fontSize: '1.1rem' }}>⭐</span>
-            <span style={{ fontSize: '1.1rem' }}>⭐</span>
-            <span style={{ fontSize: '1.1rem' }}>⭐</span>
-          </div>
-          <div className={styles.illuCol} style={{ gap: '0.15rem' }}>
-            <div style={{
-              fontSize: '0.62rem', fontWeight: 700, textAlign: 'center',
-              color: '#fbbf24', background: 'rgba(251,191,36,0.1)',
-              border: '1px solid rgba(251,191,36,0.3)', borderRadius: 6,
-              padding: '0.2rem 0.4rem',
-            }}>{illu.starsMajority}</div>
-            <div style={{
-              fontSize: '0.62rem', fontWeight: 800, textAlign: 'center',
-              color: '#4ade80', background: 'rgba(74,222,128,0.1)',
-              border: '1px solid rgba(74,222,128,0.3)', borderRadius: 6,
-              padding: '0.2rem 0.4rem',
-            }}>+1 pt / ⭐</div>
-          </div>
+            fontSize: '0.7rem', fontWeight: 800, color: '#fff',
+            background: 'rgba(251,191,36,0.25)', border: '1px solid #fbbf24',
+            borderRadius: 6, padding: '0.2rem 0.4rem',
+          }}>1 PV</div>
         </div>
       </div>
 
-      {/* Bonus fin de partie */}
-      <div className={styles.illuBox} style={{ width: '100%' }}>
-        <div className={styles.illuBoxLabel}>{illu.starsEndBonus}</div>
-        <div className={styles.illuRow} style={{ gap: '0.75rem' }}>
-          <span style={{ fontSize: '1.8rem' }}>⭐⭐⭐⭐</span>
-          <div className={styles.arrow}>→</div>
-          <div className={styles.scorePill} style={{ background: 'rgba(251,191,36,0.15)', border: '1px solid rgba(251,191,36,0.4)' }}>
-            <span style={{ color: '#fbbf24', fontWeight: 800 }}>+5 pts</span>
-          </div>
+      {/* Compteur 2 : Points cartes */}
+      <div className={styles.illuBox} style={{ width: '100%', border: '1px solid #4ade8044', padding: '0.5rem 0.75rem' }}>
+        <div className={styles.illuBoxLabel} style={{ color: '#4ade80' }}>{illu.formulaRecharge} — 🃏</div>
+        <div className={styles.illuRow} style={{ gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap' }}>
+          {[
+            { val: '+5', bg: 'linear-gradient(135deg,#14532d,#22c55e)', cls: styles.scoreCardPositive },
+            { val: '+3', bg: 'linear-gradient(135deg,#14532d,#22c55e)', cls: styles.scoreCardPositive },
+            { val: '-2', bg: 'linear-gradient(135deg,#7f1d1d,#ef4444)', cls: styles.scoreCardNegative },
+            { val: '+1', bg: 'linear-gradient(135deg,#14532d,#22c55e)', cls: styles.scoreCardPositive },
+          ].map((c, i) => (
+            <div key={i} className={`${styles.scoreCard} ${c.cls}`}
+              style={{ width: 32, height: 44, fontSize: '0.72rem' }}>
+              {c.val}
+            </div>
+          ))}
+          <div className={styles.arrow} style={{ color: '#4ade80' }}>→</div>
+          <div style={{
+            fontSize: '0.8rem', fontWeight: 900, color: '#4ade80',
+            background: 'rgba(74,222,128,0.15)', border: '1px solid #4ade80',
+            borderRadius: 8, padding: '0.25rem 0.6rem',
+          }}>+7 pts</div>
+          <div className={styles.arrow} style={{ color: '#4ade80' }}>→</div>
+          <div style={{
+            fontSize: '0.7rem', fontWeight: 800, color: '#fff',
+            background: 'rgba(74,222,128,0.25)', border: '1px solid #4ade80',
+            borderRadius: 6, padding: '0.2rem 0.4rem',
+          }}>1 PV</div>
         </div>
-        <span style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.4)', textAlign: 'center' }}>
-          Le joueur avec le plus d’étoiles totales (cartes + Recharge)
-        </span>
       </div>
+
+      {/* Compteur 3 : Points bonus */}
+      <div className={styles.illuBox} style={{ width: '100%', border: '1px solid #38bdf844', padding: '0.5rem 0.75rem' }}>
+        <div className={styles.illuBoxLabel} style={{ color: '#38bdf8' }}>{illu.formulaBonus} — 🎯</div>
+        <div className={styles.illuRow} style={{ gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+          {['🎯', '🎯', '🎯'].map((icon, i) => (
+            <span key={i} style={{ fontSize: '1.4rem', filter: 'drop-shadow(0 0 6px rgba(56,189,248,0.5))' }}>{icon}</span>
+          ))}
+          <div className={styles.arrow} style={{ color: '#38bdf8' }}>→</div>
+          <div style={{
+            fontSize: '0.8rem', fontWeight: 900, color: '#38bdf8',
+            background: 'rgba(56,189,248,0.15)', border: '1px solid #38bdf8',
+            borderRadius: 8, padding: '0.25rem 0.6rem',
+          }}>3 pts bonus</div>
+          <div className={styles.arrow} style={{ color: '#38bdf8' }}>→</div>
+          <div style={{
+            fontSize: '0.7rem', fontWeight: 800, color: '#fff',
+            background: 'rgba(56,189,248,0.25)', border: '1px solid #38bdf8',
+            borderRadius: 6, padding: '0.2rem 0.4rem',
+          }}>1 PV</div>
+        </div>
+      </div>
+
     </div>
   );
 }
 
-// Slide 7 — Fin de partie Flux
+// Slide 8 - Fin de partie
 function FluxIlluGameOver({ illu }: { illu: ReturnType<typeof useT>['fluxTutorial']['illu'] }) {
   const rows = [
-    { rank: 1, name: 'Cara',  color: '#22c55e', cards: '+9', recharge: 3, bonus: 5, total: 17 },
-    { rank: 2, name: 'Bob',   color: '#3b82f6', cards: '+6', recharge: 1, bonus: 0, total: 7  },
-    { rank: 3, name: 'Alice', color: '#ef4444', cards: '-1', recharge: 0, bonus: 0, total: -1 },
+    { name: 'Cara',  color: '#22c55e', vp: 3, winner: true  },
+    { name: 'Bob',   color: '#3b82f6', vp: 2, winner: false },
+    { name: 'Alice', color: '#ef4444', vp: 1, winner: false },
+    { name: 'David', color: '#a855f7', vp: 0, winner: false },
   ];
-  const rankClass = ['gold', 'silver', 'bronze'] as const;
-
   return (
     <div className={styles.illuCol} style={{ gap: '0.75rem', width: '100%', maxWidth: 420 }}>
-      {/* Formule */}
       <div style={{
-        display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap',
-        justifyContent: 'center', marginBottom: '0.25rem',
+        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.6rem',
+        background: 'rgba(56,189,248,0.08)', border: '1px solid rgba(56,189,248,0.3)',
+        borderRadius: 10, padding: '0.5rem 1rem',
       }}>
-        {[
-          { label: illu.formulaCards,   color: '#4ade80' },
-          { label: '+',                 color: 'rgba(255,255,255,0.3)' },
-          { label: illu.formulaRecharge, color: '#38bdf8' },
-          { label: '+',                 color: 'rgba(255,255,255,0.3)' },
-          { label: illu.formulaBonus,   color: '#fbbf24' },
-          { label: '=',                 color: 'rgba(255,255,255,0.3)' },
-          { label: illu.formulaTotal,   color: 'white' },
-        ].map((item, i) => (
-          <span key={i} style={{ fontSize: '0.8rem', fontWeight: 700, color: item.color }}>{item.label}</span>
-        ))}
+        <span style={{ fontSize: '1.4rem' }}>🏆</span>
+        <span style={{ fontSize: '0.9rem', fontWeight: 800, color: '#38bdf8' }}>{illu.finalScore}</span>
       </div>
-
-      {/* Scoreboard */}
       <div className={styles.scoreboard}>
-        {rows.map((r) => (
-          <div key={r.rank} className={styles.scoreRow} style={{ borderLeftColor: r.color }}>
-            <span className={`${styles.scoreRank} ${styles[rankClass[r.rank - 1]]}`}>#{r.rank}</span>
+        {rows.map((r, i) => (
+          <div key={i} className={styles.scoreRow}
+            style={{ borderLeftColor: r.color, background: r.winner ? 'rgba(56,189,248,0.08)' : undefined }}>
             <span className={styles.dot}
               style={{ width: 10, height: 10, borderRadius: '50%', background: r.color, flexShrink: 0 }} />
             <span className={styles.scoreName}>{r.name}</span>
-            <div className={styles.scoreDetail}>
-              <span style={{ color: r.cards.startsWith('+') ? '#4ade80' : '#f87171' }}>🃏 {r.cards}</span>
-              {r.recharge > 0 && <span style={{ color: '#38bdf8' }}>🔄 +{r.recharge}</span>}
-              {r.bonus > 0 && <span style={{ color: '#fbbf24' }}>⭐ +{r.bonus}</span>}
+            <div className={styles.illuRow} style={{ gap: '0.3rem', marginLeft: 'auto' }}>
+              {[0, 1, 2].map(slot => (
+                <div key={slot} style={{
+                  width: 22, height: 22, borderRadius: 5,
+                  background: slot < r.vp ? 'rgba(56,189,248,0.3)' : 'rgba(255,255,255,0.06)',
+                  border: `1.5px solid ${slot < r.vp ? '#38bdf8' : 'rgba(255,255,255,0.12)'}`,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: '0.65rem', color: slot < r.vp ? '#38bdf8' : 'transparent', fontWeight: 800,
+                }}>{slot < r.vp ? '\u2713' : ''}</div>
+              ))}
             </div>
-            <span className={styles.scoreTotalBadge}>{r.total} pts</span>
+            <span className={styles.scoreTotalBadge}
+              style={{ background: r.winner ? 'rgba(56,189,248,0.2)' : undefined, color: r.winner ? '#38bdf8' : undefined }}>
+              {r.vp} PV{r.winner ? ' 🏆' : ''}
+            </span>
           </div>
         ))}
       </div>
+      <span style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.4)', textAlign: 'center' }}>
+        {illu.formulaTotal}
+      </span>
     </div>
   );
 }
 
 // ─── Illustrations indexées ───────────────────────────────────────────────────
-
 function useFluxIllustrations(illu: ReturnType<typeof useT>['fluxTutorial']['illu']) {
   return [
-    <FluxIlluGoal      illu={illu} />,
-    <FluxIlluHand      illu={illu} />,
-    <FluxIlluStream    illu={illu} />,
-    <FluxIlluDuplicates illu={illu} />,
-    <FluxIlluRecharge  illu={illu} />,
-    <FluxIlluStars     illu={illu} />,
-    <FluxIlluGameOver  illu={illu} />,
+    <FluxIlluGoal       illu={illu} />,  // Slide 1 - But du jeu
+    <FluxIlluHand       illu={illu} />,  // Slide 2 - Votre main
+    <FluxIlluStream     illu={illu} />,  // Slide 3 - Flux de cartes Score
+    <FluxIlluDuplicates illu={illu} />,  // Slide 4 - Doublons
+    <FluxIlluYumi       illu={illu} />,  // Slide 5 - Carte YUMI
+    <FluxIlluRecharge   illu={illu} />,  // Slide 6 - Carte Recharge
+    <FluxIlluCounters   illu={illu} />,  // Slide 7 - Les 3 compteurs
+    <FluxIlluGameOver   illu={illu} />,  // Slide 8 - Fin de partie
   ];
 }
 
