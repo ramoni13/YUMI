@@ -90,8 +90,9 @@ export interface FluxGameState {
 
 // ============================================================
 // Génère une main complète 1 à 8 + carte YUMI (mode flux)
-// La carte YUMI (valeur 9) est incluse dans la main initiale
-// mais n'est PAS restituée lors d'une Recharge.
+// Utilisée à l'init et en début de nouvelle manche.
+// Lors d'une Recharge, le pool est reconstruit dynamiquement
+// dans applyRecharge (YUMI incluse si pas encore jouée).
 // ============================================================
 export function buildFluxHand(): number[] {
   const hand: number[] = [];
@@ -810,16 +811,21 @@ function applyRecharge(state: FluxGameState, playerId: string): void {
   const rightNeighborIndex = (playerIndex + 1) % state.players.length;
   const rightNeighbor = state.players[rightNeighborIndex];
 
-  // Mémoriser si le joueur avait encore sa YUMI avant la recharge
-  const hadYumi = player.hand.includes(YUMI_CARD_VALUE);
+  // Construire le pool de tirage pour la nouvelle carte mystère :
+  // cartes 1-8 toujours présentes, + YUMI si elle n'a pas encore été jouée
+  // (elle est en main OU elle était la carte mystère précédente).
+  const yumiNotYetPlayed =
+    player.hand.includes(YUMI_CARD_VALUE) ||
+    state.missingCards[playerId] === YUMI_CARD_VALUE;
 
-  // La Recharge donne les cartes 1-8 uniquement — la YUMI n'est PAS restituée automatiquement
   const baseHand: number[] = [];
   for (let i = 1; i <= FLUX_MAX_CARD; i++) baseHand.push(i);
+  if (yumiNotYetPlayed) baseHand.push(YUMI_CARD_VALUE);
 
+  // drawMysteryCard mélange le pool et retire la carte mystère :
+  // si YUMI est tirée → elle repart en mystère ; sinon → elle revient en main.
   const { newHand, mysteryCard } = drawMysteryCard(baseHand);
-  // Si le joueur avait encore sa YUMI, elle reste dans sa nouvelle main
-  player.hand = hadYumi ? [...newHand, YUMI_CARD_VALUE] : newHand;
+  player.hand = newHand; // contient la YUMI si elle n'a pas été tirée comme mystère
   player.playedHistory = []; // réinitialiser l'historique après recharge
 
   state.mysteryCards[rightNeighbor.id] = mysteryCard;
