@@ -314,7 +314,7 @@ export const fr = {
 
   // ── Tutoriel Flux ─────────────────────────────────────
   fluxTutorial: {
-    btnOpen: '🔄 Règles Flux',
+    btnOpen: '📖 Règles',
     btnPrev: '← Précédent',
     btnNext: 'Suivant →',
     btnClose: "C'est parti !",
@@ -322,18 +322,18 @@ export const fr = {
     slides: [
       {
         icon: '🎯',
-        title: 'But du jeu — Mode Flux',
-        text: 'Remportez un maximum de <em>cartes Score</em> positives et évitez les négatives. Le joueur avec le <strong>plus de points</strong> en fin de partie gagne ! Le mode Flux remplace les manches fixes par un <strong>flux continu de cartes</strong>.',
+        title: 'But du jeu',
+        text: 'Soyez le premier à atteindre <strong>3 points de victoire</strong>. Chaque manche de <em>20 cartes Score</em>, trois compteurs sont comparés : <strong>étoiles</strong>, <strong>points des cartes</strong> et <strong>points bonus</strong>. Le joueur en tête de chaque compteur gagne <strong>1 point de victoire</strong>.',
       },
       {
         icon: '🖐️',
         title: 'Votre main',
-        text: 'Chaque joueur commence avec <strong>1 à 8 cartes</strong> numérotées + <strong>1 carte Recharge</strong>. Vous avez toujours <em>une carte mystère</em> face cachée devant vous — elle change à chaque recharge !',
+        text: 'Chaque joueur commence avec les cartes <strong>1 à 8</strong> + <strong>1 carte YUMI</strong> + <strong>1 carte Recharge</strong>. En début de manche, votre <em>voisin de droite</em> pioche secrètement une carte de votre main — elle est bloquée pour toute la manche. La carte YUMI peut être tirée !',
       },
       {
         icon: '🌊',
         title: 'Le flux de cartes Score',
-        text: 'Les cartes Score arrivent en <strong>flux continu</strong>. Les cartes <strong class="green">vertes</strong> sont remportées par la <em>plus grande valeur</em>. Les cartes <strong class="red">rouges</strong> sont remportées par la <em>plus petite valeur</em>. Des cartes <strong>spéciales</strong> s\'y glissent aussi !',
+        text: '20 cartes Score arrivent en <strong>flux continu</strong>, une par une. Les cartes <strong class="green">vertes</strong> sont remportées par la <em>plus grande valeur</em>. Les cartes <strong class="red">rouges</strong> sont remportées par la <em>plus petite valeur</em>. Des cartes <strong>spéciales</strong> s\'y glissent aussi !',
       },
       {
         icon: '✕',
@@ -341,57 +341,62 @@ export const fr = {
         text: "Si deux joueurs ou plus jouent la <strong>même valeur</strong>, leurs cartes <em>s'annulent mutuellement</em>. La carte Score est alors remportée par la valeur la plus haute (ou basse) <strong>restante</strong>. Si tout s'annule, la carte est <em>défaussée</em>.",
       },
       {
+        icon: '🌟',
+        title: 'La carte YUMI',
+        text: 'La carte <strong>YUMI</strong> est la plus puissante de votre main. Sur une carte <strong class="green">verte</strong>, elle vaut comme la <em>plus grande</em> valeur jouée. Sur une carte <strong class="red">rouge</strong>, elle vaut comme la <em>plus petite</em>. Si deux joueurs jouent la YUMI, elles <strong>s\'annulent</strong>. Une fois jouée, elle est <em>définitivement écartée</em>.',
+      },
+      {
         icon: '🔄',
         title: 'La carte Recharge',
-        text: 'Jouez votre <strong>carte Recharge</strong> à la place d\'une carte normale pour <em>récupérer toutes vos cartes jouées</em>. Votre <strong>carte mystère est remplacée</strong> par une nouvelle. Les joueurs ayant joué une <em>valeur unique</em> (non annulée) ce tour gagnent autant d\'étoiles qu\'il y a de <strong>joueurs ayant rechargé</strong>. Ex : 3 joueurs rechargent → chaque valeur unique rapporte <strong>3 étoiles</strong> !',
+        text: 'Jouez votre <strong>carte Recharge</strong> à la place d\'une carte normale pour <em>récupérer toutes vos cartes jouées</em> (sauf la YUMI, définitivement écartée). Votre <strong>carte mystère est remplacée</strong>. Les joueurs ayant joué une <em>valeur unique</em> ce tour gagnent autant de points Bonus qu\'il y a de <strong>joueurs ayant rechargé</strong>.',
       },
       {
         icon: '⭐',
-        title: 'Les étoiles',
-        text: 'Les étoiles sur les cartes Score servent <strong>uniquement au comptage de la majorité</strong> (pas de point immédiat). Les étoiles gagnées via une <strong>Recharge</strong> comptent pour la majorité <em>et</em> valent <strong>+1 point immédiat chacune</strong>. Le joueur avec le plus d\'étoiles totales en fin de partie gagne <em>+5 points bonus</em>.',
+        title: 'Les 3 compteurs',
+        text: 'En fin de manche, on compare <strong>3 compteurs</strong> : ⭐ <em>étoiles</em>, 🃏 <em>points des cartes Score</em>, 🎯 <em>points bonus (Recharge)</em>. Le joueur en tête de chaque compteur gagne <strong>1 point de victoire</strong>. <strong>Égalité en tête ?</strong> Les ex-æquo s\'annulent — le point va au joueur suivant.',
       },
       {
         icon: '🏆',
         title: 'Fin de partie',
-        text: 'La partie se termine quand le deck de cartes Score est épuisé. On additionne les <em>points des cartes Score</em> + les <em>points de Recharge</em> + le <strong>bonus majorité étoiles (+5 pts)</strong>. Le joueur avec le <strong>total le plus élevé</strong> remporte la partie !',
+        text: 'Le premier joueur à atteindre <strong>3 points de victoire</strong> remporte la partie ! Si plusieurs joueurs atteignent 3 PV lors de la même manche, on joue une <em>manche supplémentaire</em> pour les départager.',
       },
     ],
     illu: {
       // Slide 1 — But
-      wonCards: 'Cartes gagnées',
-      finalScore: 'Score final',
+      wonCards: 'Points de victoire',
+      finalScore: '3 PV pour gagner',
       victory: 'Victoire !',
       // Slide 2 — Main
       handTitle: 'Votre main',
-      handMin: '1 carte min',
-      handMax: '8 cartes max',
+      handMin: 'Cartes 1 à 8',
+      handMax: '+ carte YUMI',
       handRecharge: '+ 1 Recharge',
-      handMystery: 'Toujours 1 mystère',
+      handMystery: '1 carte bloquée (mystère)',
       // Slide 3 — Flux
       fluxGreen: 'Vertes → plus grande valeur',
       fluxRed: 'Rouges → plus petite valeur',
       fluxSpecial: 'Spéciales → effets !',
-      fluxContinuous: 'Flux continu',
+      fluxContinuous: '20 cartes par manche',
       // Slide 4 — Doublons
       dupCancel: 'Doublons annulés',
       dupWinner: 'Valeur unique gagne',
       dupDiscard: 'Tout annulé → défaussée',
-      // Slide 5 — Recharge
-      rechargePlay: 'Jouer Recharge',
-      rechargeGet: 'Main récupérée',
-      rechargeNewMystery: 'Nouvelle carte mystère',
-      rechargeStarBonus: '⭐ × nb rechargeurs → majorité + pts',
-      // Slide 6 — Étoiles
-      starsOnCards: 'Étoiles cartes Score',
-      starsMajority: 'Majorité uniquement',
-      starsRecharge: 'Étoiles Recharge',
-      starsRechargeBonus: 'Majorité + 1 pt immédiat chacune',
-      starsEndBonus: '+5 pts au joueur avec le plus d\'étoiles',
-      // Slide 7 — Fin
-      formulaCards: '🃏 Cartes',
-      formulaRecharge: '🔄 Recharge',
-      formulaBonus: '🏆 Bonus',
-      formulaTotal: 'Total',
+      // Slide 5 — YUMI
+      rechargePlay: 'Carte YUMI',
+      rechargeGet: '🟢 = plus grande valeur',
+      rechargeNewMystery: '🔴 = plus petite valeur',
+      rechargeStarBonus: '2 YUMI → elles s\'annulent',
+      // Slide 6 — Recharge
+      starsOnCards: 'Jouer Recharge',
+      starsMajority: 'Récupère les cartes jouées',
+      starsRecharge: 'Valeur unique → étoiles',
+      starsRechargeBonus: '× nb de rechargeurs',
+      starsEndBonus: 'YUMI définitivement écartée',
+      // Slide 7 — Compteurs
+      formulaCards: '⭐ Étoiles',
+      formulaRecharge: '🃏 Points cartes',
+      formulaBonus: '🎯 Points bonus',
+      formulaTotal: '→ 1 PV chacun',
     },
   },
 
