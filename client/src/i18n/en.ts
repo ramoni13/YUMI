@@ -315,7 +315,7 @@ export const en: Translations = {
 
   // ── Flux Tutorial ─────────────────────────────────────
   fluxTutorial: {
-    btnOpen: '🔄 Flux Rules',
+    btnOpen: '📖 Rules',
     btnPrev: '← Previous',
     btnNext: 'Next →',
     btnClose: "Let's play!",
@@ -323,18 +323,18 @@ export const en: Translations = {
     slides: [
       {
         icon: '🎯',
-        title: 'Goal — Flux Mode',
-        text: 'Win as many <em>positive Score cards</em> as possible and avoid the negative ones. The player with the <strong>most points</strong> at the end wins! Flux mode replaces fixed rounds with a <strong>continuous stream of cards</strong>.',
+        title: 'Goal of the game',
+        text: 'Be the first to reach <strong>3 victory points</strong>. Each round of <em>20 Score cards</em>, three counters are compared: <strong>stars</strong>, <strong>card points</strong> and <strong>bonus points</strong>. The player leading each counter earns <strong>1 victory point</strong>.',
       },
       {
         icon: '🖐️',
         title: 'Your hand',
-        text: 'Each player starts with <strong>1 to 8 cards</strong> numbered + <strong>1 Recharge card</strong>. You always have <em>one mystery card</em> face down in front of you — it changes with each recharge!',
+        text: 'Each player starts with cards <strong>1 to 8</strong> + <strong>1 YUMI card</strong> + <strong>1 Recharge card</strong>. At the start of each round, your <em>right-hand neighbour</em> secretly draws one card from your hand — it is locked for the whole round. The YUMI card can be drawn!',
       },
       {
         icon: '🌊',
         title: 'The Score card stream',
-        text: 'Score cards arrive in a <strong>continuous stream</strong>. <strong class="green">Green</strong> cards are won by the <em>highest value</em>. <strong class="red">Red</strong> cards are won by the <em>lowest value</em>. <strong>Special</strong> cards are mixed in too!',
+        text: '20 Score cards arrive in a <strong>continuous stream</strong>, one by one. <strong class="green">Green</strong> cards are won by the <em>highest value</em>. <strong class="red">Red</strong> cards are won by the <em>lowest value</em>. <strong>Special</strong> cards are mixed in too!',
       },
       {
         icon: '✕',
@@ -342,57 +342,62 @@ export const en: Translations = {
         text: "If two or more players play the <strong>same value</strong>, their cards <em>cancel each other out</em>. The Score card is then won by the highest (or lowest) <strong>remaining</strong> value. If everything cancels, the card is <em>discarded</em>.",
       },
       {
+        icon: '🌟',
+        title: 'The YUMI card',
+        text: 'The <strong>YUMI</strong> card is the most powerful in your hand. On a <strong class="green">green</strong> card, it counts as the <em>highest</em> value played. On a <strong class="red">red</strong> card, it counts as the <em>lowest</em>. If two players play YUMI, they <strong>cancel out</strong>. Once played, it is <em>permanently discarded</em>.',
+      },
+      {
         icon: '🔄',
         title: 'The Recharge card',
-        text: 'Play your <strong>Recharge card</strong> instead of a normal card to <em>recover all your played cards</em>. Your <strong>mystery card is replaced</strong> by a new one. Players who played a <em>unique value</em> (not cancelled) this turn earn as many stars as there are <strong>players who recharged</strong>. Ex: 3 players recharge → each unique value earns <strong>3 stars</strong>!',
+        text: 'Play your <strong>Recharge card</strong> instead of a normal card to <em>recover all your played cards</em> (except YUMI, permanently discarded). Your <strong>mystery card is replaced</strong>. Players who played a <em>unique value</em> this turn earn as many Bonus points as there are <strong>players who recharged</strong>.',
       },
       {
         icon: '⭐',
-        title: 'Stars',
-        text: 'Stars on Score cards are used <strong>only for majority counting</strong> (no immediate point). Stars earned via a <strong>Recharge</strong> count for majority <em>and</em> are each worth <strong>+1 immediate point</strong>. The player with the most total stars at the end gains <em>+5 bonus points</em>.',
+        title: 'The 3 counters',
+        text: 'At the end of each round, <strong>3 counters</strong> are compared: ⭐ <em>stars</em>, 🃏 <em>Score card points</em>, 🎯 <em>bonus points (Recharge)</em>. The player leading each counter earns <strong>1 victory point</strong>. <strong>Tied at the top?</strong> The tied players cancel out — the point goes to the next player.',
       },
       {
         icon: '🏆',
         title: 'End of game',
-        text: 'The game ends when the Score card deck runs out. Add up <em>Score card points</em> + <em>Recharge points</em> + the <strong>star majority bonus (+5 pts)</strong>. The player with the <strong>highest total</strong> wins!',
+        text: 'The first player to reach <strong>3 victory points</strong> wins the game! If multiple players reach 3 VP in the same round, an <em>extra round</em> is played to break the tie.',
       },
     ],
     illu: {
       // Slide 1 — Goal
-      wonCards: 'Cards won',
-      finalScore: 'Final score',
+      wonCards: 'Victory points',
+      finalScore: '3 VP to win',
       victory: 'Victory!',
       // Slide 2 — Hand
       handTitle: 'Your hand',
-      handMin: '1 card min',
-      handMax: '8 cards max',
+      handMin: 'Cards 1 to 8',
+      handMax: '+ YUMI card',
       handRecharge: '+ 1 Recharge',
-      handMystery: 'Always 1 mystery',
+      handMystery: '1 locked card (mystery)',
       // Slide 3 — Stream
       fluxGreen: 'Green → highest value',
       fluxRed: 'Red → lowest value',
       fluxSpecial: 'Special → effects!',
-      fluxContinuous: 'Continuous stream',
+      fluxContinuous: '20 cards per round',
       // Slide 4 — Duplicates
       dupCancel: 'Duplicates cancelled',
       dupWinner: 'Unique value wins',
       dupDiscard: 'All cancelled → discarded',
-      // Slide 5 — Recharge
-      rechargePlay: 'Play Recharge',
-      rechargeGet: 'Hand recovered',
-      rechargeNewMystery: 'New mystery card',
-      rechargeStarBonus: '⭐ × rechargers → majority + pts',
-      // Slide 6 — Stars
-      starsOnCards: 'Score card stars',
-      starsMajority: 'Majority only',
-      starsRecharge: 'Recharge stars',
-      starsRechargeBonus: 'Majority + 1 pt each',
-      starsEndBonus: '+5 pts to player with most stars',
-      // Slide 7 — End
-      formulaCards: '🃏 Cards',
-      formulaRecharge: '🔄 Recharge',
-      formulaBonus: '🏆 Bonus',
-      formulaTotal: 'Total',
+      // Slide 5 — YUMI
+      rechargePlay: 'YUMI card',
+      rechargeGet: '🟢 = highest value played',
+      rechargeNewMystery: '🔴 = lowest value played',
+      rechargeStarBonus: '2 YUMIs → they cancel out',
+      // Slide 6 — Recharge
+      starsOnCards: 'Play Recharge',
+      starsMajority: 'Recover played cards',
+      starsRecharge: 'Unique value → stars',
+      starsRechargeBonus: '× number of rechargers',
+      starsEndBonus: 'YUMI permanently discarded',
+      // Slide 7 — Counters
+      formulaCards: '⭐ Stars',
+      formulaRecharge: '🃏 Card points',
+      formulaBonus: '🎯 Bonus points',
+      formulaTotal: '→ 1 VP each',
     },
   },
 
