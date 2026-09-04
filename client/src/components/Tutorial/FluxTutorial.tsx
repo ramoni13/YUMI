@@ -603,7 +603,7 @@ export function FluxTutorial({ onClose }: FluxTutorialProps) {
       <div className={`${styles.modal} ${fluxStyles.fluxModal}`}>
 
         {/* Badge mode Flux */}
-        <div className={fluxStyles.fluxBadge}>🌊 MODE FLUX</div>
+        {/* <div className={fluxStyles.fluxBadge}>🌊 MODE FLUX</div> */}
 
         {/* Bouton fermer */}
         <button className={styles.closeBtn} onClick={onClose} aria-label="Fermer">✕</button>
