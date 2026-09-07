@@ -40,6 +40,7 @@ export const fr = {
     removeBotLabel: '✕',
     botSlotLabel: (name: string, profile: string) => `${name} (${profile})`,
     playerCount: (humans: number, bots: number, max: number) => `${humans} joueur(s) + ${bots} bot(s) / ${max} max`,
+    removeBotTitle: 'Retirer ce bot',
   },
 
   // ── SoloSetup ───────────────────────────────────────────
@@ -92,12 +93,27 @@ export const fr = {
     label: 'Ma main',
     playBtn: (value: number) => `Jouer le ${value}`,
     waiting: 'Carte jouée — en attente des autres joueurs...',
+    alreadyPlayed: 'Déjà jouées :',
+    yumiHint: '✨ YUMI — vaut la + grande ou + petite valeur selon la carte Score. Usage unique, non récupérable.',
+    playYumi: 'Jouer YUMI ✨',
+    playValue: (value: number) => `Jouer le ${value}`,
+    rechargeBtn: '🔄 Recharge',
+    waitingMsg: 'En attente des autres joueurs…',
   },
 
   // ── OpponentPanel ───────────────────────────────────────
   opponent: {
     swapOverlay: '⇄ Échanger',
     stealOverlay: '🦅 Voler',
+    eclipseOverlay: '☄️ Donner ECLIPSE',
+    piocheOverlay: '🎰 Piocher une carte',
+    verrouOverlay: '🔒 Verrouiller',
+    revelationOverlay: '🕵️ Révéler',
+    taxeOverlay: '🧹 Taxer',
+    playedLabel: 'Jouées :',
+    titleVP: 'Points de victoire',
+    titleStars: 'Étoiles totales',
+    titleBonus: 'Points bonus',
   },
 
   // ── GameOver ────────────────────────────────────────────
@@ -139,6 +155,10 @@ export const fr = {
     youHave: 'Vous avez',
     has: (pseudo: string) => `${pseudo} a`,
     won: 'remporté',
+    rechargeNoStar: 'Aucune étoile — doublons',
+    rechargeAllDiscard: 'Carte défaussée',
+    rechargeLabel: 'recharge',
+    rechargeCardVal: (val: number) => `(carte ${val})`,
     // Messages dynamiques du socket (useSocket.ts)
     socket: {
       roundSep: (cur: number, total: number) => `— Manche ${cur} / ${total} —`,
@@ -165,6 +185,32 @@ export const fr = {
       rechargeStarsNoWinner: (rechargers: string) =>
         `🔄 ${rechargers} recharge${rechargers.includes(',') ? 'nt' : ''} — aucune étoile (toutes les valeurs en doublon)`,
       rechargeAllDiscard: '🔄 Tout le monde recharge — carte Score défaussée',
+      // Effets spéciaux — messages journal
+      eclipseGives: (winner: string, target: string) => `☄️ ${winner} donne ECLIPSE à ${target} (-3⭐, +1 pt)`,
+      inversionActive: '🌀 INVERSION active — la prochaine carte Score a sa condition inversée !',
+      mystereActive: '🎭 MYSTÈRE — à la prochaine mène, tout le monde joue sa carte mystère !',
+      piocheChoosing: (actor: string) => `🎰 ${actor} choisit une carte à piocher dans la main d'un adversaire…`,
+      piocheResult: (winner: string, card: number, target: string) => `🎰 ${winner} pioche le ${card} dans la main de ${target} — ${target} devra jouer cette carte !`,
+      jackpotResult: (winner: string, pts: number) => `💰 JACKPOT ! ${winner} gagne +${pts} points bonus`,
+      constellationResult: (winner: string, stars: number) => `🌟 CONSTELLATION ! ${winner} gagne +${stars}⭐`,
+      devoilementActive: '📢 DÉVOILEMENT — les 3 prochaines cartes Score sont révélées à tous !',
+      oracleResult: (winner: string) => `👁️ ${winner} consulte secrètement les 3 prochaines cartes Score`,
+      stealNoTarget: (winner: string) => `🦥 ${winner} remporte VOL — aucun adversaire à voler (effet sans cible)`,
+      surchargeChoosing: (actor: string) => `⚡ ${actor} choisit qui forcer à Recharger…`,
+      surchargeResult: (winner: string, target: string) => `⚡ ${winner} force ${target} à Recharger à la prochaine mène !`,
+      verrouChoosing: (actor: string) => `🔒 ${actor} désigne un adversaire à verrouiller…`,
+      verrouResult: (winner: string, target: string, lockType: string) => `🔒 ${winner} verrouille ${target} — devra jouer ${lockType} à la prochaine mène !`,
+      verrouLockHigh: 'sa carte la plus haute',
+      verrouLockLow: 'sa carte la plus basse',
+      revelationChoosing: (actor: string) => `🕵️ ${actor} choisit une carte mystère à révéler...`,
+      revelationResult: (winner: string, target: string, card: number | string) => `🕵️ ${winner} révèle la carte mystère de ${target} : c'est le ${card} !`,
+      taxeChoosing: (actor: string) => `🧹 ${actor} choisit qui taxer…`,
+      taxeResult: (winner: string, target: string) => `🧹 ${winner} taxe ${target} — lui vole 2 points bonus !`,
+      eclipseChoosing: (actor: string) => `☄️ ${actor} choisit à qui donner ECLIPSE...`,
+      vpRoundSummary: (stars: string, cards: string, bonus: string) => `⭐ Course aux étoiles : ${stars} | 🃏 Points cartes : ${cards} | 🪙 Points bonus : ${bonus}`,
+      vpCancelled: 'Annulé (ex-æquo)',
+      vpRoundMessage: (vpLines: string) => `🏆 PV cette manche — ${vpLines}`,
+      cancelledLabel: (val: number) => `(${val}) annulé`,
     },
   },
 
@@ -175,6 +221,15 @@ export const fr = {
     HASARD: 'Complètement imprévisible. Joue n\'importe quelle carte au hasard.',
     PRUDENT: 'Joue toujours sa carte la plus basse. Préfère ne pas gagner plutôt que de perdre.',
     SABOTEUR: 'Cherche à annuler les cartes des autres en jouant les mêmes valeurs.',
+  },
+
+  // ── Profils de bots (noms affichés + label du profil) ──────────────────
+  botProfiles: {
+    LOGIQUE: { name: 'ARIA', label: 'LOGIQUE' },
+    KAMIKAZE: { name: 'BLITZ', label: 'KAMIKAZE' },
+    HASARD: { name: 'DINGO', label: 'HASARD' },
+    PRUDENT: { name: 'FELIX', label: 'PRUDENT' },
+    SABOTEUR: { name: 'LOKI', label: 'SABOTEUR' },
   },
 
   // ── Tutoriel ────────────────────────────────────────────
@@ -397,6 +452,140 @@ export const fr = {
       formulaRecharge: '🃏 Points cartes',
       formulaBonus: '🎯 Points bonus',
       formulaTotal: '→ 1 PV chacun',
+      // Slide 4 — Textes hardcodés dans les illustrations
+      dupExplain: 'Les 5 s\'annulent → Cara gagne avec le 7',
+      rechargeScenarioTitle: 'Ce tour : 1 joueur recharge',
+      caraUniqueLabel: 'Cara — valeur unique',
+      caraUniqueRecharger: '1 rechargeur × valeur unique',
+      aliceBobLabel: 'Alice & Bob — annulés',
+      aliceBobResult: 'doublon → pas de point bonus',
+    },
+  },
+
+  // ── FluxBoard ────────────────────────────────────────────
+  fluxBoard: {
+    loading: 'Chargement…',
+    roundEndTitle: '🏁 Fin de manche',
+    vpCatStars: 'Course aux étoiles',
+    vpCatCards: 'Points des cartes',
+    vpCatBonus: 'Points bonus',
+    vpCancelled: 'Annulé (ex-æquo)',
+    vpRankTitle: 'Points de victoire',
+    nextRoundBtn: 'Manche suivante →',
+    trickLabel: (trick: number) => `Mène ${trick}`,
+    deckRemaining: (n: number) => `🃏 ${n} restantes`,
+    mysteryOwner: (owner: string) => `🔍 ${owner} :`,
+    scoreCardLabel: 'Carte Score',
+    rechargeSlot: '🔄 Recharge',
+    mysteryCardLabel: 'Carte mystère :',
+    trickDiscarded: 'Carte défaussée — tout le monde a rechargé',
+    trickWinner: (pseudo: string) => `${pseudo} remporte la carte !`,
+    bonusPointInfo: (count: number, names: string) => `🪙×${count} Recharge — ${names}`,
+    revealedUpcomingLabel: '📢 Prochaines cartes Score révélées :',
+    stealPrompt: '🦅 Choisissez un adversaire à voler',
+    swapPrompt1: '⇄ Choisissez le premier joueur à échanger',
+    swapPrompt2: (pseudo: string) => `⇄ Choisissez le second joueur (A = ${pseudo})`,
+    mysteryCardTitle: 'Votre carte mystère',
+    mysteryCardPlayTitle: 'Cliquer pour jouer votre carte mystère',
+    mysteryCardPlay: 'jouer',
+    handLabel: 'Ma main',
+    alreadyPlayed: 'Déjà jouées :',
+    yumiHint: '✨ YUMI — vaut la + grande ou + petite valeur selon la carte Score. Usage unique, non récupérable.',
+    playYumi: 'Jouer YUMI ✨',
+    playValue: (value: number) => `Jouer le ${value}`,
+    rechargeBtn: '🔄 Recharge',
+    waitingMsg: 'En attente des autres joueurs…',
+    // Oracle modal
+    oracleTitle: 'Oracle',
+    oracleSubtitle: 'Vision secrète — vous seul voyez ces cartes',
+    oracleLabel: 'Les 3 prochaines cartes Score :',
+    oracleWarning: 'Ces informations sont confidentielles. Les autres joueurs ne les voient pas.',
+    oracleOkBtn: 'J\'ai mémorisé — Continuer',
+    oracleCardNum: (n: number) => `#${n}`,
+    revealedUpcomingNum: (n: number) => `#${n}`,
+  },
+
+  // ── SpecialCardInfo ──────────────────────────────────────
+  specialCards: {
+    effectLabel: '⚙️ Effet',
+    tipLabel: '💡 Conseil',
+    gainGreen: '🟢 + grande gagne',
+    gainRed: '🔴 + petite gagne',
+    taxeStolen: (n: number) => `×${n}🪙 volés`,
+    DOUBLE: {
+      icon: '×2', title: 'DOUBLE', role: 'Doublement de score',
+      how: 'La valeur de ta dernière carte Score gagnée est multipliée par 2.',
+      tip: 'Gagne-la après une carte à forte valeur pour maximiser l\'effet.',
+    },
+    STEAL: {
+      icon: '🦅', title: 'VOL', role: 'Voler une carte adverse',
+      how: 'Tu prends la carte du dessus de la pile d\'un adversaire de ton choix et tu la places dans ta propre pile.',
+      tip: 'Cible le joueur avec la carte la plus précieuse au sommet.',
+    },
+    SWAP: {
+      icon: '⇄', title: 'ÉCHANGE', role: 'Échanger deux piles',
+      how: 'Tu choisis 2 joueurs (toi inclus) : leurs cartes du dessus de pile sont échangées.',
+      tip: 'Utile pour te débarrasser d\'une carte négative ou voler un gros score.',
+    },
+    PIOCHE: {
+      icon: '🎰', title: 'PIOCHE', role: 'Forcer une carte adverse',
+      how: 'Tu regardes une carte au hasard dans la main d\'un adversaire. Il devra jouer cette carte à la prochaine mène.',
+      tip: 'Cible un joueur fort pour lui imposer une carte qui ne l\'arrange pas.',
+    },
+    VERROU: {
+      icon: '🔒', title: 'VERROU', role: 'Bloquer la carte d\'un adversaire',
+      how: 'Tu désignes un adversaire. Selon la prochaine carte Score (verte → il joue sa plus haute, rouge → sa plus basse), il n\'a plus le choix.',
+      tip: 'Parfait pour forcer un adversaire à se trahir sur une carte clé.',
+    },
+    REVELATION: {
+      icon: '🕵️', title: 'RÉVÉLATION', role: 'Révéler une carte mystère',
+      how: 'Tu choisis un adversaire : sa carte mystère (valeur cachée) est révélée à tous les joueurs.',
+      tip: 'Brise l\'avantage informationnel d\'un adversaire discret.',
+    },
+    MYSTERE: {
+      icon: '🎭', title: 'MYSTÈRE', role: 'Mène mystère',
+      how: 'À la prochaine mène, tous les joueurs jouent obligatoirement leur carte mystère (valeur cachée) au lieu d\'une carte normale.',
+      tip: 'Crée une mène imprévisible où personne ne contrôle sa carte.',
+    },
+    SURCHARGE: {
+      icon: '⚡', title: 'SURCHARGE', role: 'Forcer une Recharge',
+      how: 'Tu désignes un adversaire qui sera forcé de jouer Recharge à la prochaine mène, qu\'il le veuille ou non.',
+      tip: 'Idéal pour priver un adversaire d\'une carte forte au moment crucial.',
+    },
+    INVERSION: {
+      icon: '🌀', title: 'INVERSION', role: 'Inverser la condition de victoire',
+      how: 'À la prochaine mène, la condition est inversée : si la carte Score est verte (plus grande gagne), c\'est la plus petite qui gagne, et vice versa.',
+      tip: 'Surprend les adversaires qui ont déjà choisi leur stratégie.',
+    },
+    CONSTELLATION: {
+      icon: '🌟', title: 'CONSTELLATION', role: 'Bonus d\'étoiles massif',
+      how: 'Gagne immédiatement un grand nombre d\'étoiles bonus (⭐×5). Ces étoiles comptent pour la majorité et valent +1 pt chacune.',
+      tip: 'Très puissante en fin de partie pour décrocher le bonus de majorité.',
+    },
+    ECLIPSE: {
+      icon: '☄️', title: 'ÉCLIPSE', role: 'Donner des malus d\'étoiles',
+      how: 'Tu choisis un joueur (toi inclus) qui reçoit la carte : il perd 3 étoiles mais gagne +1 point de score.',
+      tip: 'Donne-la à un adversaire dominant en étoiles pour briser sa majorité.',
+    },
+    JACKPOT: {
+      icon: '💰', title: 'JACKPOT', role: 'Points bonus immédiats',
+      how: 'Tu gagnes immédiatement des points bonus (🪙) qui s\'ajoutent à ton score final, en plus de la valeur de la carte.',
+      tip: 'Un gain sûr et immédiat, indépendant des étoiles.',
+    },
+    TAXE: {
+      icon: '🧹', title: 'TAXE', role: 'Voler des points bonus',
+      how: 'Tu choisis un adversaire qui possède des points bonus (🪙) : tu lui en prends 2 et tu les ajoutes à ton score.',
+      tip: 'Cible le joueur avec le plus de points bonus accumulés.',
+    },
+    ORACLE: {
+      icon: '👁️', title: 'ORACLE', role: 'Vision secrète',
+      how: 'Tu consultes secrètement les 3 prochaines cartes Score du deck. Cette information n\'est visible que par toi.',
+      tip: 'Planifie ta stratégie sur les prochaines mènes avec une longueur d\'avance.',
+    },
+    DEVOILEMENT: {
+      icon: '📢', title: 'DÉVOILEMENT', role: 'Révéler les prochaines cartes',
+      how: 'Les 3 prochaines cartes Score du deck sont révélées à tous les joueurs simultanément.',
+      tip: 'Tout le monde voit la même chose — à toi de mieux l\'exploiter.',
     },
   },
 
@@ -405,6 +594,9 @@ export const fr = {
     green: 'Vert',
     red: 'Rouge',
     bonusStar: '⭐ +1',
+    vpUnit: 'PV',
+    vpGain: '+1 PV',
+    vpCount: (n: number) => `${n} PV`,
   },
 };
 
