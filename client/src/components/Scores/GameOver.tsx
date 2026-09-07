@@ -57,7 +57,7 @@ export function GameOver({ onReplay }: GameOverProps) {
                     ★
                   </span>
                 ))}
-                <span className={styles.vpCount}>{s.victoryPoints} PV</span>
+                                  <span className={styles.vpCount}>{t.common.vpCount(s.victoryPoints)}</span>
               </span>
               {/* Détails des cumuls */}
               <span className={styles.cardScore} title={t.gameover.cardScoreTitle}>
