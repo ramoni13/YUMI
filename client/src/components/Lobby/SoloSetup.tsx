@@ -99,7 +99,7 @@ export function SoloSetup({ pseudo, onConfirm, onCancel, error }: SoloSetupProps
                 >
                   {ALL_PROFILES.map(p => (
                     <option key={p.profile} value={p.profile}>
-                      {p.emoji} {p.name} — {p.profile}
+                      {p.emoji} {t.botProfiles[p.profile as keyof typeof t.botProfiles].name} — {t.botProfiles[p.profile as keyof typeof t.botProfiles].label}
                     </option>
                   ))}
                 </select>
@@ -107,7 +107,7 @@ export function SoloSetup({ pseudo, onConfirm, onCancel, error }: SoloSetupProps
                 <div className={styles.botPreview}>
                   <span className={styles.botEmoji}>{info.emoji}</span>
                   <div>
-                    <div className={styles.botName}>{info.name}</div>
+                    <div className={styles.botName}>{t.botProfiles[profile as keyof typeof t.botProfiles].name}</div>
                   </div>
                 </div>
               </div>
@@ -150,7 +150,7 @@ export function SoloSetup({ pseudo, onConfirm, onCancel, error }: SoloSetupProps
               <div key={p.profile} className={styles.legendItem}>
                 <span className={styles.legendEmoji}>{p.emoji}</span>
                 <div className={styles.legendText}>
-                  <span className={styles.legendName}>{p.name}</span>
+                  <span className={styles.legendName}>{t.botProfiles[p.profile as keyof typeof t.botProfiles].name}</span>
                   {' — '}
                   {t.botDescriptions[p.profile as keyof Translations['botDescriptions']]}
                 </div>
