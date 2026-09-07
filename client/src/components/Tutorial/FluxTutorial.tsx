@@ -1,5 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { useT } from '../../hooks/useT';
+import type { Translations } from '../../i18n';
 import styles from './Tutorial.module.css';
 import fluxStyles from './FluxTutorial.module.css';
 
@@ -239,8 +240,8 @@ function FluxIlluDuplicates({ illu }: { illu: ReturnType<typeof useT>['fluxTutor
           <div className={styles.arrow}>←</div>
           <div className={`${styles.scoreCard} ${styles.scoreCardPositive}`} style={{ width: 36, height: 52, fontSize: '0.85rem' }}>+4</div>
         </div>
-        <span style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.45)' }}>
-          Les 5 s'annulent → Cara gagne avec le 7
+                <span style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.45)' }}>
+          {illu.dupExplain}
         </span>
       </div>
 
@@ -315,7 +316,7 @@ function FluxIlluRecharge({ illu }: { illu: ReturnType<typeof useT>['fluxTutoria
 
       {/* Scenario : 1 recharge, Alice joue 5, Bob joue 5 (annules), Cara joue 7 unique */}
       <div className={styles.illuBox} style={{ width: '100%' }}>
-        <div className={styles.illuBoxLabel} style={{ color: '#38bdf8' }}>Ce tour : 1 joueur recharge</div>
+        <div className={styles.illuBoxLabel} style={{ color: '#38bdf8' }}>{illu.rechargeScenarioTitle}</div>
         <div className={styles.illuRow} style={{ gap: '0.5rem', flexWrap: 'wrap', justifyContent: 'center' }}>
           {/* David : Recharge */}
           <div className={styles.illuCol} style={{ gap: '0.25rem' }}>
@@ -361,7 +362,7 @@ function FluxIlluRecharge({ illu }: { illu: ReturnType<typeof useT>['fluxTutoria
       <div className={styles.illuRow} style={{ gap: '0.6rem', width: '100%' }}>
         {/* Cara : valeur unique -> 1 point bonus */}
         <div className={styles.illuBox} style={{ flex: 1, border: '1px solid rgba(56,189,248,0.35)' }}>
-          <div className={styles.illuBoxLabel} style={{ color: '#4ade80' }}>Cara — valeur unique</div>
+          <div className={styles.illuBoxLabel} style={{ color: '#4ade80' }}>{illu.caraUniqueLabel}</div>
           <div className={styles.illuRow} style={{ gap: '0.4rem' }}>
             <div className={styles.card} style={{
               width: 32, height: 44, fontSize: '0.9rem',
@@ -372,18 +373,18 @@ function FluxIlluRecharge({ illu }: { illu: ReturnType<typeof useT>['fluxTutoria
             <span style={{ fontSize: '1.4rem' }}>🎯</span>
             <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#38bdf8' }}>+1</span>
           </div>
-          <span style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.4)' }}>1 rechargeur × valeur unique</span>
+          <span style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.4)' }}>{illu.caraUniqueRecharger}</span>
         </div>
         {/* Alice & Bob : annules -> 0 */}
         <div className={styles.illuBox} style={{ flex: 1, border: '1px solid rgba(255,255,255,0.1)' }}>
-          <div className={styles.illuBoxLabel} style={{ color: 'rgba(255,255,255,0.4)' }}>Alice & Bob — annulés</div>
+          <div className={styles.illuBoxLabel} style={{ color: 'rgba(255,255,255,0.4)' }}>{illu.aliceBobLabel}</div>
           <div className={styles.illuRow} style={{ gap: '0.3rem' }}>
             <div className={`${styles.card} ${styles.cancelled}`} style={{ width: 28, height: 40, fontSize: '0.8rem', background: 'linear-gradient(135deg,#991b1b,#ef4444)' }}>5</div>
             <div className={`${styles.card} ${styles.cancelled}`} style={{ width: 28, height: 40, fontSize: '0.8rem', background: 'linear-gradient(135deg,#1e3a8a,#3b82f6)' }}>5</div>
             <div className={styles.arrow}>→</div>
             <span style={{ fontSize: '0.85rem', fontWeight: 800, color: 'rgba(255,255,255,0.3)' }}>0 🎯</span>
           </div>
-          <span style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.4)' }}>doublon → pas de point bonus</span>
+          <span style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.4)' }}>{illu.aliceBobResult}</span>
         </div>
       </div>
 
