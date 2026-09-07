@@ -296,7 +296,7 @@ function EventRow({ event, myId, t }: EventRowProps) {
                   {p.pseudo}
                 </span>
               ))}
-              <span className={styles.rechargeLabel}> recharge</span>
+              <span className={styles.rechargeLabel}> {t.history.rechargeLabel}</span>
             </div>
           )}
                     {/* Gagnants d'étoile */}
@@ -310,7 +310,7 @@ function EventRow({ event, myId, t }: EventRowProps) {
                     <span className={styles.dot} style={{ background: COLOR_HEX[w.color] }} />
                     <strong>{w.pseudo}</strong>
                     <span className={styles.starTag}>⭐ +{starCount}</span>
-                    <span className={styles.rechargeCardVal}>(carte {w.cardValue})</span>
+                                          <span className={styles.rechargeCardVal}>{t.history.rechargeCardVal(w.cardValue)}</span>
                   </span>
                 ))}
               </div>
@@ -318,11 +318,11 @@ function EventRow({ event, myId, t }: EventRowProps) {
           })()}
           {/* Aucun gagnant */}
           {!hasWinners && !allRecharge && (
-            <span className={styles.rechargeNoStar}>Aucune étoile — doublons</span>
+            <span className={styles.rechargeNoStar}>{t.history.rechargeNoStar}</span>
           )}
           {/* Tout le monde a rechargé */}
           {allRecharge && (
-            <span className={styles.rechargeNoStar}>Carte défaussée</span>
+            <span className={styles.rechargeNoStar}>{t.history.rechargeAllDiscard}</span>
           )}
         </div>
       </div>
