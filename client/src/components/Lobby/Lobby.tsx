@@ -173,12 +173,14 @@ export function Lobby({ onGameStart }: LobbyProps) {
                 <div key={p.id} className={styles.botRow}>
                   <span className={styles.botEmoji}>{botSlot ? BOT_PROFILES_INFO[botSlot.profile].emoji : '🤖'}</span>
                   <span className={styles.botName}>{p.pseudo}</span>
-                  <span className={styles.botProfile}>{botSlot?.profile}</span>
+                  <span className={styles.botProfile}>
+                    {botSlot ? t.botProfiles[botSlot.profile as keyof typeof t.botProfiles].label : ''}
+                  </span>
                   {isHost && (
                     <button
                       className={styles.removeBotBtn}
                       onClick={() => handleRemoveBot(p.id)}
-                      title="Retirer ce bot"
+                      title={t.waiting.removeBotTitle}
                     >
                       {t.waiting.removeBotLabel}
                     </button>
@@ -197,7 +199,7 @@ export function Lobby({ onGameStart }: LobbyProps) {
                 >
                   {Object.values(BOT_PROFILES_INFO).map(p => (
                     <option key={p.profile} value={p.profile}>
-                      {p.emoji} {p.name} — {p.profile}
+                      {p.emoji} {t.botProfiles[p.profile as keyof typeof t.botProfiles].name} — {t.botProfiles[p.profile as keyof typeof t.botProfiles].label}
                     </option>
                   ))}
                 </select>
