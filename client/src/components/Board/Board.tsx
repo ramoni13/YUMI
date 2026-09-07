@@ -226,7 +226,7 @@ export function Board() {
                       {Array.from({ length: VICTORY_POINTS_TO_WIN }, (_, i) => (
                         <span key={i} className={i < (gameState.roundEndSummary!.victoryPoints[p.id] ?? 0) ? styles.vpFilled : styles.vpEmpty}>★</span>
                       ))}
-                      <span className={styles.vpRankCount}>{gameState.roundEndSummary!.victoryPoints[p.id] ?? 0} PV</span>
+                                              <span className={styles.vpRankCount}>{t.common.vpCount(gameState.roundEndSummary!.victoryPoints[p.id] ?? 0)}</span>
                     </span>
                   </div>
                 ))}
@@ -280,7 +280,7 @@ export function Board() {
               {Array.from({ length: VICTORY_POINTS_TO_WIN }, (_, i) => (
                 <span key={i} className={i < myPlayer.victoryPoints ? styles.vpFilled : styles.vpEmpty}>★</span>
               ))}
-              <span style={{ marginLeft: '0.3rem', fontWeight: 700, color: '#fbbf24' }}>{myPlayer.victoryPoints} PV</span>
+                              <span style={{ marginLeft: '0.3rem', fontWeight: 700, color: '#fbbf24' }}>{t.common.vpCount(myPlayer.victoryPoints)}</span>
             </span>
             <span>{t.board.myStars(myPlayer.stars)}</span>
             <span>{t.board.myScorePile(myPlayer.scorePileCount)}</span>
