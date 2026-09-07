@@ -20,16 +20,16 @@ export function getSocket(): Socket {
   if (!socket) {
     socket = io(SOCKET_URL, {
       autoConnect: false,
-      // Reconnexion illimitée avec backoff exponentiel plafonné
+      // Reconnexion illimitÃ©e avec backoff exponentiel plafonnÃ©
       reconnection: true,
       reconnectionAttempts: Infinity,
       reconnectionDelay: 1000,
       reconnectionDelayMax: 8000,
       // Timeout de connexion initiale
       timeout: 10000,
-      // Démarrer en polling HTTP (compatible avec tous les reverse proxies dont Render.com)
-      // puis Socket.IO upgarde automatiquement vers WebSocket une fois la session établie.
-      // NE PAS mettre 'websocket' en premier : Render bloque les WS à froid sans handshake HTTP.
+      // DÃ©marrer en polling HTTP (compatible avec tous les reverse proxies dont Render.com)
+      // puis Socket.IO upgarde automatiquement vers WebSocket une fois la session Ã©tablie.
+      // NE PAS mettre 'websocket' en premier : Render bloque les WS Ã  froid sans handshake HTTP.
       transports: ['polling', 'websocket'],
     });
   }
@@ -64,7 +64,7 @@ export function clearSession() {
   localStorage.removeItem(SESSION_KEY);
 }
 
-/** Connecte le socket si ce n'est pas déjà fait, puis appelle cb() */
+/** Connecte le socket si ce n'est pas dÃ©jÃ  fait, puis appelle cb() */
 export function ensureConnected(cb: () => void) {
   const s = getSocket();
   if (s.connected) {
@@ -73,8 +73,8 @@ export function ensureConnected(cb: () => void) {
     s.once('connect', cb);
     s.once('connect_error', (err) => {
       console.error('[Socket] Impossible de se connecter au serveur :', err.message);
-      console.error('👉 Vérifiez que le serveur tourne bien sur http://localhost:3001');
-      console.error('   → cd yumi-app/server && npm run dev');
+      console.error('ðŸ‘‰ VÃ©rifiez que le serveur tourne bien sur http://localhost:3001');
+      console.error('   â†’ cd yumi-app/server && npm run dev');
     });
     if (!s.active) s.connect();
   }
@@ -93,7 +93,7 @@ export function useSocket() {
     setOracleCards,
   } = useGameStore();
 
-  // Référence à l'état courant pour les handlers (sans re-subscribe)
+  // RÃ©fÃ©rence Ã  l'Ã©tat courant pour les handlers (sans re-subscribe)
   const stateRef = useRef<PublicGameState | null>(null);
 
   const initialized = useRef(false);
@@ -103,35 +103,35 @@ export function useSocket() {
     initialized.current = true;
 
     const s = getSocket();
-    console.log('[useSocket] init — connected:', s.connected, 'id:', s.id);
+    console.log('[useSocket] init â€” connected:', s.connected, 'id:', s.id);
 
-    // Flag pour distinguer la 1ère connexion des reconnexions
+    // Flag pour distinguer la 1Ã¨re connexion des reconnexions
     let isFirstConnect = true;
 
     s.on('connect', () => {
-      console.log('[useSocket] CONNECTE — id:', s.id, '| firstConnect:', isFirstConnect);
+      console.log('[useSocket] CONNECTE â€” id:', s.id, '| firstConnect:', isFirstConnect);
 
       if (isFirstConnect) {
-        // Première connexion : pas de rejoin à tenter
+        // PremiÃ¨re connexion : pas de rejoin Ã  tenter
         isFirstConnect = false;
         return;
       }
 
-      // ✅ Reconnexion : s.id est maintenant le nouveau id définitif
+      // âœ… Reconnexion : s.id est maintenant le nouveau id dÃ©finitif
       // C'est ici (et non dans 'reconnect') qu'on tente le rejoin
       const session = loadSession();
       if (session) {
-        console.log(`[useSocket] Reconnexion détectée — tentative de rejoin: room=${session.roomCode} oldId=${session.playerId} newId=${s.id}`);
+        console.log(`[useSocket] Reconnexion dÃ©tectÃ©e â€” tentative de rejoin: room=${session.roomCode} oldId=${session.playerId} newId=${s.id}`);
         s.emit(
           'rejoin_room',
           { roomCode: session.roomCode, oldPlayerId: session.playerId },
           (res: { ok?: boolean; playerId?: string; gameMode?: string; error?: string }) => {
             if (res.error) {
-              console.warn('[useSocket] Rejoin échoué:', res.error, '— session effacée');
+              console.warn('[useSocket] Rejoin Ã©chouÃ©:', res.error, 'â€” session effacÃ©e');
               clearSession();
               useGameStore.getState().reset();
             } else if (res.playerId) {
-              console.log('[useSocket] Rejoin réussi — nouveau playerId:', res.playerId);
+              console.log('[useSocket] Rejoin rÃ©ussi â€” nouveau playerId:', res.playerId);
               useGameStore.getState().setPlayerId(res.playerId);
               saveSession({ ...session, playerId: res.playerId });
             }
@@ -142,22 +142,22 @@ export function useSocket() {
 
     s.on('connect_error', (err) => {
       console.error('[useSocket] ERREUR CONNEXION:', err.message);
-      console.error('👉 Le serveur est-il lancé ? → cd yumi-app/server && npm run dev');
+      console.error('ðŸ‘‰ Le serveur est-il lancÃ© ? â†’ cd yumi-app/server && npm run dev');
     });
 
     // Connexion initiale
     if (!s.connected && !s.active) s.connect();
 
     s.on('disconnect', (reason) => {
-      console.warn('[useSocket] DECONNECTE — raison:', reason);
+      console.warn('[useSocket] DECONNECTE â€” raison:', reason);
       if (reason === 'io server disconnect') {
         s.connect();
       }
     });
 
     s.on('reconnect', (attempt) => {
-      // NOTE : à ce stade s.id n'est PAS encore le nouveau id — ne pas émettre ici
-      console.log(`[useSocket] Reconnexion réussie après ${attempt} tentative(s) — en attente de 'connect'`);
+      // NOTE : Ã  ce stade s.id n'est PAS encore le nouveau id â€” ne pas Ã©mettre ici
+      console.log(`[useSocket] Reconnexion rÃ©ussie aprÃ¨s ${attempt} tentative(s) â€” en attente de 'connect'`);
     });
 
     s.on('reconnect_attempt', (attempt) => {
@@ -165,15 +165,15 @@ export function useSocket() {
     });
 
     s.on('reconnect_error', (err) => {
-      console.warn('[useSocket] Échec reconnexion:', err.message);
+      console.warn('[useSocket] Ã‰chec reconnexion:', err.message);
     });
 
     s.on('reconnect_failed', () => {
-      console.error('[useSocket] Reconnexion définitivement échouée');
+      console.error('[useSocket] Reconnexion dÃ©finitivement Ã©chouÃ©e');
     });
 
     s.on('room_updated', (room) => {
-      console.log('[useSocket] room_updated — status:', room.status, 'players:', room.players.length);
+      console.log('[useSocket] room_updated â€” status:', room.status, 'players:', room.players.length);
       setRoom(room);
       // Synchroniser le mode de jeu pour tous les joueurs (y compris ceux qui rejoignent)
       if (room.gameMode) {
@@ -181,20 +181,20 @@ export function useSocket() {
       }
     });
 
-    // Suivi des phases déjà traitées pour éviter les doublons
+    // Suivi des phases dÃ©jÃ  traitÃ©es pour Ã©viter les doublons
     let lastPhase = '';
     let lastRound = 0;
     let lastTrick = 0;
 
     s.on('game_state_updated', (state: PublicGameState) => {
-      console.log('[useSocket] game_state_updated — phase:', state.phase, 'round:', state.currentRound);
+      console.log('[useSocket] game_state_updated â€” phase:', state.phase, 'round:', state.currentRound);
       setGameState(state);
       stateRef.current = state;
 
       const now = Date.now();
       const base = { timestamp: now, round: state.currentRound, trick: state.currentTrick };
 
-      // --- Début de manche (détecté sur TRICK_START manche 1) ---
+      // --- DÃ©but de manche (dÃ©tectÃ© sur TRICK_START manche 1) ---
       if (state.phase === 'TRICK_START' && lastRound !== state.currentRound) {
         lastRound = state.currentRound;
         lastTrick = 0;
@@ -205,10 +205,10 @@ export function useSocket() {
         });
       }
 
-      // --- Début de mène ---
+      // --- DÃ©but de mÃ¨ne ---
       if (state.phase === 'CARD_SELECTION' && lastTrick !== state.currentTrick) {
         lastTrick = state.currentTrick;
-        clearLastReveal(); // fix bug : cartes de la mène précédente affichées
+        clearLastReveal(); // fix bug : cartes de la mÃ¨ne prÃ©cÃ©dente affichÃ©es
         const card = state.currentScoreCard;
         const colorRule = state.gameOptions?.colorRule;
         const t = getT();
@@ -225,10 +225,10 @@ export function useSocket() {
         });
       }
 
-      // --- Résultat de mène : gagnant de la carte Score ---
-      // Déclenché quand la phase passe à TRICK_END (ou SPECIAL_EFFECT)
+      // --- RÃ©sultat de mÃ¨ne : gagnant de la carte Score ---
+      // DÃ©clenchÃ© quand la phase passe Ã  TRICK_END (ou SPECIAL_EFFECT)
       // et qu'un lastTrickSummary est disponible
-      // Toutes les phases qui suivent immédiatement la résolution d'un pli
+      // Toutes les phases qui suivent immÃ©diatement la rÃ©solution d'un pli
       const resolutionPhases = [
         'TRICK_END', 'SPECIAL_EFFECT',
         'SPECIAL_ECLIPSE', 'SPECIAL_PIOCHE', 'SPECIAL_VERROU',
@@ -239,9 +239,9 @@ export function useSocket() {
         !resolutionPhases.includes(lastPhase) &&
         state.lastTrickSummary !== null;
 
-      // Cas spécial PIOCHE résolue par un bot : la phase passe de SPECIAL_PIOCHE → TRICK_END
+      // Cas spÃ©cial PIOCHE rÃ©solue par un bot : la phase passe de SPECIAL_PIOCHE â†’ TRICK_END
       // avec le summary maintenant complet (piocheTargetId rempli).
-      // On logue le message PIOCHE complet à ce moment-là.
+      // On logue le message PIOCHE complet Ã  ce moment-lÃ .
       const piocheJustResolved =
         state.phase === 'TRICK_END' &&
         lastPhase === 'SPECIAL_PIOCHE' &&
@@ -249,7 +249,7 @@ export function useSocket() {
         state.lastTrickSummary?.piocheTargetId !== null &&
         state.lastTrickSummary !== null;
 
-      // Cas SURCHARGE résolue (bot ou humain) : la phase passe de SPECIAL_EFFECT → TRICK_END
+      // Cas SURCHARGE rÃ©solue (bot ou humain) : la phase passe de SPECIAL_EFFECT â†’ TRICK_END
       // avec surchargeTargetId rempli dans le summary.
       const surchargeJustResolved =
         state.phase === 'TRICK_END' &&
@@ -259,7 +259,7 @@ export function useSocket() {
         (state.lastTrickSummary as any)?.surchargeTargetId !== undefined &&
         state.lastTrickSummary !== null;
 
-      // Cas VERROU résolu (bot ou humain) : la phase passe de SPECIAL_VERROU → TRICK_END
+      // Cas VERROU rÃ©solu (bot ou humain) : la phase passe de SPECIAL_VERROU â†’ TRICK_END
       // avec verrouTargetId rempli dans le summary.
       const verrouJustResolved =
         state.phase === 'TRICK_END' &&
@@ -269,7 +269,7 @@ export function useSocket() {
         (state.lastTrickSummary as any)?.verrouTargetId !== undefined &&
         state.lastTrickSummary !== null;
 
-      // Cas REVELATION résolue (bot ou humain) : la phase passe de SPECIAL_REVELATION → TRICK_END
+      // Cas REVELATION rÃ©solue (bot ou humain) : la phase passe de SPECIAL_REVELATION â†’ TRICK_END
       // avec revelationTargetId rempli dans le summary.
       const revelationJustResolved =
         state.phase === 'TRICK_END' &&
@@ -278,7 +278,7 @@ export function useSocket() {
         state.lastTrickSummary?.revelationTargetId !== null &&
         state.lastTrickSummary !== null;
 
-      // Cas TAXE résolue (bot ou humain) : la phase passe de SPECIAL_TAXE → TRICK_END
+      // Cas TAXE rÃ©solue (bot ou humain) : la phase passe de SPECIAL_TAXE â†’ TRICK_END
       // avec taxeTargetId rempli dans le summary.
       const taxeJustResolved =
         state.phase === 'TRICK_END' &&
@@ -313,7 +313,7 @@ export function useSocket() {
           });
         }
 
-        // Étoiles Recharge (mode flux) — au moins un joueur a rechargé
+        // Ã‰toiles Recharge (mode flux) â€” au moins un joueur a rechargÃ©
         if (summary.rechargedPlayerIds.length > 0) {
           const t = getT();
           const rechargers = summary.rechargedPlayerIds
@@ -321,7 +321,7 @@ export function useSocket() {
             .join(', ');
 
           if (summary.rechargedPlayerIds.length === state.players.length) {
-            // Tout le monde a rechargé → carte défaussée
+            // Tout le monde a rechargÃ© â†’ carte dÃ©faussÃ©e
             pushEvent({
               ...base,
               kind: 'FLUX_RECHARGE_BONUS',
@@ -365,12 +365,12 @@ export function useSocket() {
           }
         }
 
-        // Étoiles bonus immédiates (cartes -1/-2)
+        // Ã‰toiles bonus immÃ©diates (cartes -1/-2)
         if (summary.bonusStarsAwarded > 0 && summary.winnerId) {
           const winner = state.players.find(p => p.id === summary.winnerId);
           pushEvent({
             ...base,
-            kind: 'SPECIAL_STEAL', // réutilisé pour les étoiles bonus
+            kind: 'SPECIAL_STEAL', // rÃ©utilisÃ© pour les Ã©toiles bonus
             playerId: summary.winnerId,
             pseudo: winner?.pseudo,
             color: winner?.color,
@@ -381,7 +381,7 @@ export function useSocket() {
         if (summary.specialEffect === 'STEAL' && summary.winnerId) {
           const thief = state.players.find(p => p.id === summary.winnerId);
           if (summary.stolenFrom) {
-            // Vol effectif : quelqu'un a été volé
+            // Vol effectif : quelqu'un a Ã©tÃ© volÃ©
             const victim = state.players.find(p => p.id === summary.stolenFrom);
             pushEvent({
               ...base,
@@ -393,14 +393,14 @@ export function useSocket() {
               message: t.history.socket.steal(thief?.pseudo ?? '?', victim?.pseudo ?? '?'),
             });
           } else {
-            // Personne à voler : effet inapplicable, mais la carte VOL est quand même dans la pile
+            // Personne Ã  voler : effet inapplicable, mais la carte VOL est quand mÃªme dans la pile
             pushEvent({
               ...base,
               kind: 'SPECIAL_STEAL',
               playerId: summary.winnerId,
               pseudo: thief?.pseudo,
               color: thief?.color,
-              message: `🦥 ${thief?.pseudo ?? '?'} remporte VOL — aucun adversaire à voler (effet sans cible)`,
+              message: t.history.socket.stealNoTarget(thief?.pseudo ?? '?'),
             });
           }
         }
@@ -440,7 +440,7 @@ export function useSocket() {
             pseudo: winner?.pseudo,
             color: winner?.color,
             targetPseudo: target?.pseudo,
-            message: `☄️ ${winner?.pseudo ?? '?'} donne ECLIPSE à ${target?.pseudo ?? '?'} (-3⭐, +1 pt)`,
+            message: t.history.socket.eclipseGives(winner?.pseudo ?? '?', target?.pseudo ?? '?'),
           });
         }
         // Effet INVERSION
@@ -452,7 +452,7 @@ export function useSocket() {
             playerId: summary.winnerId,
             pseudo: winner?.pseudo,
             color: winner?.color,
-            message: `🌀 INVERSION active — la prochaine carte Score a sa condition inversée !`,
+            message: t.history.socket.inversionActive,
           });
         }
         // Effet MYSTERE
@@ -464,17 +464,17 @@ export function useSocket() {
             playerId: summary.winnerId,
             pseudo: winner?.pseudo,
             color: winner?.color,
-            message: `🎭 MYSTÈRE — à la prochaine mène, tout le monde joue sa carte mystère !`,
+            message: t.history.socket.mystereActive,
           });
         }
-        // Effet PIOCHE — afficher qui a été ciblé et quelle carte a été piochée
-        // Si piocheTargetId est déjà rempli (humain qui vient de choisir), on logue le message complet.
-        // Si piocheTargetId est null (bot pas encore résolu), on logue un message partiel ;
-        // le message complet sera loggé via piocheJustResolved quand le bot aura choisi.
+        // Effet PIOCHE â€” afficher qui a Ã©tÃ© ciblÃ© et quelle carte a Ã©tÃ© piochÃ©e
+        // Si piocheTargetId est dÃ©jÃ  rempli (humain qui vient de choisir), on logue le message complet.
+        // Si piocheTargetId est null (bot pas encore rÃ©solu), on logue un message partiel ;
+        // le message complet sera loggÃ© via piocheJustResolved quand le bot aura choisi.
         if (summary.specialEffect === 'PIOCHE' && summary.winnerId) {
           const winner = state.players.find(p => p.id === summary.winnerId);
           if (summary.piocheTargetId) {
-            // Cible déjà connue (humain) : message complet immédiat
+            // Cible dÃ©jÃ  connue (humain) : message complet immÃ©diat
             const target = state.players.find(p => p.id === summary.piocheTargetId);
             pushEvent({
               ...base,
@@ -483,14 +483,14 @@ export function useSocket() {
               pseudo: winner?.pseudo,
               color: winner?.color,
               targetPseudo: target?.pseudo,
-              message: `🎰 ${winner?.pseudo ?? '?'} pioche le ${summary.piocheCardValue} dans la main de ${target?.pseudo ?? '?'} — ${target?.pseudo ?? '?'} devra jouer cette carte !`,
+              message: t.history.socket.piocheResult(winner?.pseudo ?? '?', summary.piocheCardValue ?? 0, target?.pseudo ?? '?'),
             });
           }
           // Si piocheTargetId est null (bot), on n'affiche rien ici :
-          // le message complet sera loggé par piocheJustResolved ci-dessous.
+          // le message complet sera loggÃ© par piocheJustResolved ci-dessous.
         }
-        // Effet REVELATION — logé via revelationJustResolved ci-dessous (même pattern que VERROU)
-        // Effet SURCHARGE — le message sera logé via la phase SPECIAL_EFFECT (avec la cible)
+        // Effet REVELATION â€” logÃ© via revelationJustResolved ci-dessous (mÃªme pattern que VERROU)
+        // Effet SURCHARGE â€” le message sera logÃ© via la phase SPECIAL_EFFECT (avec la cible)
         // Effet JACKPOT
         if (summary.specialEffect === 'JACKPOT' && summary.bonusPointsAwarded > 0 && summary.winnerId) {
           const winner = state.players.find(p => p.id === summary.winnerId);
@@ -500,7 +500,7 @@ export function useSocket() {
             playerId: summary.winnerId,
             pseudo: winner?.pseudo,
             color: winner?.color,
-            message: `💰 JACKPOT ! ${winner?.pseudo ?? '?'} gagne +${summary.bonusPointsAwarded} points bonus`,
+            message: t.history.socket.jackpotResult(winner?.pseudo ?? '?', summary.bonusPointsAwarded),
           });
         }
         // Effet CONSTELLATION
@@ -512,7 +512,7 @@ export function useSocket() {
             playerId: summary.winnerId,
             pseudo: winner?.pseudo,
             color: winner?.color,
-            message: `🌟 CONSTELLATION ! ${winner?.pseudo ?? '?'} gagne +${summary.bonusStarsAwarded}⭐`,
+            message: t.history.socket.constellationResult(winner?.pseudo ?? '?', summary.bonusStarsAwarded),
           });
         }
         // Effet DEVOILEMENT (auto)
@@ -524,7 +524,7 @@ export function useSocket() {
             playerId: summary.winnerId,
             pseudo: winner?.pseudo,
             color: winner?.color,
-            message: `📢 DÉVOILEMENT — les 3 prochaines cartes Score sont révélées à tous !`,
+            message: t.history.socket.devoilementActive,
           });
         }
         // Effet ORACLE (auto)
@@ -536,15 +536,16 @@ export function useSocket() {
             playerId: summary.winnerId,
             pseudo: winner?.pseudo,
             color: winner?.color,
-            message: `👁️ ${winner?.pseudo ?? '?'} consulte secrètement les 3 prochaines cartes Score`,
+            message: t.history.socket.oracleResult(winner?.pseudo ?? '?'),
           });
         }
       }
 
-      // --- PIOCHE résolue par un bot : logger le message complet avec la cible ---
-      // Déclenché quand la phase passe de SPECIAL_PIOCHE → TRICK_END avec piocheTargetId rempli.
+      // --- PIOCHE rÃ©solue par un bot : logger le message complet avec la cible ---
+      // DÃ©clenchÃ© quand la phase passe de SPECIAL_PIOCHE â†’ TRICK_END avec piocheTargetId rempli.
       if (piocheJustResolved && state.lastTrickSummary) {
         const summary = state.lastTrickSummary;
+        const tPioche = getT();
         const winner = state.players.find(p => p.id === summary.winnerId);
         const target = state.players.find(p => p.id === summary.piocheTargetId);
         pushEvent({
@@ -554,14 +555,15 @@ export function useSocket() {
           pseudo: winner?.pseudo,
           color: winner?.color,
           targetPseudo: target?.pseudo,
-          message: `🎰 ${winner?.pseudo ?? '?'} pioche le ${summary.piocheCardValue} dans la main de ${target?.pseudo ?? '?'} — ${target?.pseudo ?? '?'} devra jouer cette carte !`,
+          message: tPioche.history.socket.piocheResult(winner?.pseudo ?? '?', summary.piocheCardValue ?? 0, target?.pseudo ?? '?'),
         });
       }
 
-      // --- SURCHARGE résolue (bot ou humain) : logger le message complet avec la cible ---
-      // Déclenché quand la phase passe de SPECIAL_EFFECT → TRICK_END avec surchargeTargetId rempli.
+      // --- SURCHARGE rÃ©solue (bot ou humain) : logger le message complet avec la cible ---
+      // DÃ©clenchÃ© quand la phase passe de SPECIAL_EFFECT â†’ TRICK_END avec surchargeTargetId rempli.
       if (surchargeJustResolved && state.lastTrickSummary) {
         const summary = state.lastTrickSummary as any;
+        const tSurcharge = getT();
         const winner = state.players.find(p => p.id === summary.winnerId);
         const target = state.players.find(p => p.id === summary.surchargeTargetId);
         pushEvent({
@@ -571,18 +573,18 @@ export function useSocket() {
           pseudo: winner?.pseudo,
           color: winner?.color,
           targetPseudo: target?.pseudo,
-          message: `⚡ ${winner?.pseudo ?? '?'} force ${target?.pseudo ?? '?'} à Recharger à la prochaine mène !`,
+          message: tSurcharge.history.socket.surchargeResult(winner?.pseudo ?? '?', target?.pseudo ?? '?'),
         });
       }
 
-      // --- VERROU résolu (bot ou humain) : logger le message complet avec la cible ---
-      // Déclenché quand la phase passe de SPECIAL_VERROU → TRICK_END avec verrouTargetId rempli.
+      // --- VERROU rÃ©solu (bot ou humain) : logger le message complet avec la cible ---
+      // DÃ©clenchÃ© quand la phase passe de SPECIAL_VERROU â†’ TRICK_END avec verrouTargetId rempli.
       if (verrouJustResolved && state.lastTrickSummary) {
         const summary = state.lastTrickSummary as any;
+        const tVerrou = getT();
         const winner = state.players.find(p => p.id === summary.winnerId);
         const target = state.players.find(p => p.id === summary.verrouTargetId);
-        // Déterminer le type de verrou selon la prochaine carte Score
-        const lockType = summary.scoreCard?.gain === '-' ? 'sa carte la plus basse' : 'sa carte la plus haute';
+        const lockType = summary.scoreCard?.gain === '-' ? tVerrou.history.socket.verrouLockLow : tVerrou.history.socket.verrouLockHigh;
         pushEvent({
           ...base,
           kind: 'SPECIAL_VERROU',
@@ -590,13 +592,14 @@ export function useSocket() {
           pseudo: winner?.pseudo,
           color: winner?.color,
           targetPseudo: target?.pseudo,
-          message: `🔒 ${winner?.pseudo ?? '?'} verrouille ${target?.pseudo ?? '?'} — devra jouer ${lockType} à la prochaine mène !`,
+          message: tVerrou.history.socket.verrouResult(winner?.pseudo ?? '?', target?.pseudo ?? '?', lockType),
         });
       }
 
-      // --- TAXE résolue (bot ou humain) : logger le message complet avec la cible ---
+      // --- TAXE rÃ©solue (bot ou humain) : logger le message complet avec la cible ---
       if (taxeJustResolved && state.lastTrickSummary) {
         const summary = state.lastTrickSummary as any;
+        const tTaxe = getT();
         const winner = state.players.find(p => p.id === summary.winnerId);
         const target = state.players.find(p => p.id === summary.taxeTargetId);
         pushEvent({
@@ -606,14 +609,15 @@ export function useSocket() {
           pseudo: winner?.pseudo,
           color: winner?.color,
           targetPseudo: target?.pseudo,
-          message: `🧹 ${winner?.pseudo ?? '?'} taxe ${target?.pseudo ?? '?'} — lui vole 2 points bonus !`,
+          message: tTaxe.history.socket.taxeResult(winner?.pseudo ?? '?', target?.pseudo ?? '?'),
         });
       }
 
-      // --- REVELATION résolue (bot ou humain) : logger le message complet avec la cible ---
-      // Déclenché quand la phase passe de SPECIAL_REVELATION → TRICK_END avec revelationTargetId rempli.
+      // --- REVELATION rÃ©solue (bot ou humain) : logger le message complet avec la cible ---
+      // DÃ©clenchÃ© quand la phase passe de SPECIAL_REVELATION â†’ TRICK_END avec revelationTargetId rempli.
       if (revelationJustResolved && state.lastTrickSummary) {
         const summary = state.lastTrickSummary;
+        const tRevelation = getT();
         const winner = state.players.find(p => p.id === summary.winnerId);
         const target = state.players.find(p => p.id === summary.revelationTargetId);
         pushEvent({
@@ -623,11 +627,11 @@ export function useSocket() {
           pseudo: winner?.pseudo,
           color: winner?.color,
           targetPseudo: target?.pseudo,
-          message: `🕵️ ${winner?.pseudo ?? '?'} révèle la carte mystère de ${target?.pseudo ?? '?'} : c’est le ${summary.revelationCardValue ?? '?'} !`,
+          message: tRevelation.history.socket.revelationResult(winner?.pseudo ?? '?', target?.pseudo ?? '?', summary.revelationCardValue ?? '?'),
         });
       }
 
-      // --- Demande d'effets spéciaux (annonce dans le journal quand une phase d'attente commence) ---
+      // --- Demande d'effets spÃ©ciaux (annonce dans le journal quand une phase d'attente commence) ---
       const specialWaitPhases = ['SPECIAL_EFFECT', 'SPECIAL_ECLIPSE', 'SPECIAL_PIOCHE', 'SPECIAL_VERROU', 'SPECIAL_REVELATION', 'SPECIAL_TAXE'];
       if (specialWaitPhases.includes(state.phase) && !specialWaitPhases.includes(lastPhase)) {
         const t2 = getT();
@@ -647,59 +651,59 @@ export function useSocket() {
           const actor = state.players.find(p => p.id === state.eclipseRequestPlayerId);
           pushEvent({
             ...base, kind: 'SPECIAL_ECLIPSE', playerId: state.eclipseRequestPlayerId, pseudo: actor?.pseudo, color: actor?.color,
-            message: `☄️ ${actor?.pseudo ?? '?'} choisit à qui donner ECLIPSE...`
+            message: t2.history.socket.eclipseChoosing(actor?.pseudo ?? '?')
           });
         } else if (state.piocheRequestPlayerId) {
-          // Ce message n'est affiché que pour un joueur humain en attente de choix.
-          // Pour un bot, la résolution est immédiate : le message complet sera loggé
-          // via piocheJustResolved quand SPECIAL_PIOCHE → TRICK_END avec la cible remplie.
-          // On vérifie donc que l'acteur n'est PAS un bot (piocheEligibleTargets non vide = humain en attente).
+          // Ce message n'est affichÃ© que pour un joueur humain en attente de choix.
+          // Pour un bot, la rÃ©solution est immÃ©diate : le message complet sera loggÃ©
+          // via piocheJustResolved quand SPECIAL_PIOCHE â†’ TRICK_END avec la cible remplie.
+          // On vÃ©rifie donc que l'acteur n'est PAS un bot (piocheEligibleTargets non vide = humain en attente).
           const actor = state.players.find(p => p.id === state.piocheRequestPlayerId);
           // Afficher uniquement si la phase vient de changer (transition vers SPECIAL_PIOCHE)
           pushEvent({
             ...base, kind: 'SPECIAL_PIOCHE', playerId: state.piocheRequestPlayerId, pseudo: actor?.pseudo, color: actor?.color,
-            message: `🎰 ${actor?.pseudo ?? '?'} choisit une carte à piocher dans la main d'un adversaire…`
+            message: t2.history.socket.piocheChoosing(actor?.pseudo ?? '?')
           });
         } else if (state.verrouRequestPlayerId) {
           // Message d'attente pour l'humain pendant qu'il choisit sa cible.
-          // Le message complet (avec la cible) sera loggé via verrouJustResolved.
-          // Pour un bot : la résolution est immédiate, verrouJustResolved gère tout.
+          // Le message complet (avec la cible) sera loggÃ© via verrouJustResolved.
+          // Pour un bot : la rÃ©solution est immÃ©diate, verrouJustResolved gÃ¨re tout.
           const actor = state.players.find(p => p.id === state.verrouRequestPlayerId);
           pushEvent({
             ...base, kind: 'SPECIAL_VERROU', playerId: state.verrouRequestPlayerId, pseudo: actor?.pseudo, color: actor?.color,
-            message: `🔒 ${actor?.pseudo ?? '?'} désigne un adversaire à verrouiller…`
+            message: t2.history.socket.verrouChoosing(actor?.pseudo ?? '?')
           });
         } else if (state.revelationRequestPlayerId) {
           const actor = state.players.find(p => p.id === state.revelationRequestPlayerId);
           pushEvent({
             ...base, kind: 'SPECIAL_REVELATION', playerId: state.revelationRequestPlayerId, pseudo: actor?.pseudo, color: actor?.color,
-            message: `🕵️ ${actor?.pseudo ?? '?'} choisit une carte mystère à révéler...`
+            message: t2.history.socket.revelationChoosing(actor?.pseudo ?? '?')
           });
         } else if ((state as any).surchargeRequestPlayerId) {
           // Pour un humain : afficher un message d'attente pendant qu'il choisit sa cible.
-          // Le message complet (avec la cible) sera loggé via surchargeJustResolved.
-          // Pour un bot : la résolution est immédiate, surchargeJustResolved gère tout.
+          // Le message complet (avec la cible) sera loggÃ© via surchargeJustResolved.
+          // Pour un bot : la rÃ©solution est immÃ©diate, surchargeJustResolved gÃ¨re tout.
           const actor = state.players.find(p => p.id === (state as any).surchargeRequestPlayerId);
           pushEvent({
             ...base, kind: 'SPECIAL_SURCHARGE', playerId: (state as any).surchargeRequestPlayerId, pseudo: actor?.pseudo, color: actor?.color,
-            message: `⚡ ${actor?.pseudo ?? '?'} choisit qui forcer à Recharger…`
+            message: t2.history.socket.surchargeChoosing(actor?.pseudo ?? '?')
           });
         } else if (state.taxeRequestPlayerId) {
-          // Message d'attente pour l'humain. Le message complet (avec la cible) sera loggé via taxeJustResolved.
+          // Message d'attente pour l'humain. Le message complet (avec la cible) sera loggÃ© via taxeJustResolved.
           const actor = state.players.find(p => p.id === state.taxeRequestPlayerId);
           pushEvent({
             ...base, kind: 'SPECIAL_TAXE', playerId: state.taxeRequestPlayerId, pseudo: actor?.pseudo, color: actor?.color,
-            message: `🧹 ${actor?.pseudo ?? '?'} choisit qui taxer…`
+            message: t2.history.socket.taxeChoosing(actor?.pseudo ?? '?')
           });
         }
       }
 
-      // --- Fin de manche (bonus étoile + points de victoire) ---
+      // --- Fin de manche (bonus Ã©toile + points de victoire) ---
       if (state.phase === 'BONUS_STAR' && lastPhase !== 'BONUS_STAR' && state.roundEndSummary) {
         const t3 = getT();
         const bonusIds = new Set(state.roundEndSummary.bonusStarWinners);
 
-        // Événement 1 : dernières cartes + bonus étoile
+        // Ã‰vÃ©nement 1 : derniÃ¨res cartes + bonus Ã©toile
         const allLastCards = Object.entries(state.roundEndSummary.lastCards).map(([id, cardValue]) => {
           const p = state.players.find(pl => pl.id === id)!;
           return { pseudo: p.pseudo, color: p.color, cardValue, hasBonus: bonusIds.has(id) };
@@ -713,7 +717,7 @@ export function useSocket() {
             : t3.history.socket.noBonusStar,
         });
 
-        // Événement 2 : points de victoire attribués cette manche
+        // Ã‰vÃ©nement 2 : points de victoire attribuÃ©s cette manche
         const summary = state.roundEndSummary;
         const starsWinner = summary.starsVPWinner
           ? state.players.find(p => p.id === summary.starsVPWinner)?.pseudo ?? '?'
@@ -724,12 +728,12 @@ export function useSocket() {
         const bonusWinner = summary.bonusVPWinner
           ? state.players.find(p => p.id === summary.bonusVPWinner)?.pseudo ?? '?'
           : null;
-
-        const vpLines = [
-          `⭐ Course aux étoiles : ${starsWinner ?? 'Annulé (ex-æquo)'}`,
-          `🃏 Points cartes : ${cardsWinner ?? 'Annulé (ex-æquo)'}`,
-          `🪙 Points bonus : ${bonusWinner ?? 'Annulé (ex-æquo)'}`,
-        ].join(' | ');
+        const cancelled = t3.history.socket.vpCancelled;
+        const vpLines = t3.history.socket.vpRoundSummary(
+          starsWinner ?? cancelled,
+          cardsWinner ?? cancelled,
+          bonusWinner ?? cancelled,
+        );
 
         // Classement PV
         const vpRanking = state.players
@@ -750,7 +754,7 @@ export function useSocket() {
             bonusPoints: summary.bonusPointsMap?.[p.id] ?? 0,
             total: summary.victoryPoints[p.id] ?? 0,
           })),
-          message: `🏆 PV cette manche — ${vpLines}`,
+          message: t3.history.socket.vpRoundMessage(vpLines),
         });
       }
 
@@ -800,7 +804,7 @@ export function useSocket() {
       const scoreGain = state.currentScoreCard?.gain;
       const yumiLabel = (val: number): string => {
         if (val !== YUMI_CARD_VALUE) return String(val);
-        // gain '+' (grande gagne) → YUMI vaut 9 | gain '-' (petite gagne) → YUMI vaut 0
+        // gain '+' (grande gagne) â†’ YUMI vaut 9 | gain '-' (petite gagne) â†’ YUMI vaut 0
         const effective = scoreGain === '-' ? 0 : YUMI_CARD_VALUE;
         return `YUMI(=${effective})`;
       };
@@ -816,8 +820,8 @@ export function useSocket() {
         };
       });
       const lines = allCards
-        .map(c => `${c.pseudo} : ${yumiLabel(c.value)}${c.cancelled ? ' (annulé)' : ''}`)
-        .join(' • ');
+        .map(c => `${c.pseudo} : ${yumiLabel(c.value)}${c.cancelled ? ' (annulÃ©)' : ''}`)
+        .join(' â€¢ ');
       pushEvent({
         timestamp: Date.now(),
         round: state.currentRound,
@@ -828,7 +832,7 @@ export function useSocket() {
       });
     });
 
-    // Cartes ORACLE : reçues uniquement par le gagnant
+    // Cartes ORACLE : reÃ§ues uniquement par le gagnant
     s.on('oracle_info', ({ cards }) => {
       setOracleCards(cards);
     });
@@ -838,7 +842,7 @@ export function useSocket() {
     });
 
     return () => {
-      // Ne pas déconnecter ici pour garder la connexion entre les pages
+      // Ne pas dÃ©connecter ici pour garder la connexion entre les pages
     };
   }, []);
 
