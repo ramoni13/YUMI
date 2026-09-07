@@ -21,7 +21,7 @@ export function FluxBoard() {
     setSelectedCard(null);
   }, [gameState?.currentTrick]);
 
-  if (!gameState) return <div className={styles.loading}>Chargement…</div>;
+  if (!gameState) return <div className={styles.loading}>{t.fluxBoard.loading}</div>;
 
   const myPlayer = gameState.players.find(p => p.id === playerId);
   const opponents = gameState.players.filter(p => p.id !== playerId);
@@ -108,7 +108,6 @@ export function FluxBoard() {
     });
   };
 
-  // ORACLE : le joueur a vu les cartes, il clique OK pour continuer
   const handleOracleOk = () => {
     setOracleCards(null);
     getSocket().emit('oracle_ok');
@@ -134,45 +133,45 @@ export function FluxBoard() {
       <div className={styles.boardWrapper}>
         <div className={styles.board}>
           <div className={styles.roundEndOverlay}>
-            <h2 className={styles.roundEndTitle}>🏁 Fin de manche</h2>
+            <h2 className={styles.roundEndTitle}>{t.fluxBoard.roundEndTitle}</h2>
 
             {/* 3 catégories */}
             <div className={styles.vpCategories}>
               <div className={styles.vpCatRow}>
                 <span className={styles.vpCatIcon}>⭐</span>
-                <span className={styles.vpCatName}>Course aux étoiles</span>
+                <span className={styles.vpCatName}>{t.fluxBoard.vpCatStars}</span>
                 <span className={styles.vpCatWinner}>
                   {summary.starsVPWinner
                     ? gameState.players.find(p => p.id === summary.starsVPWinner)?.pseudo
-                    : <em>Annulé (ex-æquo)</em>}
+                    : <em>{t.fluxBoard.vpCancelled}</em>}
                 </span>
-                {summary.starsVPWinner && <span className={styles.vpBadge}>+1 PV</span>}
+                {summary.starsVPWinner && <span className={styles.vpBadge}>{t.common.vpGain}</span>}
               </div>
               <div className={styles.vpCatRow}>
                 <span className={styles.vpCatIcon}>🃏</span>
-                <span className={styles.vpCatName}>Points des cartes</span>
+                <span className={styles.vpCatName}>{t.fluxBoard.vpCatCards}</span>
                 <span className={styles.vpCatWinner}>
                   {summary.cardScoreVPWinner
                     ? gameState.players.find(p => p.id === summary.cardScoreVPWinner)?.pseudo
-                    : <em>Annulé (ex-æquo)</em>}
+                    : <em>{t.fluxBoard.vpCancelled}</em>}
                 </span>
-                {summary.cardScoreVPWinner && <span className={styles.vpBadge}>+1 PV</span>}
+                {summary.cardScoreVPWinner && <span className={styles.vpBadge}>{t.common.vpGain}</span>}
               </div>
               <div className={styles.vpCatRow}>
                 <span className={styles.vpCatIcon}>🪙</span>
-                <span className={styles.vpCatName}>Points bonus</span>
+                <span className={styles.vpCatName}>{t.fluxBoard.vpCatBonus}</span>
                 <span className={styles.vpCatWinner}>
                   {summary.bonusVPWinner
                     ? gameState.players.find(p => p.id === summary.bonusVPWinner)?.pseudo
-                    : <em>Annulé (ex-æquo)</em>}
+                    : <em>{t.fluxBoard.vpCancelled}</em>}
                 </span>
-                {summary.bonusVPWinner && <span className={styles.vpBadge}>+1 PV</span>}
+                {summary.bonusVPWinner && <span className={styles.vpBadge}>{t.common.vpGain}</span>}
               </div>
             </div>
 
             {/* Classement PV */}
             <div className={styles.vpRanking}>
-              <div className={styles.vpRankTitle}>Points de victoire</div>
+              <div className={styles.vpRankTitle}>{t.fluxBoard.vpRankTitle}</div>
               {gameState.players
                 .slice()
                 .sort((a, b) => (summary.victoryPoints[b.id] ?? 0) - (summary.victoryPoints[a.id] ?? 0))
@@ -184,7 +183,7 @@ export function FluxBoard() {
                         <span key={i} className={i < (summary.victoryPoints[p.id] ?? 0) ? styles.vpFilled : styles.vpEmpty}>★</span>
                       ))}
                     </span>
-                    <span className={styles.vpRankCount}>{summary.victoryPoints[p.id] ?? 0} PV</span>
+                                          <span className={styles.vpRankCount}>{t.common.vpCount(summary.victoryPoints[p.id] ?? 0)}</span>
                     <span className={styles.vpRankDetail}>
                       🃏 {summary.scores[p.id] ?? 0} &nbsp;
                       🪙 {summary.bonusPointsMap?.[p.id] ?? 0} &nbsp;
@@ -195,7 +194,7 @@ export function FluxBoard() {
             </div>
 
             <button className={styles.nextRoundBtn} onClick={handleNextRound}>
-              Manche suivante →
+              {t.fluxBoard.nextRoundBtn}
             </button>
           </div>
         </div>
@@ -211,7 +210,7 @@ export function FluxBoard() {
         {/* Header enrichi */}
         <div className={styles.header}>
           <div className={styles.trickInfo}>
-            Mène {gameState.currentTrick}
+            {t.fluxBoard.trickLabel(gameState.currentTrick)}
           </div>
 
           {/* Stats du joueur local au centre */}
@@ -239,7 +238,7 @@ export function FluxBoard() {
                       handleSwapTarget(playerId ?? '');
                     }
                   }}
-                  title="Ma dernière carte Score"
+                  title={t.fluxBoard.scoreCardLabel}
                 >
                   <ScoreCardDisplay card={myPlayer.topScoreCard} size="sm" />
                 </div>
@@ -248,21 +247,21 @@ export function FluxBoard() {
                 <div
                   className={`${styles.headerMysteryCard} ${mustPlayMystery && !hasPlayed ? styles.mysteryCardPlayable : ''}`}
                   onClick={mustPlayMystery && !hasPlayed ? handlePlayMystery : undefined}
-                  title={mustPlayMystery ? 'Cliquer pour jouer votre carte mystère' : 'Votre carte mystère'}
+                  title={mustPlayMystery ? t.fluxBoard.mysteryCardPlayTitle : t.fluxBoard.mysteryCardTitle}
                 >
                   <span className={styles.headerMysteryLabel}>🔒</span>
                   {myMysteryCard === YUMI_CARD_VALUE
                     ? <span className={`${styles.headerMysteryVal} ${styles.yumiMysteryVal}`}>Y</span>
                     : <span className={styles.headerMysteryVal}>{myMysteryCard}</span>
                   }
-                  {mustPlayMystery && !hasPlayed && <span className={styles.headerMysteryHint}>jouer</span>}
+                  {mustPlayMystery && !hasPlayed && <span className={styles.headerMysteryHint}>{t.fluxBoard.mysteryCardPlay}</span>}
                 </div>
               )}
             </div>
           )}
 
           <div className={styles.deckCount}>
-            🃏 {gameState.scoreDeckCount} restantes
+            {t.fluxBoard.deckRemaining(gameState.scoreDeckCount)}
           </div>
         </div>
 
@@ -299,7 +298,7 @@ export function FluxBoard() {
           {gameState.currentScoreCard && (
             <div className={styles.activeCardRow}>
               <div className={styles.activeCard}>
-                <div className={styles.activeLabel}>Carte Score</div>
+                <div className={styles.activeLabel}>{t.fluxBoard.scoreCardLabel}</div>
                 <ScoreCardDisplay
                   card={gameState.currentScoreCard}
                   size="lg"
@@ -329,7 +328,7 @@ export function FluxBoard() {
                   <div key={p.id} className={styles.playedCardSlot}>
                     <span className={styles.playerLabel}>{p.pseudo}</span>
                     {isRecharge ? (
-                      <div className={styles.rechargeSlot}>🔄 Recharge</div>
+                      <div className={styles.rechargeSlot}>{t.fluxBoard.rechargeSlot}</div>
                     ) : value !== undefined ? (
                       <PlayerCard
                         value={value}
@@ -343,7 +342,7 @@ export function FluxBoard() {
                     {gotStar && <span className={styles.starBadge}>⭐</span>}
                     {didRecharge && privateInfo?.mysteryCard !== undefined && p.id === playerId && (
                       <span className={styles.mysteryBadge}>
-                        Carte mystère :
+                        {t.fluxBoard.mysteryCardLabel}
                         {privateInfo.mysteryCard === YUMI_CARD_VALUE
                           ? <span className={styles.yumiMysteryVal}> Y</span>
                           : ` ${privateInfo.mysteryCard}`
@@ -360,18 +359,20 @@ export function FluxBoard() {
           {gameState.lastTrickSummary && phase === 'TRICK_END' && (
             <div className={styles.trickSummary}>
               {gameState.lastTrickSummary.discarded ? (
-                <span>Carte défaussée — tout le monde a rechargé</span>
+                <span>{t.fluxBoard.trickDiscarded}</span>
               ) : gameState.trickWinnerId ? (
                 <span>
-                  {gameState.players.find(p => p.id === gameState.trickWinnerId)?.pseudo} remporte la carte !
+                  {t.fluxBoard.trickWinner(gameState.players.find(p => p.id === gameState.trickWinnerId)?.pseudo ?? '?')}
                 </span>
               ) : null}
                             {(gameState.bonusPointWinners ?? []).length > 0 && (
                 <div className={styles.starInfo}>
-                  🪙×{gameState.lastTrickSummary?.bonusPointCount ?? 1} Recharge —
-                  {(gameState.bonusPointWinners ?? [])
-                    .map((id: string) => gameState.players.find(p => p.id === id)?.pseudo)
-                    .join(', ')}
+                  {t.fluxBoard.bonusPointInfo(
+                    gameState.lastTrickSummary?.bonusPointCount ?? 1,
+                    (gameState.bonusPointWinners ?? [])
+                      .map((id: string) => gameState.players.find(p => p.id === id)?.pseudo)
+                      .join(', ')
+                  )}
                 </div>
               )}
             </div>
@@ -381,12 +382,12 @@ export function FluxBoard() {
           {gameState.revealedUpcoming && gameState.revealedUpcoming.length > 0 && (
             <div className={styles.revealedUpcoming}>
               <div className={styles.revealedUpcomingLabel}>
-                📢 Prochaines cartes Score révélées :
+                {t.fluxBoard.revealedUpcomingLabel}
               </div>
               <div className={styles.revealedUpcomingCards}>
                 {gameState.revealedUpcoming.map((card, i) => (
                   <div key={i} className={styles.revealedUpcomingSlot}>
-                    <span className={styles.revealedUpcomingNum}>#{i + 1}</span>
+                    <span className={styles.revealedUpcomingNum}>{t.fluxBoard.revealedUpcomingNum(i + 1)}</span>
                     <ScoreCardDisplay card={card} size="sm" />
                   </div>
                 ))}
@@ -396,16 +397,16 @@ export function FluxBoard() {
 
           {/* STEAL */}
           {isStealPhase && (
-            <div className={styles.actionPrompt}>🦅 Choisissez un adversaire à voler</div>
+            <div className={styles.actionPrompt}>{t.fluxBoard.stealPrompt}</div>
           )}
 
           {/* SWAP */}
           {isSwapPhase && !gameState.swapChosenA && (
-            <div className={styles.actionPrompt}>⇄ Choisissez le premier joueur à échanger</div>
+            <div className={styles.actionPrompt}>{t.fluxBoard.swapPrompt1}</div>
           )}
           {isSwapPhase && gameState.swapChosenA && (
             <div className={styles.actionPrompt}>
-              ⇄ Choisissez le second joueur (A = {gameState.players.find(p => p.id === gameState.swapChosenA)?.pseudo})
+              {t.fluxBoard.swapPrompt2(gameState.players.find(p => p.id === gameState.swapChosenA)?.pseudo ?? '?')}
             </div>
           )}
         </div>
@@ -418,7 +419,7 @@ export function FluxBoard() {
             <div className={styles.myInfoRow}>
               {myPlayer.playedHistory && myPlayer.playedHistory.length > 0 && (
                 <div className={styles.playedHistoryZone}>
-                  <span className={styles.playedHistoryLabel}>Déjà jouées :</span>
+                  <span className={styles.playedHistoryLabel}>{t.fluxBoard.alreadyPlayed}</span>
                   <div className={styles.playedHistoryCards}>
                     {myPlayer.playedHistory.map((v: number, i: number) => (
                       <span key={i} className={styles.playedHistoryCard}>{v}</span>
@@ -431,12 +432,12 @@ export function FluxBoard() {
             {/* Info carte YUMI si présente en main */}
             {hand.includes(YUMI_CARD_VALUE) && (
               <div className={styles.yumiHint}>
-                ✨ <strong>YUMI</strong> — vaut la + grande ou + petite valeur selon la carte Score. Usage unique, non récupérable.
+                {t.fluxBoard.yumiHint}
               </div>
             )}
 
             {/* Cartes valeur */}
-            <div className={styles.handLabel}>Ma main</div>
+            <div className={styles.handLabel}>{t.fluxBoard.handLabel}</div>
             <div className={styles.cards}>
               {hand.map(value => (
                 <PlayerCard
@@ -454,16 +455,16 @@ export function FluxBoard() {
             <div className={styles.actionRow}>
               {selectedCard !== null && !hasPlayed && canPlay && (
                 <button className={styles.playBtn} onClick={handlePlay}>
-                  {selectedCard === YUMI_CARD_VALUE ? 'Jouer YUMI ✨' : `Jouer le ${selectedCard}`}
+                  {selectedCard === YUMI_CARD_VALUE ? t.fluxBoard.playYumi : t.fluxBoard.playValue(selectedCard!)}
                 </button>
               )}
               {canPlay && !hasPlayed && (
                 <button className={styles.rechargeBtn} onClick={handleRecharge}>
-                  🔄 Recharge
+                  {t.fluxBoard.rechargeBtn}
                 </button>
               )}
               {hasPlayed && (
-                <div className={styles.waitingMsg}>En attente des autres joueurs…</div>
+                <div className={styles.waitingMsg}>{t.fluxBoard.waitingMsg}</div>
               )}
             </div>
           </div>
@@ -480,8 +481,8 @@ export function FluxBoard() {
             <div className={styles.oracleHeader}>
               <span className={styles.oracleIcon}>👁️</span>
               <div className={styles.oracleTitleBlock}>
-                <span className={styles.oracleTitle}>Oracle</span>
-                <span className={styles.oracleSubtitle}>Vision secrète — vous seul voyez ces cartes</span>
+                                  <span className={styles.oracleTitle}>{t.fluxBoard.oracleTitle}</span>
+                  <span className={styles.oracleSubtitle}>{t.fluxBoard.oracleSubtitle}</span>
               </div>
             </div>
 
@@ -499,11 +500,11 @@ export function FluxBoard() {
             </div>
 
             <p className={styles.oracleWarning}>
-              Ces informations sont confidentielles. Les autres joueurs ne les voient pas.
+              {t.fluxBoard.oracleWarning}
             </p>
 
             <button className={styles.oracleOkBtn} onClick={handleOracleOk}>
-              J’ai mémorisé — Continuer
+              {t.fluxBoard.oracleOkBtn}
             </button>
           </div>
         </div>
