@@ -72,7 +72,7 @@ export function MyHand({ hand, color, playedHistory = [] }: MyHandProps) {
       {/* Cartes déjà jouées lors des mènes précédentes */}
       {playedHistory.length > 0 && (
         <div className={styles.playedHistory}>
-          <span className={styles.playedHistoryLabel}>Déjà jouées :</span>
+          <span className={styles.playedHistoryLabel}>{t.hand.alreadyPlayed}</span>
           <div className={styles.playedHistoryCards}>
             {playedHistory.map((v, i) => (
               <span key={i} className={`${styles.playedHistoryCard} ${styles.playedHistoryCardMine}`}>{v}</span>
