@@ -82,13 +82,13 @@ export function OpponentPanel({
       </div>
 
       <div className={styles.opponentStats}>
-        <span className={styles.victoryPoints} title="Points de victoire">
+        <span className={styles.victoryPoints} title={t.opponent.titleVP}>
           {Array.from({ length: 3 }, (_, i) => (
             <span key={i} style={{ color: i < player.victoryPoints ? '#fbbf24' : 'rgba(255,255,255,0.15)', fontSize: '0.75rem' }}>★</span>
           ))}
         </span>
-        <span className={styles.stars} title="Étoiles totales">⭐ {player.stars}</span>
-        {player.bonusPoints > 0 && <span className={styles.bonus} title="Points bonus">🪙 {player.bonusPoints}</span>}
+        <span className={styles.stars} title={t.opponent.titleStars}>⭐ {player.stars}</span>
+        {player.bonusPoints > 0 && <span className={styles.bonus} title={t.opponent.titleBonus}>🪙 {player.bonusPoints}</span>}
         <span className={styles.handCount}>🃏 {player.handCount}</span>
         {player.hasPlayedCard && <span className={styles.played}>✓</span>}
       </div>
@@ -108,7 +108,7 @@ export function OpponentPanel({
           La carte de la mène en cours est masquée jusqu'à la révélation. */}
       {visibleHistory && visibleHistory.length > 0 && (
         <div className={styles.playedHistory}>
-          <span className={styles.playedHistoryLabel}>Jouées :</span>
+          <span className={styles.playedHistoryLabel}>{t.opponent.playedLabel}</span>
           <div className={styles.playedHistoryCards}>
             {visibleHistory.map((v, i) => (
               <span key={i} className={styles.playedHistoryCard}>{v}</span>
@@ -119,11 +119,11 @@ export function OpponentPanel({
 
       {isSwapTarget && <div className={styles.swapOverlay}>{t.opponent.swapOverlay}</div>}
       {isStealTarget && <div className={styles.stealOverlay}>{t.opponent.stealOverlay}</div>}
-      {isEclipseTarget && <div className={styles.specialOverlay}>☄️ Donner ECLIPSE</div>}
-      {isPiocheTarget && <div className={styles.specialOverlay}>🎰 Piocher une carte</div>}
-      {isVerrouTarget && <div className={styles.specialOverlay}>🔒 Verrouiller</div>}
-      {isRevelationTarget && <div className={styles.specialOverlay}>🕵️ Révéler</div>}
-      {isTaxeTarget && <div className={styles.specialOverlay}>🧹 Taxer</div>}
+      {isEclipseTarget && <div className={styles.specialOverlay}>{t.opponent.eclipseOverlay}</div>}
+      {isPiocheTarget && <div className={styles.specialOverlay}>{t.opponent.piocheOverlay}</div>}
+      {isVerrouTarget && <div className={styles.specialOverlay}>{t.opponent.verrouOverlay}</div>}
+      {isRevelationTarget && <div className={styles.specialOverlay}>{t.opponent.revelationOverlay}</div>}
+      {isTaxeTarget && <div className={styles.specialOverlay}>{t.opponent.taxeOverlay}</div>}
     </div>
   );
 }
