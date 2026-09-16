@@ -26,8 +26,10 @@ import {
 import { resolveTrick } from './resolver';
 import {
   applyDouble,
+  applyInversion,
   applySwap,
   canApplyDouble,
+  canApplyInversion,
   computeBonusStars,
   computeFinalScores,
   computeRoundVictoryPoints,
@@ -292,12 +294,15 @@ export function resolveTrickPhase(
     }
 
     if (scoreCard.specialEffect === 'DOUBLE') {
-      // La carte ×2 est défaussée (ne va pas dans la pile)
-      // On applique le doublement sur la dernière carte numérique de la pile
+      // Ajouter la X2 dans la pile, puis doubler l'avant-dernière carte
+      winner.scorePile.push({ ...scoreCard });
       if (canApplyDouble(winner.scorePile)) {
-        winner.scorePile = applyDouble(winner.scorePile);
+        const { newPile, extraStars } = applyDouble(winner.scorePile);
+        winner.scorePile = newPile;
+        // Créditer les étoiles supplémentaires (déjà créditées une fois au gain)
+        if (extraStars > 0) winner.stars += extraStars;
+        if (state.lastTrickSummary) state.lastTrickSummary.doubleAppliedTo = result.winnerId;
       }
-      winner.scorePile.push({ ...scoreCard }); // la carte X2 reste dans la pile
       state.phase = 'TRICK_END';
 
     } else if (scoreCard.specialEffect === 'STEAL') {
@@ -327,8 +332,17 @@ export function resolveTrickPhase(
         state.phase = 'TRICK_END'; // Pas assez de joueurs avec des cartes, mais la carte est dans la pile
       }
 
+    } else if (scoreCard.specialEffect === 'INVERSION') {
+      // INVERSION : ajouter la carte dans la pile, puis négater la value de l'avant-dernière
+      winner.scorePile.push({ ...scoreCard });
+      if (canApplyInversion(winner.scorePile)) {
+        winner.scorePile = applyInversion(winner.scorePile);
+        if (state.lastTrickSummary) state.lastTrickSummary.inversionApplied = true;
+      }
+      state.phase = 'TRICK_END';
+
     } else {
-      // Carte numérique normale : va dans la pile
+      // Carte numérique normale ou autre spéciale : va dans la pile
       winner.scorePile.push({ ...scoreCard });
       state.phase = 'TRICK_END';
     }
@@ -366,8 +380,16 @@ export function resolveSteal(
   const stolenCard = victim.scorePile[victim.scorePile.length - 1];
   victim.scorePile = victim.scorePile.slice(0, -1);
   thief.scorePile.push({ ...stolenCard });
-  // Note : la carte VOL elle-même a déjà été ajoutée à la pile du gagnant
-  // dans resolveTrickPhase (avant l'appel à resolveSteal).
+
+  // Transférer les étoiles liées à la carte volée :
+  // les bonusStars ont été crédités sur victim.stars au moment du gain,
+  // ils doivent changer de propriétaire avec la carte.
+  // Les bonusPoints en revanche sont immédiats et définitifs : ils restent
+  // acquis par le joueur qui a gagné la carte, indépendamment du vol.
+  if (stolenCard.bonusStars > 0) {
+    victim.stars = Math.max(0, victim.stars - stolenCard.bonusStars);
+    thief.stars += stolenCard.bonusStars;
+  }
 
   if (state.lastTrickSummary) {
     state.lastTrickSummary.stolenFrom = victim.id;
@@ -554,6 +576,7 @@ export function toPublicState(state: InternalGameState): PublicGameState {
     playedHistory: p.playedHistory,
     topScoreCard: p.scorePile.length > 0 ? p.scorePile[p.scorePile.length - 1] : null,
     scorePileCount: p.scorePile.length,
+    scoreFromCards: p.scorePile.reduce((sum, c) => sum + c.value, 0),
     stars: p.stars,
     bonusPoints: p.bonusPoints,
     victoryPoints: p.victoryPoints,
