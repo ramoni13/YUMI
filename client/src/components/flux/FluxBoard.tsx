@@ -150,47 +150,54 @@ export function FluxBoard() {
     <div className={styles.boardWrapper}>
       <div className={styles.board}>
 
-        {/* Header enrichi */}
+                {/* Header : mène + scores tous joueurs + deck */}
         <div className={styles.header}>
           <div className={styles.trickInfo}>
             {t.fluxBoard.trickLabel(gameState.currentTrick)}
           </div>
 
-          {/* Stats du joueur local au centre */}
+          {/* Scores de tous les joueurs */}
+          <div className={styles.headerAllPlayers}>
+            {gameState.players.map(p => (
+              <div key={p.id} className={`${styles.headerPlayerScore} ${p.id === playerId ? styles.headerPlayerMe : ''}`}>
+                <span className={styles.headerPlayerPseudo}>{p.pseudo}</span>
+                <span className={`${styles.headerPlayerStat} ${styles.headerStatCards}`}>
+                  🃏 <strong>{p.scoreFromCards > 0 ? '+' : ''}{p.scoreFromCards}</strong>
+                </span>
+                <span className={`${styles.headerPlayerStat} ${styles.headerStatStars}`}>
+                  ⭐ <strong>{p.stars}</strong>
+                </span>
+                {p.bonusPoints > 0 && (
+                  <span className={`${styles.headerPlayerStat} ${styles.headerStatBonus}`}>
+                    🪙 <strong>{p.bonusPoints}</strong>
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+
+          {/* Infos privées du joueur local */}
           {myPlayer && (
-            <div className={styles.headerStats}>
+            <div className={styles.headerPrivate}>
               {privateInfo?.mysteryCard !== undefined && (
                 <span className={styles.headerMystery}>
                   🔍 {privateInfo.mysteryCardOwner} :
                   {privateInfo.mysteryCard === YUMI_CARD_VALUE
                     ? <strong className={styles.yumiMysteryVal}>Y</strong>
-                    : <strong>{privateInfo.mysteryCard}</strong>
-                  }
+                    : <strong>{privateInfo.mysteryCard}</strong>}
                 </span>
               )}
-              <span className={styles.headerStat}>⭐ {myPlayer.stars}</span>
-              {myPlayer.bonusPoints > 0 && (
-                <span className={styles.headerStat}>🪙 {myPlayer.bonusPoints}</span>
-              )}
-              <span className={styles.headerStat}>🃏 {myPlayer.scorePileCount}</span>
-              {myPlayer.topScoreCard && (
-                <div
-                  className={styles.headerTopCard}
-                  title={t.fluxBoard.scoreCardLabel}
-                >
-                  <ScoreCardDisplay card={myPlayer.topScoreCard} size="sm" />
-                </div>
-              )}
               {myMysteryCard !== undefined && (
-                <div
-                  className={styles.headerMysteryCard}
-                  title={t.fluxBoard.mysteryCardTitle}
-                >
+                <div className={styles.headerMysteryCard} title={t.fluxBoard.mysteryCardTitle}>
                   <span className={styles.headerMysteryLabel}>🔒</span>
                   {myMysteryCard === YUMI_CARD_VALUE
                     ? <span className={`${styles.headerMysteryVal} ${styles.yumiMysteryVal}`}>Y</span>
-                    : <span className={styles.headerMysteryVal}>{myMysteryCard}</span>
-                  }
+                    : <span className={styles.headerMysteryVal}>{myMysteryCard}</span>}
+                </div>
+              )}
+              {myPlayer.topScoreCard && (
+                <div className={styles.headerTopCard} title={t.fluxBoard.scoreCardLabel}>
+                  <ScoreCardDisplay card={myPlayer.topScoreCard} size="sm" />
                 </div>
               )}
             </div>
