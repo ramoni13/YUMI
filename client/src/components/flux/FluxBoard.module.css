@@ -568,6 +568,14 @@
   color: rgba(255,255,255,0.6);
 }
 
+/* Carte YUMI dans l'historique */
+.playedHistoryCardYumi {
+  background: rgba(251, 191, 36, 0.2);
+  border-color: rgba(251, 191, 36, 0.6);
+  color: #fbbf24;
+  font-weight: 900;
+}
+
 @keyframes pulse {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.7; }
