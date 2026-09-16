@@ -64,7 +64,7 @@ export function createRoom(hostId: string, pseudo: string, gameMode: GameMode = 
     stars: 0,
     bonusPoints: 0,
     victoryPoints: 0,
-    deferred: { forcedRecharge: false, forcedCard: null, lockedHighCard: false, lockedLowCard: false, mustPlayMysteryCard: false },
+    deferred: { yumiRecovered: false },
     isReady: false,
     isConnected: true,
   };
@@ -111,7 +111,7 @@ export function createSoloRoom(
     stars: 0,
     bonusPoints: 0,
     victoryPoints: 0,
-    deferred: { forcedRecharge: false, forcedCard: null, lockedHighCard: false, lockedLowCard: false, mustPlayMysteryCard: false },
+    deferred: { yumiRecovered: false },
     isReady: true,
     isConnected: true,
   };
@@ -129,7 +129,7 @@ export function createSoloRoom(
       stars: 0,
       bonusPoints: 0,
       victoryPoints: 0,
-      deferred: { forcedRecharge: false, forcedCard: null, lockedHighCard: false, lockedLowCard: false, mustPlayMysteryCard: false },
+      deferred: { yumiRecovered: false },
       isReady: true,
       isConnected: true,
     };
@@ -184,7 +184,7 @@ export function addBotToRoom(
     stars: 0,
     bonusPoints: 0,
     victoryPoints: 0,
-    deferred: { forcedRecharge: false, forcedCard: null, lockedHighCard: false, lockedLowCard: false, mustPlayMysteryCard: false },
+    deferred: { yumiRecovered: false },
     isReady: true,
     isConnected: true,
   };
@@ -251,7 +251,7 @@ export function joinRoom(
     stars: 0,
     bonusPoints: 0,
     victoryPoints: 0,
-    deferred: { forcedRecharge: false, forcedCard: null, lockedHighCard: false, lockedLowCard: false, mustPlayMysteryCard: false },
+    deferred: { yumiRecovered: false },
     isReady: false,
     isConnected: true,
   };
@@ -310,10 +310,7 @@ export function rejoinRoom(
     }
     // stealRequest / swapRequest
     if (gs.stealRequestPlayerId === oldPlayerId) gs.stealRequestPlayerId = newSocketId;
-    if (gs.swapRequestPlayerId === oldPlayerId) gs.swapRequestPlayerId = newSocketId;
-    if (gs.swapChosenA === oldPlayerId) gs.swapChosenA = newSocketId;
     gs.stealEligibleTargets = gs.stealEligibleTargets.map(id => id === oldPlayerId ? newSocketId : id);
-    gs.swapEligibleTargets = gs.swapEligibleTargets.map(id => id === oldPlayerId ? newSocketId : id);
   }
 
   // Mettre à jour les références dans fluxGameState (flux)
@@ -338,10 +335,7 @@ export function rejoinRoom(
       delete gs.missingCards[oldPlayerId];
     }
     if (gs.stealRequestPlayerId === oldPlayerId) gs.stealRequestPlayerId = newSocketId;
-    if (gs.swapRequestPlayerId === oldPlayerId) gs.swapRequestPlayerId = newSocketId;
-    if (gs.swapChosenA === oldPlayerId) gs.swapChosenA = newSocketId;
     gs.stealEligibleTargets = gs.stealEligibleTargets.map(id => id === oldPlayerId ? newSocketId : id);
-    gs.swapEligibleTargets = gs.swapEligibleTargets.map(id => id === oldPlayerId ? newSocketId : id);
   }
 
   return { ok: true, room };
