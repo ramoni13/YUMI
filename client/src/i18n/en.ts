@@ -76,6 +76,8 @@ export const en: Translations = {
     mysteryCard: (owner: string, value: number) => `🔍 ${owner}'s mystery card: ${value}`,
     missingCard: (value: number) => `⚠️ Your missing card: ${value}`,
     stealPrompt: '🦅 Choose an opponent to steal from!',
+    myCardScore: (n: number) => `🃏 ${n > 0 ? '+' : ''}${n} pts`,
+    myBonusPoints: (n: number) => `🪙 +${n}`,
     myStars: (n: number) => `⭐ ${n} stars`,
     myScorePile: (n: number) => `Score pile: ${n} card(s)`,
     myLastCard: (val: string) => `Last card: ${val}`,
@@ -104,6 +106,7 @@ export const en: Translations = {
   opponent: {
     stealOverlay: '🦅 Steal',
     playedLabel: 'Played:',
+    titleCardScore: 'Score card points',
     titleVP: 'Victory points',
     titleStars: 'Total stars',
     titleBonus: 'Bonus points',
@@ -125,6 +128,11 @@ export const en: Translations = {
     starBonusTitle: 'Bonus: most total stars (+5 pts)',
     pts: (n: number) => `${n} pts`,
     btnReplay: 'Play again',
+    // Counter leaders (end of game)
+    starsLeader: 'Star race',
+    cardsLeader: 'Card points',
+    bonusLeader: 'Bonus points',
+    counterCancelled: 'Cancelled (tie)',
   },
 
   // ── HistoryPanel ────────────────────────────────────────
@@ -177,7 +185,7 @@ export const en: Translations = {
         `🔄 ${rechargers} recharge${rechargers.includes(',') ? '' : 's'} — no stars (all values duplicated)`,
       rechargeAllDiscard: '🔄 Everyone recharges — Score card discarded',
       // Special effects — log messages
-      inversionActive: '🌀 INVERSION active — the next Score card has its condition reversed!',
+      inversionActive: '🌀 INVERSION — the value of the last card won is negated (×-1)!',
       yumiRecovered: (pseudo: string) => `✨ ${pseudo} recovers their YUMI card in hand!`,
       recyclageApplied: (pseudo: string) => `♻️ ${pseudo} immediately recharges all their cards (RECYCLAGE)!`,
       jackpotResult: (winner: string, pts: number) => `💰 JACKPOT! ${winner} gains +${pts} bonus points`,
@@ -500,9 +508,9 @@ export const en: Translations = {
       tip: 'Ideal when your hand is depleted or you want to renew your mystery card.',
     },
     INVERSION: {
-      icon: '🌀', title: 'INVERSION', role: 'Reverse the win condition',
-      how: 'On the next trick, the condition is reversed: if the Score card is green (highest wins), the lowest wins instead, and vice versa.',
-      tip: 'Catches opponents off guard who have already chosen their strategy.',
+      icon: '🌀', title: 'INVERSION', role: 'Negate the value of the last card won',
+      how: 'The value of your last won Score card is multiplied by -1 (e.g. +4 becomes -4, -3 becomes +3). Stars and bonus points are not affected. If your pile is empty or the last card is special, the effect is lost.',
+      tip: 'Devastating against an opponent who just won a high positive card — or use it to turn one of your own negative cards into a positive!',
     },
     FIFTY_FIFTY: {
       icon: '🎲', title: 'FIFTY-FIFTY', role: 'Mixed stars and bonus gains',
