@@ -1,5 +1,6 @@
 import React from 'react';
 import type { PublicPlayer } from '../../types';
+import { YUMI_CARD_VALUE } from '../../types';
 import { ScoreCardDisplay } from '../Card/ScoreCardDisplay';
 import { useT } from '../../hooks/useT';
 import styles from './Player.module.css';
@@ -92,7 +93,12 @@ export function OpponentPanel({
           <span className={styles.playedHistoryLabel}>{t.opponent.playedLabel}</span>
           <div className={styles.playedHistoryCards}>
             {visibleHistory.map((v, i) => (
-              <span key={i} className={styles.playedHistoryCard}>{v}</span>
+              <span
+                key={i}
+                className={`${styles.playedHistoryCard} ${v === YUMI_CARD_VALUE ? styles.playedHistoryCardYumi : ''}`}
+              >
+                {v === YUMI_CARD_VALUE ? 'Y' : v}
+              </span>
             ))}
           </div>
         </div>
