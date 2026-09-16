@@ -53,8 +53,8 @@ export function OpponentPanel({
         {!player.isConnected && !bot && <span className={styles.disconnected}>⚠</span>}
       </div>
 
+      {/* Stats redondantes avec le bandeau du haut — masquées
       <div className={styles.opponentStats}>
-        {/* Ligne 1 : PV + score cartes */}
         <div className={styles.statsRow}>
           <span className={styles.victoryPoints} title={t.opponent.titleVP}>
             {Array.from({ length: 3 }, (_, i) => (
@@ -65,7 +65,6 @@ export function OpponentPanel({
             🃏 {player.scoreFromCards > 0 ? '+' : ''}{player.scoreFromCards}
           </span>
         </div>
-        {/* Ligne 2 : étoiles + bonus + main + a joué */}
         <div className={styles.statsRow}>
           <span className={styles.stars} title={t.opponent.titleStars}>⭐ {player.stars}</span>
           {player.bonusPoints > 0 && <span className={styles.bonus} title={t.opponent.titleBonus}>🪙 {player.bonusPoints}</span>}
@@ -73,6 +72,7 @@ export function OpponentPanel({
           {player.hasPlayedCard && <span className={styles.played}>✓</span>}
         </div>
       </div>
+      */}
 
       <div className={styles.scorePile}>
         {player.topScoreCard ? (
