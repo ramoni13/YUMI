@@ -94,7 +94,7 @@ export function initGame(
     stars: 0,
     bonusPoints: 0,
     victoryPoints: 0,
-    deferred: { forcedRecharge: false, forcedCard: null, lockedHighCard: false, lockedLowCard: false, mustPlayMysteryCard: false },
+    deferred: { yumiRecovered: false },
     isReady: true,
     isConnected: true,
   }));
@@ -273,19 +273,11 @@ export function resolveTrickPhase(
     discarded: result.discarded,
     specialEffect: scoreCard.specialEffect,
     doubleAppliedTo: null,
-    swapBetween: null,
     stolenFrom: null,
-    bonusStarsAwarded: 0,
     bonusPointsAwarded: 0,
-    eclipseGivenTo: null,
-    piocheTargetId: null,
-    piocheCardValue: null,
-    surchargeTargetId: null,
-    verrouTargetId: null,
-    taxeTargetId: null,
-    revelationTargetId: null,
-    revelationCardValue: null,
-    mysteryCardsPlayed: null,
+    yumiRecovered: false,
+    recyclageApplied: false,
+    inversionApplied: false,
     rechargedPlayerIds: [],
     bonusPointWinners: [],
     bonusPointCount: 0,
@@ -297,9 +289,6 @@ export function resolveTrickPhase(
     // Étoiles bonus immédiates (cartes -1 et -2)
     if (scoreCard.bonusStars > 0) {
       winner.stars += scoreCard.bonusStars;
-      if (state.lastTrickSummary) {
-        state.lastTrickSummary.bonusStarsAwarded = scoreCard.bonusStars;
-      }
     }
 
     if (scoreCard.specialEffect === 'DOUBLE') {
@@ -325,7 +314,7 @@ export function resolveTrickPhase(
         state.phase = 'TRICK_END'; // Personne à voler, mais la carte est dans la pile
       }
 
-    } else if (scoreCard.specialEffect === 'SWAP') {
+    } else if (scoreCard.specialEffect === ('SWAP' as any)) {
       // La carte SWAP va TOUJOURS dans la pile du gagnant, effet applicable ou non
       winner.scorePile.push({ ...scoreCard });
       const eligible = state.players.filter(p => p.scorePile.length > 0);
@@ -434,7 +423,7 @@ export function resolveSwapChooseB(
   playerB.scorePile = newPileB;
 
   if (state.lastTrickSummary) {
-    state.lastTrickSummary.swapBetween = [playerA.id, playerB.id];
+    // swapBetween supprimé du nouveau TrickSummary
   }
 
   state.swapRequestPlayerId = null;
@@ -596,9 +585,6 @@ export function toPublicState(state: InternalGameState): PublicGameState {
     cancelledValues: state.cancelledValues,
     scoreCardDiscarded: state.scoreCardDiscarded,
     memorizeTimer: state.memorizeTimer,
-    swapRequestPlayerId: state.swapRequestPlayerId,
-    swapEligibleTargets: state.swapEligibleTargets,
-    swapChosenA: state.swapChosenA,
     stealRequestPlayerId: state.stealRequestPlayerId,
     stealEligibleTargets: state.stealEligibleTargets,
     lastTrickSummary: state.lastTrickSummary,
@@ -607,20 +593,6 @@ export function toPublicState(state: InternalGameState): PublicGameState {
     gameOptions: state.gameOptions,
     rechargedPlayerIds: [],
     bonusPointWinners: [],
-    eclipseRequestPlayerId: null,
-    eclipseEligibleTargets: [],
-    piocheRequestPlayerId: null,
-    piocheEligibleTargets: [],
-    surchargeRequestPlayerId: null,
-    surchargeEligibleTargets: [],
-    verrouRequestPlayerId: null,
-    verrouEligibleTargets: [],
-    revelationRequestPlayerId: null,
-    revelationEligibleTargets: [],
-    taxeRequestPlayerId: null,
-    taxeEligibleTargets: [],
     nextTrickInverted: false,
-    mysteryTrickActive: false,
-    revealedUpcoming: [],
   };
 }
