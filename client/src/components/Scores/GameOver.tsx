@@ -1,8 +1,24 @@
 import React from 'react';
 import { useGameStore } from '../../store/gameStore';
 import { useT } from '../../hooks/useT';
-import { VICTORY_POINTS_TO_WIN } from '../../types';
+import { VICTORY_POINTS_TO_WIN, type FinalScore } from '../../types';
 import styles from './GameOver.module.css';
+
+// Retourne l'ID du joueur avec le + haut score sans doublon (null si ex-æquo en tête)
+function resolveTopPlayer(scores: FinalScore[], getValue: (s: FinalScore) => number): string | null {
+  const sorted = [...scores].sort((a, b) => getValue(b) - getValue(a));
+  if (sorted.length === 0) return null;
+  const topValue = getValue(sorted[0]);
+  if (topValue === 0) return null;
+  const topCount = sorted.filter(s => getValue(s) === topValue).length;
+  if (topCount === 1) return sorted[0].playerId;
+  // Ex-æquo en tête : chercher le suivant unique
+  const rest = sorted.filter(s => getValue(s) !== topValue);
+  if (rest.length === 0) return null;
+  const nextValue = getValue(rest[0]);
+  const nextCount = rest.filter(s => getValue(s) === nextValue).length;
+  return nextCount === 1 ? rest[0].playerId : null;
+}
 
 const COLOR_HEX: Record<string, string> = {
   red: '#ef4444', blue: '#3b82f6', green: '#22c55e',
@@ -21,6 +37,11 @@ export function GameOver({ onReplay }: GameOverProps) {
   const winner = scores[0];
   const isWinner = winner?.playerId === playerId;
 
+  // Gagnants de chaque compteur (+ haut sans doublon)
+  const starsLeaderId   = resolveTopPlayer(scores, s => s.stars);
+  const cardsLeaderId   = resolveTopPlayer(scores, s => s.scoreFromCards);
+  const bonusLeaderId   = resolveTopPlayer(scores, s => s.bonusPoints);
+
   return (
     <div className={styles.container}>
       <div className={styles.header}>
@@ -38,6 +59,40 @@ export function GameOver({ onReplay }: GameOverProps) {
         <p className={styles.winner}>
           {winner ? t.gameover.winnerLine(winner.pseudo, winner.victoryPoints) : ''}
         </p>
+      </div>
+
+      {/* Légende des compteurs */}
+      <div className={styles.countersLegend}>
+        <div className={styles.counterItem}>
+          <span className={styles.counterIcon}>⭐</span>
+          <span className={styles.counterLabel}>{t.gameover.starsLeader}</span>
+          <span className={styles.counterWinner}>
+            {starsLeaderId
+              ? scores.find(s => s.playerId === starsLeaderId)?.pseudo
+              : <em>{t.gameover.counterCancelled}</em>}
+          </span>
+          {starsLeaderId && <span className={styles.counterVP}>{t.common.vpGain}</span>}
+        </div>
+        <div className={styles.counterItem}>
+          <span className={styles.counterIcon}>🃏</span>
+          <span className={styles.counterLabel}>{t.gameover.cardsLeader}</span>
+          <span className={styles.counterWinner}>
+            {cardsLeaderId
+              ? scores.find(s => s.playerId === cardsLeaderId)?.pseudo
+              : <em>{t.gameover.counterCancelled}</em>}
+          </span>
+          {cardsLeaderId && <span className={styles.counterVP}>{t.common.vpGain}</span>}
+        </div>
+        <div className={styles.counterItem}>
+          <span className={styles.counterIcon}>🪙</span>
+          <span className={styles.counterLabel}>{t.gameover.bonusLeader}</span>
+          <span className={styles.counterWinner}>
+            {bonusLeaderId
+              ? scores.find(s => s.playerId === bonusLeaderId)?.pseudo
+              : <em>{t.gameover.counterCancelled}</em>}
+          </span>
+          {bonusLeaderId && <span className={styles.counterVP}>{t.common.vpGain}</span>}
+        </div>
       </div>
 
       <div className={styles.scoreboard}>
@@ -59,20 +114,25 @@ export function GameOver({ onReplay }: GameOverProps) {
                 ))}
                                   <span className={styles.vpCount}>{t.common.vpCount(s.victoryPoints)}</span>
               </span>
-              {/* Détails des cumuls */}
-              <span className={styles.cardScore} title={t.gameover.cardScoreTitle}>
+              {/* Détails des cumuls avec mise en évidence du leader */}
+              <span
+                className={`${styles.cardScore} ${s.playerId === cardsLeaderId ? styles.leaderHighlight : ''}`}
+                title={t.gameover.cardScoreTitle}
+              >
                 🃏 {s.scoreFromCards > 0 ? '+' : ''}{s.scoreFromCards}
               </span>
-              {s.bonusPoints > 0 && (
-                <span className={styles.rechargeStarScore} title={t.gameover.bonusPointsTitle}>
-                  🪙 +{s.bonusPoints}
-                </span>
-              )}
-              {s.stars > 0 && (
-                <span className={styles.starScore} title={t.gameover.starsTitle}>
-                  ⭐ {s.stars}
-                </span>
-              )}
+              <span
+                className={`${s.bonusPoints > 0 ? styles.rechargeStarScore : styles.cardScore} ${s.playerId === bonusLeaderId ? styles.leaderHighlight : ''}`}
+                title={t.gameover.bonusPointsTitle}
+              >
+                🪙 {s.bonusPoints > 0 ? '+' : ''}{s.bonusPoints}
+              </span>
+              <span
+                className={`${styles.starScore} ${s.playerId === starsLeaderId ? styles.leaderHighlight : ''}`}
+                title={t.gameover.starsTitle}
+              >
+                ⭐ {s.stars}
+              </span>
             </div>
           </div>
         ))}
