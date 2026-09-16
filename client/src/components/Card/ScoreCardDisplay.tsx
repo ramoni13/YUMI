@@ -57,10 +57,10 @@ export function ScoreCardDisplay({ card, size = 'md', highlighted, discarded }: 
         </span>
       )}
 
-      {/* Points bonus immédiats (JACKPOT = gain fixe, TAXE = vol) */}
+      {/* Points bonus immédiats */}
       {card.bonusPoints > 0 && (
         <span className={styles.bonusBadge}>
-          {card.specialEffect === 'TAXE' ? `×${card.bonusPoints}🪙` : `+${card.bonusPoints}🪙`}
+          {`+${card.bonusPoints}🪙`}
         </span>
       )}
 
