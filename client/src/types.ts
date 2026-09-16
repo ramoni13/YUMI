@@ -86,6 +86,7 @@ export interface PublicPlayer {
   playedHistory: number[];        // Cartes déjà jouées (visible par tous)
   topScoreCard: ScoreCard | null;
   scorePileCount: number;
+  scoreFromCards: number;         // Total des points des cartes Score (mis à jour en temps réel)
   stars: number;
   bonusPoints: number;
   victoryPoints: number;          // Points de victoire accumulés
