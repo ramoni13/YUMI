@@ -28,10 +28,6 @@ export function Board() {
     ? gameState.players[(myIndex - 1 + gameState.players.length) % gameState.players.length]?.pseudo
     : undefined;
 
-  const isSwapPhase =
-    gameState.phase === 'SPECIAL_EFFECT' &&
-    gameState.swapRequestPlayerId === playerId;
-
   const isStealPhase =
     gameState.phase === 'SPECIAL_EFFECT' &&
     gameState.stealRequestPlayerId === playerId;
@@ -85,8 +81,6 @@ export function Board() {
           <OpponentPanel
             key={p.id}
             player={p}
-            isSwapTarget={isSwapPhase && gameState.swapEligibleTargets.includes(p.id)}
-            onSwapSelect={handleSwapTarget}
             isStealTarget={isStealPhase && gameState.stealEligibleTargets.includes(p.id)}
             onStealSelect={handleStealTarget}
           />
@@ -256,19 +250,7 @@ export function Board() {
           </div>
         )}
 
-        {/* SWAP étape 1 */}
-        {isSwapPhase && !gameState.swapChosenA && (
-          <div className={styles.swapPrompt}>
-            {t.board.swapPrompt1}
-          </div>
-        )}
 
-        {/* SWAP étape 2 */}
-        {isSwapPhase && gameState.swapChosenA && (
-          <div className={styles.swapPrompt}>
-            {t.board.swapPrompt2(gameState.players.find(p => p.id === gameState.swapChosenA)?.pseudo ?? '?')}
-          </div>
-        )}
       </div>
 
       {/* Ma main */}
