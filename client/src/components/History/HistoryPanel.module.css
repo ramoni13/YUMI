@@ -180,6 +180,14 @@
   font-weight: 900 !important;
 }
 
+.miniCardRecharge {
+  background: linear-gradient(135deg, #064e3b, #34d399) !important;
+  border-color: #34d399 !important;
+  color: white !important;
+  font-size: 0.75rem !important;
+  font-weight: 900 !important;
+}
+
 .cancelX {
   position: absolute;
   inset: 0;
