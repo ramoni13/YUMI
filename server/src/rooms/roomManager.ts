@@ -521,6 +521,7 @@ export function toPublicRoom(room: Room): PublicRoom {
       handCount: p.hand.length,
       topScoreCard: p.scorePile.length > 0 ? p.scorePile[p.scorePile.length - 1] : null,
       scorePileCount: p.scorePile.length,
+      scoreFromCards: p.scorePile.reduce((sum, c) => sum + c.value, 0),
       playedHistory: p.playedHistory,
       stars: p.stars,
       bonusPoints: p.bonusPoints,
