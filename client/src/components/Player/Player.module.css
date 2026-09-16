@@ -154,6 +154,14 @@
   color: #c7d2fe;
 }
 
+/* Carte YUMI dans l'historique */
+.playedHistoryCardYumi {
+  background: rgba(251, 191, 36, 0.2);
+  border-color: rgba(251, 191, 36, 0.6);
+  color: #fbbf24;
+  font-weight: 900;
+}
+
 .swapOverlay {
   position: absolute;
   inset: 0;
