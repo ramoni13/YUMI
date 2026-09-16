@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import type { PlayerColor } from '../../types';
+import { YUMI_CARD_VALUE } from '../../types';
 import { PlayerCard } from '../Card/PlayerCard';
 import { getSocket } from '../../hooks/useSocket';
 import { useGameStore } from '../../store/gameStore';
@@ -75,7 +76,9 @@ export function MyHand({ hand, color, playedHistory = [] }: MyHandProps) {
           <span className={styles.playedHistoryLabel}>{t.hand.alreadyPlayed}</span>
           <div className={styles.playedHistoryCards}>
             {playedHistory.map((v, i) => (
-              <span key={i} className={`${styles.playedHistoryCard} ${styles.playedHistoryCardMine}`}>{v}</span>
+              <span key={i} className={`${styles.playedHistoryCard} ${styles.playedHistoryCardMine} ${v === YUMI_CARD_VALUE ? styles.playedHistoryCardYumi : ''}`}>
+                {v === YUMI_CARD_VALUE ? 'Y' : v}
+              </span>
             ))}
           </div>
         </div>
