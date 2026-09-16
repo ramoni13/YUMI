@@ -30,20 +30,10 @@ export function FluxBoard() {
   const canPlay = phase === 'CARD_SELECTION';
   const hasPlayed = myPlayer?.hasPlayedCard ?? false;
 
-  const isSwapPhase = phase === 'SPECIAL_EFFECT' && gameState.swapRequestPlayerId === playerId;
-  const isStealPhase = phase === 'SPECIAL_EFFECT' && gameState.stealRequestPlayerId === playerId;
-
-  // Effets spéciaux où le joueur local doit choisir une cible
-  const isEclipsePhase = phase === 'SPECIAL_ECLIPSE' && gameState.eclipseRequestPlayerId === playerId;
-  const isPiochePhase = phase === 'SPECIAL_PIOCHE' && gameState.piocheRequestPlayerId === playerId;
-  const isVerrouPhase = phase === 'SPECIAL_VERROU' && gameState.verrouRequestPlayerId === playerId;
-  const isRevelationPhase = phase === 'SPECIAL_REVELATION' && gameState.revelationRequestPlayerId === playerId;
-  const isTaxePhase = phase === 'SPECIAL_TAXE' && gameState.taxeRequestPlayerId === playerId;
+    const isStealPhase = phase === 'SPECIAL_EFFECT' && gameState.stealRequestPlayerId === playerId;
 
   // Carte mystère du joueur local (valeur manquante)
   const myMysteryCard = privateInfo?.missingCardValue;
-  // Le joueur doit jouer sa carte mystère (effet MYSTÈRE)
-  const mustPlayMystery = myPlayer?.deferred?.mustPlayMysteryCard ?? false;
 
   const handleSelect = (value: number) => {
     if (!canPlay || hasPlayed) return;
@@ -66,60 +56,13 @@ export function FluxBoard() {
     });
   };
 
-  const handleSwapTarget = (targetId: string) => {
-    getSocket().emit('swap_target', { targetPlayerId: targetId }, (res: any) => {
-      if ('error' in res) console.error(res.error);
-    });
-  };
-
   const handleStealTarget = (targetId: string) => {
     getSocket().emit('steal_target', { targetPlayerId: targetId }, (res: any) => {
       if ('error' in res) console.error(res.error);
     });
   };
 
-  const handleEclipseTarget = (targetId: string) => {
-    getSocket().emit('eclipse_target', { targetPlayerId: targetId }, (res: any) => {
-      if ('error' in res) console.error(res.error);
-    });
-  };
-
-  const handlePiocheTarget = (targetId: string) => {
-    getSocket().emit('pioche_target', { targetPlayerId: targetId }, (res: any) => {
-      if ('error' in res) console.error(res.error);
-    });
-  };
-
-  const handleVerrouTarget = (targetId: string) => {
-    getSocket().emit('verrou_target', { targetPlayerId: targetId }, (res: any) => {
-      if ('error' in res) console.error(res.error);
-    });
-  };
-
-  const handleRevelationTarget = (targetId: string) => {
-    getSocket().emit('revelation_target', { targetPlayerId: targetId }, (res: any) => {
-      if ('error' in res) console.error(res.error);
-    });
-  };
-
-  const handleTaxeTarget = (targetId: string) => {
-    getSocket().emit('taxe_target', { targetPlayerId: targetId }, (res: any) => {
-      if ('error' in res) console.error(res.error);
-    });
-  };
-
-  const handleOracleOk = () => {
-    setOracleCards(null);
-    getSocket().emit('oracle_ok');
-  };
-
-  // Jouer la carte mystère (effet MYSTÈRE)
-  const handlePlayMystery = () => {
-    if (!myMysteryCard || hasPlayed) return;
-    getSocket().emit('play_card', { cardValue: myMysteryCard }, (res: any) => {
-      if ('error' in res) console.error(res.error);
-    });
-  };
+  
 
   const hand = privateInfo?.hand ?? [];
 
@@ -232,12 +175,7 @@ export function FluxBoard() {
               <span className={styles.headerStat}>🃏 {myPlayer.scorePileCount}</span>
               {myPlayer.topScoreCard && (
                 <div
-                  className={`${styles.headerTopCard} ${isSwapPhase && gameState.swapEligibleTargets.includes(playerId ?? '') ? styles.swapSelf : ''}`}
-                  onClick={() => {
-                    if (isSwapPhase && gameState.swapEligibleTargets.includes(playerId ?? '')) {
-                      handleSwapTarget(playerId ?? '');
-                    }
-                  }}
+                  className={styles.headerTopCard}
                   title={t.fluxBoard.scoreCardLabel}
                 >
                   <ScoreCardDisplay card={myPlayer.topScoreCard} size="sm" />
@@ -245,16 +183,14 @@ export function FluxBoard() {
               )}
               {myMysteryCard !== undefined && (
                 <div
-                  className={`${styles.headerMysteryCard} ${mustPlayMystery && !hasPlayed ? styles.mysteryCardPlayable : ''}`}
-                  onClick={mustPlayMystery && !hasPlayed ? handlePlayMystery : undefined}
-                  title={mustPlayMystery ? t.fluxBoard.mysteryCardPlayTitle : t.fluxBoard.mysteryCardTitle}
+                  className={styles.headerMysteryCard}
+                  title={t.fluxBoard.mysteryCardTitle}
                 >
                   <span className={styles.headerMysteryLabel}>🔒</span>
                   {myMysteryCard === YUMI_CARD_VALUE
                     ? <span className={`${styles.headerMysteryVal} ${styles.yumiMysteryVal}`}>Y</span>
                     : <span className={styles.headerMysteryVal}>{myMysteryCard}</span>
                   }
-                  {mustPlayMystery && !hasPlayed && <span className={styles.headerMysteryHint}>{t.fluxBoard.mysteryCardPlay}</span>}
                 </div>
               )}
             </div>
@@ -273,20 +209,8 @@ export function FluxBoard() {
               key={p.id}
               player={p}
               hideCurrentCard={phase === 'CARD_SELECTION'}
-              isSwapTarget={isSwapPhase && gameState.swapEligibleTargets.includes(p.id)}
-              onSwapSelect={handleSwapTarget}
               isStealTarget={isStealPhase && gameState.stealEligibleTargets.includes(p.id)}
               onStealSelect={handleStealTarget}
-              isEclipseTarget={isEclipsePhase && gameState.eclipseEligibleTargets.includes(p.id)}
-              onEclipseSelect={handleEclipseTarget}
-              isPiocheTarget={isPiochePhase && gameState.piocheEligibleTargets.includes(p.id)}
-              onPiocheSelect={handlePiocheTarget}
-              isVerrouTarget={isVerrouPhase && gameState.verrouEligibleTargets.includes(p.id)}
-              onVerrouSelect={handleVerrouTarget}
-              isRevelationTarget={isRevelationPhase && gameState.revelationEligibleTargets.includes(p.id)}
-              onRevelationSelect={handleRevelationTarget}
-              isTaxeTarget={isTaxePhase && gameState.taxeEligibleTargets.includes(p.id)}
-              onTaxeSelect={handleTaxeTarget}
             />
           ))}
         </div>
@@ -378,36 +302,9 @@ export function FluxBoard() {
             </div>
           )}
 
-          {/* DEVOILEMENT : rivière des prochaines cartes Score */}
-          {gameState.revealedUpcoming && gameState.revealedUpcoming.length > 0 && (
-            <div className={styles.revealedUpcoming}>
-              <div className={styles.revealedUpcomingLabel}>
-                {t.fluxBoard.revealedUpcomingLabel}
-              </div>
-              <div className={styles.revealedUpcomingCards}>
-                {gameState.revealedUpcoming.map((card, i) => (
-                  <div key={i} className={styles.revealedUpcomingSlot}>
-                    <span className={styles.revealedUpcomingNum}>{t.fluxBoard.revealedUpcomingNum(i + 1)}</span>
-                    <ScoreCardDisplay card={card} size="sm" />
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
           {/* STEAL */}
           {isStealPhase && (
             <div className={styles.actionPrompt}>{t.fluxBoard.stealPrompt}</div>
-          )}
-
-          {/* SWAP */}
-          {isSwapPhase && !gameState.swapChosenA && (
-            <div className={styles.actionPrompt}>{t.fluxBoard.swapPrompt1}</div>
-          )}
-          {isSwapPhase && gameState.swapChosenA && (
-            <div className={styles.actionPrompt}>
-              {t.fluxBoard.swapPrompt2(gameState.players.find(p => p.id === gameState.swapChosenA)?.pseudo ?? '?')}
-            </div>
           )}
         </div>
 
@@ -474,41 +371,7 @@ export function FluxBoard() {
       {/* Panneau historique */}
       <HistoryPanel />
 
-      {/* Modal ORACLE — visible uniquement pour le gagnant */}
-      {oracleCards && oracleCards.length > 0 && (
-        <div className={styles.oracleOverlay}>
-          <div className={styles.oracleModal}>
-            <div className={styles.oracleHeader}>
-              <span className={styles.oracleIcon}>👁️</span>
-              <div className={styles.oracleTitleBlock}>
-                                  <span className={styles.oracleTitle}>{t.fluxBoard.oracleTitle}</span>
-                  <span className={styles.oracleSubtitle}>{t.fluxBoard.oracleSubtitle}</span>
-              </div>
-            </div>
 
-            <div className={styles.oracleDivider} />
-
-            <span className={styles.oracleLabel}>Les 3 prochaines cartes Score :</span>
-
-            <div className={styles.oracleCards}>
-              {oracleCards.map((card, i) => (
-                <div key={i} className={styles.oracleCardSlot}>
-                  <span className={styles.oracleCardNum}>#{i + 1}</span>
-                  <ScoreCardDisplay card={card} size="md" />
-                </div>
-              ))}
-            </div>
-
-            <p className={styles.oracleWarning}>
-              {t.fluxBoard.oracleWarning}
-            </p>
-
-            <button className={styles.oracleOkBtn} onClick={handleOracleOk}>
-              {t.fluxBoard.oracleOkBtn}
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
