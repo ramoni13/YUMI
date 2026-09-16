@@ -29,21 +29,14 @@ export const PLAYER_COLORS: PlayerColor[] = [
 export type GainType = '+' | '-';
 
 export type SpecialEffect =
-  | 'DOUBLE'
-  | 'STEAL'
-  | 'SWAP'
-  | 'PIOCHE'
-  | 'VERROU'
-  | 'REVELATION'
-  | 'MYSTERE'
-  | 'SURCHARGE'
-  | 'INVERSION'
-  | 'CONSTELLATION'
-  | 'ECLIPSE'
-  | 'JACKPOT'
-  | 'TAXE'
-  | 'ORACLE'
-  | 'DEVOILEMENT'
+  | 'DOUBLE'        // X2 : double score + étoiles de la dernière carte gagnée
+  | 'STEAL'         // VOL : prend la dernière carte de la pile d'un adversaire
+  | 'YUMI'          // YUMI : récupère sa carte YUMI en main
+  | 'RECYCLAGE'     // RECYCLAGE : recharge immédiate (main + nouvelle carte mystère)
+  | 'INVERSION'     // INVERSION : inverse la condition de gain de la prochaine mène
+  | 'FIFTY_FIFTY'   // FIFTY-FIFTY : 2 pts bonus immédiats + 3⭐ sur la carte
+  | 'JACKPOT'       // JACKPOT : 5 pts bonus immédiats
+  | 'CONSTELLATION' // CONSTELLATION : 5⭐ sur la carte
   | null;
 
 export interface ScoreCard {
@@ -64,15 +57,11 @@ export interface ScoreCard {
 // Effets différés (s'appliquent à la mène suivante)
 // ----------------------------
 export interface DeferredEffects {
-  forcedRecharge: boolean;      // SURCHARGE
-  forcedCard: number | null;    // PIOCHE
-  lockedHighCard: boolean;      // VERROU vert
-  lockedLowCard: boolean;       // VERROU rouge
-  mustPlayMysteryCard: boolean; // MYSTÈRE
+  yumiRecovered: boolean;       // YUMI : la carte YUMI a été récupérée en main
 }
 
 export function emptyDeferredEffects(): DeferredEffects {
-  return { forcedRecharge: false, forcedCard: null, lockedHighCard: false, lockedLowCard: false, mustPlayMysteryCard: false };
+  return { yumiRecovered: false };
 }
 
 export interface Player {
@@ -150,14 +139,7 @@ export type GamePhase =
   | 'BONUS_STAR'
   // Phases mode flux uniquement
   | 'FLUX_TRICK_START'
-  | 'FLUX_RECHARGE'
-  | 'SPECIAL_ECLIPSE'
-  | 'SPECIAL_PIOCHE'
-  | 'SPECIAL_VERROU'
-  | 'SPECIAL_REVELATION'
-  | 'SPECIAL_TAXE'
-  | 'SPECIAL_ORACLE'
-  | 'SPECIAL_DEVOILEMENT';
+  | 'FLUX_RECHARGE';
 
 // ----------------------------
 // État du jeu (version publique envoyée aux clients)
@@ -177,28 +159,10 @@ export interface PublicGameState {
   cancelledValues: number[];
   scoreCardDiscarded: boolean;
   memorizeTimer: number | null;
-  swapRequestPlayerId: string | null;
-  swapEligibleTargets: string[];
-  swapChosenA: string | null;
   stealRequestPlayerId: string | null;
   stealEligibleTargets: string[];
-  // Nouveaux effets spéciaux flux
-  eclipseRequestPlayerId: string | null;
-  eclipseEligibleTargets: string[];
-  piocheRequestPlayerId: string | null;
-  piocheEligibleTargets: string[];
-  surchargeRequestPlayerId: string | null;
-  surchargeEligibleTargets: string[];
-  verrouRequestPlayerId: string | null;
-  verrouEligibleTargets: string[];
-  revelationRequestPlayerId: string | null;
-  revelationEligibleTargets: string[];
-  taxeRequestPlayerId: string | null;
-  taxeEligibleTargets: string[];
   // État global différé
   nextTrickInverted: boolean;
-  mysteryTrickActive: boolean;
-  revealedUpcoming: ScoreCard[];
   lastTrickSummary: TrickSummary | null;
   roundEndSummary: RoundEndSummary | null;
   finalScores: FinalScore[] | null;
@@ -231,19 +195,12 @@ export type GameEventKind =
   | 'SCORE_WON'          // Ligne explicite : "X a remporté la carte Score Y"
   | 'SPECIAL_STEAL'      // Effet VOL
   | 'SPECIAL_DOUBLE'     // Effet ×2
-  | 'SPECIAL_SWAP'
-  | 'SPECIAL_PIOCHE'
-  | 'SPECIAL_VERROU'
-  | 'SPECIAL_REVELATION'
-  | 'SPECIAL_MYSTERE'
-  | 'SPECIAL_SURCHARGE'
-  | 'SPECIAL_INVERSION'
-  | 'SPECIAL_CONSTELLATION'
-  | 'SPECIAL_ECLIPSE'
-  | 'SPECIAL_JACKPOT'
-  | 'SPECIAL_TAXE'
-  | 'SPECIAL_ORACLE'
-  | 'SPECIAL_DEVOILEMENT'
+  | 'SPECIAL_YUMI'       // Effet YUMI
+  | 'SPECIAL_RECYCLAGE'  // Effet RECYCLAGE
+  | 'SPECIAL_INVERSION'  // Effet INVERSION
+  | 'SPECIAL_FIFTY_FIFTY'// Effet FIFTY-FIFTY
+  | 'SPECIAL_JACKPOT'    // Effet JACKPOT
+  | 'SPECIAL_CONSTELLATION' // Effet CONSTELLATION
   | 'FLUX_RECHARGE_BONUS'
   | 'ROUND_END'
   | 'ROUND_WINNER'
@@ -267,8 +224,6 @@ export interface GameEvent {
   winnerPseudo?: string;
   winnerColor?: PlayerColor;
   allCards?: Array<{ playerId: string; pseudo: string; color: PlayerColor; value: number; cancelled: boolean }>;
-  swapPlayerA?: string;  // pseudo joueur A de l'échange
-  swapPlayerB?: string;  // pseudo joueur B de l'échange
   stolenFromPseudo?: string;  // pseudo de la victime du VOL
   stolenCard?: ScoreCard;     // carte volée
   bonusWinners?: Array<{ pseudo: string; color: PlayerColor; cardValue: number; hasBonus?: boolean }>;
@@ -293,20 +248,12 @@ export interface TrickSummary {
   scoreCard: ScoreCard;
   discarded: boolean;
   specialEffect: SpecialEffect;
-  doubleAppliedTo: string | null;
-  swapBetween: [string, string] | null;
-  stolenFrom: string | null;
-  bonusStarsAwarded: number;
-  bonusPointsAwarded: number;
-  eclipseGivenTo: string | null;
-  piocheTargetId: string | null;
-  piocheCardValue: number | null;
-  surchargeTargetId: string | null;   // SURCHARGE : joueur forcé à Recharger
-  verrouTargetId: string | null;       // VERROU : joueur verrouillé
-  taxeTargetId: string | null;         // TAXE : joueur taxé
-  revelationTargetId: string | null;  // REVELATION : joueur dont la carte mystère a été révélée
-  revelationCardValue: number | null; // REVELATION : valeur de la carte mystère révélée
-  mysteryCardsPlayed: Record<string, number> | null;
+  doubleAppliedTo: string | null;     // X2 : ID du joueur dont la carte a été doublée
+  stolenFrom: string | null;          // VOL : ID du joueur victime
+  bonusPointsAwarded: number;         // Points bonus immédiats gagnés
+  yumiRecovered: boolean;             // YUMI : carte YUMI récupérée
+  recyclageApplied: boolean;          // RECYCLAGE : recharge effectuée
+  inversionApplied: boolean;          // INVERSION : inversion appliquée
   rechargedPlayerIds: string[];
   bonusPointWinners: string[];
   bonusPointCount: number;
@@ -407,15 +354,7 @@ export interface ClientEvents {
   start_game: (payload: { gameOptions?: GameOptions }, callback: (res: { ok: boolean } | { error: string }) => void) => void;
   yumi_shout: (payload: { clientTimestamp: number }) => void;
   play_card: (payload: { cardValue: number }, callback: (res: { ok: boolean } | { error: string }) => void) => void;
-  swap_target: (payload: { targetPlayerId: string }, callback: (res: { ok: boolean } | { error: string }) => void) => void;
   steal_target: (payload: { targetPlayerId: string }, callback: (res: { ok: boolean } | { error: string }) => void) => void;
-  swap_choose_players: (payload: { playerAId: string; playerBId: string }, callback: (res: { ok: boolean } | { error: string }) => void) => void;
-  eclipse_target: (payload: { targetPlayerId: string }, callback: (res: { ok: boolean } | { error: string }) => void) => void;
-  pioche_target: (payload: { targetPlayerId: string }, callback: (res: { ok: boolean } | { error: string }) => void) => void;
-  surcharge_target: (payload: { targetPlayerId: string }, callback: (res: { ok: boolean } | { error: string }) => void) => void;
-  verrou_target: (payload: { targetPlayerId: string }, callback: (res: { ok: boolean } | { error: string }) => void) => void;
-  revelation_target: (payload: { targetPlayerId: string }, callback: (res: { ok: boolean } | { error: string }) => void) => void;
-  taxe_target: (payload: { targetPlayerId: string }, callback: (res: { ok: boolean } | { error: string }) => void) => void;
   next_phase: () => void;
   add_bot: (payload: { profile: BotProfile }, callback: (res: { ok: boolean } | { error: string }) => void) => void;
   remove_bot: (payload: { botId: string }, callback: (res: { ok: boolean } | { error: string }) => void) => void;
@@ -435,9 +374,6 @@ export interface ServerEvents {
   swap_request: (payload: { eligibleTargets: PublicPlayer[] }) => void;
   round_end: (summary: RoundEndSummary) => void;
   game_over: (payload: { finalScores: FinalScore[]; winnerId: string }) => void;
-  oracle_info: (payload: { cards: ScoreCard[] }) => void;
-  mystery_revealed: (payload: { targetId: string; targetPseudo: string; mysteryCard: number }) => void;
-  upcoming_revealed: (payload: { cards: ScoreCard[] }) => void;
   error: (payload: { message: string }) => void;
 }
 
