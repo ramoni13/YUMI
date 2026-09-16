@@ -10,40 +10,54 @@ export function computeScoreFromPile(pile: ScoreCard[]): number {
 }
 
 // ============================================================
-// Applique l'effet ×2 sur la carte au sommet de la pile
-// (la dernière carte Score gagnee AVANT le ×2).
-// Si cette carte est spéciale ou déjà doublée → effet perdu.
+// X2 : double la value ET les bonusStars de la dernière carte
+// gagnee (= l'avant-dernière de la pile, juste avant la X2).
+// Si cette carte est spéciale → effet perdu.
+// Retourne extraStars = bonusStars originaux à créditer en plus
+// sur player.stars (déjà crédités une fois au gain de la cible).
 // ============================================================
-/**
- * Applique l'effet ×2 sur la dernière carte numérique de la pile
- * (en remontant depuis le sommet, en ignorant les cartes spéciales).
- * C'est la dernière carte Score numérique gagnee AVANT le ×2.
- * Un second ×2 sur une carte déjà doublée est autorisé (×2 sur ×2 = ×4).
- */
-export function applyDouble(pile: ScoreCard[]): ScoreCard[] {
-  if (pile.length === 0) return pile;
+export function applyDouble(pile: ScoreCard[]): { newPile: ScoreCard[]; extraStars: number } {
+  if (pile.length < 2) return { newPile: [...pile], extraStars: 0 };
   const newPile = [...pile];
-  // Remonter depuis le sommet pour trouver la dernière carte numérique
-  for (let i = newPile.length - 1; i >= 0; i--) {
-    if (newPile[i].specialEffect === null) {
-      newPile[i] = {
-        ...newPile[i],
-        value: newPile[i].value * 2,
-        appliedDouble: true,
-      };
-      return newPile;
-    }
-  }
-  // Aucune carte numérique dans la pile → effet perdu
+  const targetIdx = newPile.length - 2;
+  const target = newPile[targetIdx];
+  if (target.specialEffect !== null) return { newPile, extraStars: 0 };
+  const originalStars = target.bonusStars;
+  newPile[targetIdx] = {
+    ...target,
+    value: target.value * 2,
+    bonusStars: target.bonusStars * 2,
+    appliedDouble: true,
+  };
+  return { newPile, extraStars: originalStars };
+}
+
+/** X2 applicable : pile ≥ 2 cartes ET l'avant-dernière est numérique. */
+export function canApplyDouble(pile: ScoreCard[]): boolean {
+  if (pile.length < 2) return false;
+  return pile[pile.length - 2].specialEffect === null;
+}
+
+// ============================================================
+// INVERSION : négate la value (×-1) de la dernière carte gagnee
+// (= l'avant-dernière de la pile, juste avant l'INVERSION).
+// Si cette carte est spéciale → effet perdu.
+// Les bonusStars et bonusPoints ne sont PAS modifiés.
+// ============================================================
+export function applyInversion(pile: ScoreCard[]): ScoreCard[] {
+  if (pile.length < 2) return [...pile];
+  const newPile = [...pile];
+  const targetIdx = newPile.length - 2;
+  const target = newPile[targetIdx];
+  if (target.specialEffect !== null) return newPile;
+  newPile[targetIdx] = { ...target, value: target.value * -1 };
   return newPile;
 }
 
-/**
- * Vérifie si le ×2 peut s'appliquer :
- * la pile doit contenir au moins une carte numérique (non spéciale).
- */
-export function canApplyDouble(pile: ScoreCard[]): boolean {
-  return pile.some(c => c.specialEffect === null);
+/** INVERSION applicable : pile ≥ 2 cartes ET l'avant-dernière est numérique. */
+export function canApplyInversion(pile: ScoreCard[]): boolean {
+  if (pile.length < 2) return false;
+  return pile[pile.length - 2].specialEffect === null;
 }
 
 // ============================================================
