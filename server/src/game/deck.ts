@@ -2,6 +2,7 @@ import { ScoreCard, GainType, SpecialEffect, GAME_CONFIGS } from '../types';
 
 // ============================================================
 // Génération du paquet Score complet (48 cartes)
+// 30 cartes numériques + 18 cartes spéciales
 // Colonnes : id | value | gain | specialEffect | displayName | bonusPoints | bonusStars
 // ============================================================
 
@@ -18,67 +19,84 @@ function card(
 }
 
 export function buildFullScoreDeck(): ScoreCard[] {
-  return [
-    // -------------------------------------------------------
-    // Cartes numériques — 20 cartes
-    // N° | Nom  | Score | Bonus | Étoile | Gain
-    // -------------------------------------------------------
-    card(1, +5, '+', null, '+5'),          // +5  —  —  +
-    card(2, +4, '-', null, '+4'),          // +4  —  —  -
-    card(3, +3, '+', null, '+3'),          // +3  —  —  +
-    card(4, +2, '-', null, '+2', 0, 1),   // +2  —  1⭐ -
-    card(5, +1, '+', null, '+1', 0, 2),   // +1  —  2⭐ +
-    card(6, -1, '-', null, '-1', 0, 2),   // -1  —  2⭐ -
-    card(7, -2, '+', null, '-2', 0, 2),   // -2  —  2⭐ +
-    card(8, -3, '-', null, '-3', 0, 3),   // -3  —  3⭐ -
-    card(9, -4, '+', null, '-4', 0, 3),   // -4  —  3⭐ +
-    card(10, -5, '-', null, '-5', 0, 3),   // -5  —  3⭐ -
-    card(11, +5, '-', null, '+5'),          // +5  —  —  -
-    card(12, +4, '+', null, '+4'),          // +4  —  —  +
-    card(13, +3, '-', null, '+3'),          // +3  —  —  -
-    card(14, +2, '+', null, '+2', 0, 1),   // +2  —  1⭐ +
-    card(15, +1, '-', null, '+1', 0, 2),   // +1  —  2⭐ -
-    card(16, -1, '+', null, '-1', 0, 2),   // -1  —  2⭐ +
-    card(17, -2, '-', null, '-2', 0, 2),   // -2  —  2⭐ -
-    card(18, -3, '-', null, '-3', 0, 2),   // -3  —  2⭐ -
-    card(19, -4, '-', null, '-4', 0, 3),   // -4  —  3⭐ -
-    card(20, -5, '+', null, '-5', 0, 3),   // -5  —  3⭐ +
-    // -------------------------------------------------------
-    // Cartes numériques supplémentaires — 10 cartes (IDs 39-48)
-    // 4× +1 (2 gain+, 2 gain-) | 4× +2 (2 gain+, 2 gain-) | 2× -1 (1 gain+, 1 gain-)
-    // -------------------------------------------------------
-    card(39, +1, '+', null, '+1', 0, 2),   // +1  —  2⭐ +
-    card(40, +1, '+', null, '+1', 0, 2),   // +1  —  2⭐ +
-    card(41, +1, '-', null, '+1', 0, 2),   // +1  —  2⭐ -
-    card(42, +1, '-', null, '+1', 0, 2),   // +1  —  2⭐ -
-    card(43, +2, '+', null, '+2', 0, 1),   // +2  —  1⭐ +
-    card(44, +2, '+', null, '+2', 0, 1),   // +2  —  1⭐ +
-    card(45, +2, '-', null, '+2', 0, 1),   // +2  —  1⭐ -
-    card(46, +2, '-', null, '+2', 0, 1),   // +2  —  1⭐ -
-    card(47, -1, '+', null, '-1', 0, 2),   // -1  —  2⭐ +
-    card(48, -1, '-', null, '-1', 0, 2),   // -1  —  2⭐ -
-    // -------------------------------------------------------
-    // Cartes spéciales — 18 cartes
-    // -------------------------------------------------------
-    card(21, 0, '-', 'DOUBLE', 'X2', 0, 1),  // X2       score 0  1⭐  -
-    card(22, 0, '+', 'DOUBLE', 'X2', 0, 1),  // X2       score 0  1⭐  +
-    card(23, 0, '-', 'STEAL', 'VOL', 0, 1),  // VOL      score 0  1⭐  -
-    card(24, 0, '+', 'STEAL', 'VOL', 0, 1),  // VOL      score 0  1⭐  +
-    card(25, 0, '-', 'SWAP', 'SWAP', 0, 1),  // SWAP     score 0  1⭐  -
-    card(26, 0, '+', 'SWAP', 'SWAP', 0, 1),  // SWAP     score 0  1⭐  +
-    card(27, +1, '-', 'PIOCHE', 'PIOCHE', 0, 3),  // PIOCHE   score+1  3⭐  -
-    card(28, +2, '+', 'VERROU', 'VERROU', 0, 2),  // VERROU   score+2  2⭐  +
-    card(29, +3, '-', 'REVELATION', 'RÉVÉLATION', 0, 1),  // RÉVÉL.   score+3  1⭐  -
-    card(30, -1, '+', 'MYSTERE', 'MYSTÈRE', 0, 0),  // MYSTÈRE  score-1  0⭐  +
-    card(31, -2, '-', 'SURCHARGE', 'SURCHARGE', 0, 2),  // SURCHARG score-2  2⭐  -
-    card(32, -3, '+', 'INVERSION', 'INVERSION', 0, 3),  // INVERS.  score-3  3⭐  +
-    card(33, 0, '-', 'CONSTELLATION', 'CONSTELLATION', 0, 5), // CONSTEL. score 0  5⭐  -
-    card(34, +1, '+', 'ECLIPSE', 'ECLIPSE', 0, -3),  // ECLIPSE  score+1 -3⭐  + (donné à un adversaire)
-    card(35, 0, '-', 'JACKPOT', 'JACKPOT', 3, 0),  // JACKPOT  score 0  +3bonus -
-    card(36, 0, '+', 'TAXE', 'TAXE', 2, 0),  // TAXE     score 0  0⭐  + (vole 2 bonus)
-    card(37, +1, '-', 'ORACLE', 'ORACLE', 0, 0),  // ORACLE   score+1  0⭐  -
-    card(38, -2, '+', 'DEVOILEMENT', 'DÉVOILEMENT', 0, 3),  // DÉVOI.   score-2  3⭐  +
+  const deck: ScoreCard[] = [];
+
+  // -------------------------------------------------------
+  // Cartes numériques — 30 cartes
+  // N° | Nom  | Score | Bonus | Étoile | Gain | Nb exemplaires
+  // -------------------------------------------------------
+  // IDs 1-10 : gain '-'
+  // IDs 11-20 : gain '+'
+  // Nb exemplaires : +5×1, +4×1, +3×1, +2×3, +1×3, -1×2, -2×1, -3×1, -4×1, -5×1
+
+  const numericCards: Array<[number, number, GainType, string, number, number, number]> = [
+    // id, value, gain, displayName, bonusPoints, bonusStars, nbExemplaires
+    [1, +5, '-', '+5', 0, 0, 1],
+    [2, +4, '-', '+4', 0, 0, 1],
+    [3, +3, '-', '+3', 0, 0, 1],
+    [4, +2, '-', '+2', 0, 1, 3],
+    [5, +1, '-', '+1', 0, 2, 3],
+    [6, -1, '-', '-1', 0, 2, 2],
+    [7, -2, '-', '-2', 0, 2, 1],
+    [8, -3, '-', '-3', 0, 3, 1],
+    [9, -4, '-', '-4', 0, 3, 1],
+    [10, -5, '-', '-5', 0, 3, 1],
+    [11, +5, '+', '+5', 0, 0, 1],
+    [12, +4, '+', '+4', 0, 0, 1],
+    [13, +3, '+', '+3', 0, 0, 1],
+    [14, +2, '+', '+2', 0, 1, 3],
+    [15, +1, '+', '+1', 0, 2, 3],
+    [16, -1, '+', '-1', 0, 2, 2],
+    [17, -2, '+', '-2', 0, 2, 1],
+    [18, -3, '+', '-3', 0, 2, 1],
+    [19, -4, '+', '-4', 0, 3, 1],
+    [20, -5, '+', '-5', 0, 3, 1],
   ];
+
+  for (const [id, value, gain, displayName, bonusPoints, bonusStars, nb] of numericCards) {
+    for (let i = 0; i < nb; i++) {
+      deck.push(card(id, value, gain, null, displayName, bonusPoints, bonusStars));
+    }
+  }
+
+  // -------------------------------------------------------
+  // Cartes spéciales — 18 cartes
+  // N° | Nom         | Score | Bonus | Étoile | Gain | Nb exemplaires
+  // -------------------------------------------------------
+  // ID 21 : X2          score 0  2pts bonus  0⭐  gain-  ×1
+  // ID 22 : X2          score 0  2pts bonus  0⭐  gain+  ×2
+  // ID 23 : VOL         score 0  2pts bonus  0⭐  gain-  ×1
+  // ID 24 : VOL         score 0  2pts bonus  0⭐  gain+  ×2
+  // ID 25 : YUMI        score 0  2pts bonus  0⭐  gain-  ×1
+  // ID 26 : YUMI        score 0  2pts bonus  0⭐  gain+  ×2
+  // ID 27 : RECYCLAGE   score 0  2pts bonus  0⭐  gain-  ×1
+  // ID 28 : RECYCLAGE   score 0  2pts bonus  0⭐  gain+  ×2
+  // ID 29 : INVERSION   score 0  2pts bonus  0⭐  gain-  ×1
+  // ID 30 : INVERSION   score 0  2pts bonus  0⭐  gain+  ×2
+  // ID 31 : FIFTY-FIFTY score 0  2pts bonus  3⭐  gain-  ×1
+  // ID 32 : JACKPOT     score 0  5pts bonus  0⭐  gain+  ×1
+  // ID 33 : CONSTELLATION score 0  0pts bonus  5⭐  gain-  ×1
+  // -------------------------------------------------------
+  deck.push(card(21, 0, '-', 'DOUBLE', 'X2', 2, 0));  // ×1
+  deck.push(card(22, 0, '+', 'DOUBLE', 'X2', 2, 0));  // ×2
+  deck.push(card(22, 0, '+', 'DOUBLE', 'X2', 2, 0));  // ×2
+  deck.push(card(23, 0, '-', 'STEAL', 'VOL', 2, 0));  // ×1
+  deck.push(card(24, 0, '+', 'STEAL', 'VOL', 2, 0));  // ×2
+  deck.push(card(24, 0, '+', 'STEAL', 'VOL', 2, 0));  // ×2
+  deck.push(card(25, 0, '-', 'YUMI', 'YUMI', 2, 0));  // ×1
+  deck.push(card(26, 0, '+', 'YUMI', 'YUMI', 2, 0));  // ×2
+  deck.push(card(26, 0, '+', 'YUMI', 'YUMI', 2, 0));  // ×2
+  deck.push(card(27, 0, '-', 'RECYCLAGE', 'RECYCLAGE', 2, 0));  // ×1
+  deck.push(card(28, 0, '+', 'RECYCLAGE', 'RECYCLAGE', 2, 0));  // ×2
+  deck.push(card(28, 0, '+', 'RECYCLAGE', 'RECYCLAGE', 2, 0));  // ×2
+  deck.push(card(29, 0, '-', 'INVERSION', 'INVERSION', 2, 0));  // ×1
+  deck.push(card(30, 0, '+', 'INVERSION', 'INVERSION', 2, 0));  // ×2
+  deck.push(card(30, 0, '+', 'INVERSION', 'INVERSION', 2, 0));  // ×2
+  deck.push(card(31, 0, '-', 'FIFTY_FIFTY', 'FIFTY-FIFTY', 2, 3));  // ×1
+  deck.push(card(32, 0, '+', 'JACKPOT', 'JACKPOT', 5, 0));  // ×1
+  deck.push(card(33, 0, '-', 'CONSTELLATION', 'CONSTELLATION', 0, 5));  // ×1
+
+  return deck;
 }
 
 // ============================================================
@@ -95,9 +113,7 @@ export function shuffle<T>(arr: T[]): T[] {
 
 // ============================================================
 // Prépare le paquet Score pour une manche (20 cartes aléatoires)
-// Le deck complet est mélangé et on prend les 20 premières cartes.
-// Si le deck complet a moins de 20 cartes (impossible avec 48),
-// on prend tout ce qui reste.
+// Le deck complet (48 cartes) est mélangé et on prend les 20 premières cartes.
 // ============================================================
 export function prepareScoreDeck(_playerCount?: number): ScoreCard[] {
   const full = shuffle(buildFullScoreDeck());
