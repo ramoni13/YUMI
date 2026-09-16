@@ -60,15 +60,18 @@ export function Board() {
         <div className={styles.deckCount}>
           {t.board.deckCount(Math.max(0, gameState.scoreDeckCount))}
         </div>
-        {/* Points de victoire en cours */}
+        {/* Scores en cours : PV + total cartes pour tous les joueurs */}
         <div className={styles.victoryPointsBar}>
           {gameState.players.map(p => (
-            <div key={p.id} className={styles.vpPlayer}>
+            <div key={p.id} className={`${styles.vpPlayer} ${p.id === playerId ? styles.vpPlayerMe : ''}`}>
               <span className={styles.vpPseudo}>{p.pseudo}</span>
               <span className={styles.vpStars}>
                 {Array.from({ length: VICTORY_POINTS_TO_WIN }, (_, i) => (
                   <span key={i} className={i < p.victoryPoints ? styles.vpFilled : styles.vpEmpty}>★</span>
                 ))}
+              </span>
+              <span className={styles.vpCardScore}>
+                🃏 {p.scoreFromCards > 0 ? '+' : ''}{p.scoreFromCards}
               </span>
             </div>
           ))}
@@ -264,8 +267,11 @@ export function Board() {
               ))}
                               <span style={{ marginLeft: '0.3rem', fontWeight: 700, color: '#fbbf24' }}>{t.common.vpCount(myPlayer.victoryPoints)}</span>
             </span>
+            <span>{t.board.myCardScore(myPlayer.scoreFromCards)}</span>
             <span>{t.board.myStars(myPlayer.stars)}</span>
-            <span>{t.board.myScorePile(myPlayer.scorePileCount)}</span>
+            {myPlayer.bonusPoints > 0 && (
+              <span>{t.board.myBonusPoints(myPlayer.bonusPoints)}</span>
+            )}
             {myPlayer.topScoreCard && (
               <span>{t.board.myLastCard(myPlayer.topScoreCard.displayName)}</span>
             )}
