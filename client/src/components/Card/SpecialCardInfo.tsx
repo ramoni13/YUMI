@@ -43,9 +43,7 @@ export function SpecialCardInfo({ card }: SpecialCardInfoProps) {
           )}
           {card.bonusPoints > 0 && (
             <span className={styles.badge}>
-              {card.specialEffect === 'TAXE'
-                ? t.specialCards.taxeStolen(card.bonusPoints)
-                : `+${card.bonusPoints}🪙`}
+              {`+${card.bonusPoints}🪙`}
             </span>
           )}
           <span className={`${styles.gainBadge} ${isGreen ? styles.gainGreen : styles.gainRed}`}>
