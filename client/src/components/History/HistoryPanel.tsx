@@ -2,7 +2,7 @@ import React from 'react';
 import { useGameStore } from '../../store/gameStore';
 import { useT } from '../../hooks/useT';
 import type { GameEvent } from '../../types';
-import { YUMI_CARD_VALUE } from '../../types';
+import { YUMI_CARD_VALUE, RECHARGE_CARD_VALUE } from '../../types';
 import type { Translations } from '../../i18n';
 import styles from './HistoryPanel.module.css';
 
@@ -120,11 +120,11 @@ function EventRow({ event, myId, t }: EventRowProps) {
             {event.allCards.map(c => (
               <div key={c.playerId} className={styles.miniCardSlot}>
                 <div
-                  className={`${styles.miniCard} ${c.cancelled ? styles.cancelled : ''} ${c.playerId === myId ? styles.mine : ''} ${c.value === YUMI_CARD_VALUE ? styles.miniCardYumi : ''}`}
-                  style={c.value === YUMI_CARD_VALUE ? {} : { background: getColorGradient(c.color) }}
+                  className={`${styles.miniCard} ${c.cancelled ? styles.cancelled : ''} ${c.playerId === myId ? styles.mine : ''} ${c.value === YUMI_CARD_VALUE ? styles.miniCardYumi : ''} ${c.value === RECHARGE_CARD_VALUE ? styles.miniCardRecharge : ''}`}
+                  style={c.value === YUMI_CARD_VALUE || c.value === RECHARGE_CARD_VALUE ? {} : { background: getColorGradient(c.color) }}
                   title={c.pseudo}
                 >
-                  {c.value === YUMI_CARD_VALUE ? 'Y' : c.value}
+                  {c.value === YUMI_CARD_VALUE ? 'Y' : c.value === RECHARGE_CARD_VALUE ? 'R' : c.value}
                   {c.cancelled && <span className={styles.cancelX}>✕</span>}
                 </div>
                 <span
