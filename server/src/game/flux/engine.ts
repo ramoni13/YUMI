@@ -26,7 +26,9 @@ import {
 import { resolveTrick } from '../resolver';
 import {
   applyDouble,
+  applyInversion,
   canApplyDouble,
+  canApplyInversion,
   computeFinalScores,
   computeRoundVictoryPoints,
   checkGameOver,
@@ -53,8 +55,6 @@ export interface FluxGameState {
   trickWinnerId: string | null;
   cancelledValues: number[];
   scoreCardDiscarded: boolean;
-  // Effets différés globaux
-  nextTrickInverted: boolean;      // INVERSION active pour la prochaine mène
   // Effets spéciaux en attente (VOL uniquement nécessite un choix de cible)
   stealRequestPlayerId: string | null;
   stealEligibleTargets: string[];
@@ -144,7 +144,6 @@ export function initFluxGame(
     trickWinnerId: null,
     cancelledValues: [],
     scoreCardDiscarded: false,
-    nextTrickInverted: false,
     stealRequestPlayerId: null,
     stealEligibleTargets: [],
     lastTrickSummary: null,
@@ -226,7 +225,6 @@ export function nextFluxRoundOrGameOver(state: FluxGameState): FluxGameState {
     state.scoreDeck = prepareScoreDeck().slice(0, 20);
     state.roundEndSummary = null;
     state.currentTrick = 0;
-    state.nextTrickInverted = false;
     // Redistribuer les mains et cartes mystères
     const mysteryCards: Record<string, number> = {};
     const mysteryCardOwners: Record<string, string> = {};
@@ -344,11 +342,10 @@ export function resolveFluxTrick(state: FluxGameState): FluxGameState {
     return state;
   }
 
-  const result = resolveTrick(valuePlays, state.gameOptions, scoreCard.gain, state.nextTrickInverted);
+  const result = resolveTrick(valuePlays, state.gameOptions, scoreCard.gain);
   state.trickWinnerId = result.winnerId;
   state.cancelledValues = result.cancelledValues;
   state.scoreCardDiscarded = result.discarded;
-  state.nextTrickInverted = false;
 
   // Points bonus Recharge : valeur unique parmi les joueurs non-rechargeurs
   const bonusWinners: string[] = [];
@@ -382,15 +379,24 @@ function applyScoreCardEffect(state: FluxGameState, winnerId: string, scoreCard:
     if (state.lastTrickSummary) state.lastTrickSummary.bonusPointsAwarded = scoreCard.bonusPoints;
   }
 
+  // 1b. Étoiles immédiates au gagnant (CONSTELLATION, FIFTY_FIFTY, cartes numériques avec bonusStars)
+  if (scoreCard.bonusStars > 0) {
+    winner.stars += scoreCard.bonusStars;
+  }
+
   // 2. La carte est toujours posée dans la pile du gagnant
   winner.scorePile.push({ ...scoreCard });
 
   // 3. Application de l'effet spécial
   switch (scoreCard.specialEffect) {
     case 'DOUBLE': {
-      // Double score + étoiles de la dernière carte gagnée
+      // Ajouter la X2 dans la pile, puis doubler l'avant-dernière carte
+      // (applyDouble cible pile[length-2], soit la carte précédente)
       if (canApplyDouble(winner.scorePile)) {
-        winner.scorePile = applyDouble(winner.scorePile);
+        const { newPile, extraStars } = applyDouble(winner.scorePile);
+        winner.scorePile = newPile;
+        // Créditer les étoiles supplémentaires (déjà créditées une fois au gain)
+        if (extraStars > 0) winner.stars += extraStars;
         if (state.lastTrickSummary) state.lastTrickSummary.doubleAppliedTo = winnerId;
       }
       state.phase = 'TRICK_END';
@@ -427,9 +433,9 @@ function applyScoreCardEffect(state: FluxGameState, winnerId: string, scoreCard:
       break;
     }
     case 'INVERSION': {
-      // INVERSION : inverse la condition de gain de la prochaine mène
-      if (state.scoreDeck.length > 0) {
-        state.nextTrickInverted = true;
+      // INVERSION : négate la value (×-1) de la dernière carte gagnee
+      if (canApplyInversion(winner.scorePile)) {
+        winner.scorePile = applyInversion(winner.scorePile);
         if (state.lastTrickSummary) state.lastTrickSummary.inversionApplied = true;
       }
       state.phase = 'TRICK_END';
@@ -457,9 +463,19 @@ export function resolveFluxSteal(
   const victim = state.players.find(p => p.id === targetId)!;
   if (victim.scorePile.length === 0) return { ok: false, error: 'Pas de carte Score', state };
   // Le voleur prend la dernière carte de la pile de la victime
-  // Les points bonus de la carte volée ne sont ni re-gagnés ni perdus
   const stolen = victim.scorePile.pop()!;
   thief.scorePile.push({ ...stolen });
+
+  // Transférer les étoiles liées à la carte volée :
+  // les bonusStars ont été crédités sur victim.stars au moment du gain,
+  // ils doivent changer de propriétaire avec la carte.
+  // Les bonusPoints en revanche sont immédiats et définitifs : ils restent
+  // acquis par le joueur qui a gagné la carte, indépendamment du vol.
+  if (stolen.bonusStars > 0) {
+    victim.stars = Math.max(0, victim.stars - stolen.bonusStars);
+    thief.stars += stolen.bonusStars;
+  }
+
   if (state.lastTrickSummary) state.lastTrickSummary.stolenFrom = victim.id;
   state.stealRequestPlayerId = null;
   state.stealEligibleTargets = [];
@@ -553,6 +569,7 @@ export function toFluxPublicState(state: FluxGameState): PublicGameState {
     playedHistory: p.playedHistory,
     topScoreCard: p.scorePile.length > 0 ? p.scorePile[p.scorePile.length - 1] : null,
     scorePileCount: p.scorePile.length,
+    scoreFromCards: p.scorePile.reduce((sum, c) => sum + c.value, 0),
     stars: p.stars,
     bonusPoints: p.bonusPoints,
     victoryPoints: p.victoryPoints,
@@ -581,7 +598,7 @@ export function toFluxPublicState(state: FluxGameState): PublicGameState {
     memorizeTimer: null,
     stealRequestPlayerId: state.stealRequestPlayerId,
     stealEligibleTargets: state.stealEligibleTargets,
-    nextTrickInverted: state.nextTrickInverted,
+    nextTrickInverted: false,
     lastTrickSummary: state.lastTrickSummary,
     roundEndSummary: state.roundEndSummary,
     finalScores: state.finalScores,
