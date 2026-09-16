@@ -300,9 +300,10 @@ export function playFluxCard(
       return { ok: false, error: 'Carte non disponible', state };
     }
     player.hand = player.hand.filter(c => c !== cardValue);
-    // La carte YUMI est écartée définitivement : elle n'est PAS ajoutée à playedHistory
-    // (pas récupérable à la Recharge, jouée une seule fois)
-    if (cardValue !== YUMI_CARD_VALUE) player.playedHistory.push(cardValue);
+    // Toutes les cartes sont ajoutées à playedHistory, y compris la YUMI (valeur 9),
+    // pour qu'elle soit visible dans l'historique des adversaires.
+    // La YUMI reste écartée définitivement (non récupérable à la Recharge).
+    player.playedHistory.push(cardValue);
     state.playedCards[playerId] = cardValue;
   }
 
