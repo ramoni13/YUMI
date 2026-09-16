@@ -325,9 +325,11 @@ export function FluxBoard() {
                 <div className={styles.playedHistoryZone}>
                   <span className={styles.playedHistoryLabel}>{t.fluxBoard.alreadyPlayed}</span>
                   <div className={styles.playedHistoryCards}>
-                    {myPlayer.playedHistory.map((v: number, i: number) => (
-                      <span key={i} className={styles.playedHistoryCard}>{v}</span>
-                    ))}
+                                          {myPlayer.playedHistory.map((v: number, i: number) => (
+                        <span key={i} className={`${styles.playedHistoryCard} ${v === YUMI_CARD_VALUE ? styles.playedHistoryCardYumi : ''}`}>
+                          {v === YUMI_CARD_VALUE ? 'Y' : v}
+                        </span>
+                      ))}
                   </div>
                 </div>
             )}
