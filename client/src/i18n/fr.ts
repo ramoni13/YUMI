@@ -75,6 +75,8 @@ export const fr = {
     mysteryCard: (owner: string, value: number) => `🔍 Carte mystère de ${owner} : ${value}`,
     missingCard: (value: number) => `⚠️ Votre carte manquante : ${value}`,
     stealPrompt: '🦅 Choisissez un adversaire à voler !',
+    myCardScore: (n: number) => `🃏 ${n > 0 ? '+' : ''}${n} pts`,
+    myBonusPoints: (n: number) => `🪙 +${n}`,
     myStars: (n: number) => `⭐ ${n} étoiles`,
     myScorePile: (n: number) => `Score pile : ${n} carte(s)`,
     myLastCard: (val: string) => `Dernière carte : ${val}`,
@@ -103,6 +105,7 @@ export const fr = {
   opponent: {
     stealOverlay: '🦅 Voler',
     playedLabel: 'Jouées :',
+    titleCardScore: 'Points des cartes Score',
     titleVP: 'Points de victoire',
     titleStars: 'Étoiles totales',
     titleBonus: 'Points bonus',
@@ -124,6 +127,11 @@ export const fr = {
     starBonusTitle: "Bonus : le plus d'étoiles totales (+5 pts)",
     pts: (n: number) => `${n} pts`,
     btnReplay: 'Rejouer',
+    // Leaders des compteurs (fin de partie)
+    starsLeader: 'Course aux étoiles',
+    cardsLeader: 'Points des cartes',
+    bonusLeader: 'Points bonus',
+    counterCancelled: 'Annulé (ex-æquo)',
   },
 
   // ── HistoryPanel ────────────────────────────────────────
@@ -176,7 +184,7 @@ export const fr = {
         `🔄 ${rechargers} recharge${rechargers.includes(',') ? 'nt' : ''} — aucune étoile (toutes les valeurs en doublon)`,
       rechargeAllDiscard: '🔄 Tout le monde recharge — carte Score défaussée',
       // Effets spéciaux — messages journal
-      inversionActive: '🌀 INVERSION active — la prochaine carte Score a sa condition inversée !',
+      inversionActive: '🌀 INVERSION — la valeur de la dernière carte gagnée est inversée (×-1) !',
       yumiRecovered: (pseudo: string) => `✨ ${pseudo} récupère sa carte YUMI en main !`,
       recyclageApplied: (pseudo: string) => `🔄 ${pseudo} recharge immédiatement toutes ses cartes (RECYCLAGE) !`,
       jackpotResult: (winner: string, pts: number) => `💰 JACKPOT ! ${winner} gagne +${pts} points bonus`,
@@ -499,9 +507,9 @@ export const fr = {
       tip: 'Idéal quand ta main est épuisée ou que tu veux renouveler ta carte mystère.',
     },
     INVERSION: {
-      icon: '🌀', title: 'INVERSION', role: 'Inverser la condition de victoire',
-      how: 'À la prochaine mène, la condition est inversée : si la carte Score est verte (plus grande gagne), c\'est la plus petite qui gagne, et vice versa.',
-      tip: 'Surprend les adversaires qui ont déjà choisi leur stratégie.',
+      icon: '🌀', title: 'INVERSION', role: 'Inverser la valeur de la dernière carte gagnée',
+      how: 'La valeur de ta dernière carte Score gagnée est multipliée par -1 (ex : +4 devient -4, -3 devient +3). Les étoiles et points bonus ne sont pas affectés. Si ta pile est vide ou que la dernière carte est spéciale, l\'effet est perdu.',
+      tip: 'Redoutable contre un adversaire qui vient de gagner une grosse carte positive — ou pour transformer une carte négative en atout !',
     },
     FIFTY_FIFTY: {
       icon: '🎲', title: 'FIFTY-FIFTY', role: 'Gains mixtes étoiles et bonus',
